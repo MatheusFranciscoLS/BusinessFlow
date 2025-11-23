@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = process.env.REACT_APP_API_URL || 'https://businessflow.onrender.com';
+const baseURL = process.env.REACT_APP_API_URL || 'https://businessflow-backend-ixh7.onrender.com';
 
 const api = axios.create({
   baseURL: baseURL,
