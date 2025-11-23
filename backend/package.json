@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/server.js",
-"scripts": {
-  "start": "node src/server.js",
-  "dev": "node src/server.js",
-"postinstall": "prisma generate"
-},
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js"
+  },
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
     "@prisma/client": "5.16",
@@ -24,7 +23,8 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "prisma": "5.16"
+    "@types/node": "^24.10.1",
+    "prisma": "5.16",
+    "typescript": "^5.9.3"
   }
 }
