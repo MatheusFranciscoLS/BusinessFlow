@@ -5,8 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "node src/server.js",
-    "start": "node src/server.js",
-    "build": "prisma generate"
+    "start": "node src/server.js"
   },
 "dependencies": {
   "prisma": "5.16",
