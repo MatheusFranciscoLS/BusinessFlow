@@ -1,35 +1,36 @@
-import axios from 'axios';
-
-const baseURL = process.env.REACT_APP_API_URL || 'https://businessflow-backend-ixh7.onrender.com/api';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: baseURL,
+  baseURL: "https://businessflow-backend-ixh7.onrender.com/api",
 });
 
-// 1. Interceptor de ENVIO
+// Adiciona token automaticamente
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('@BusinessFlow:token');
-  
-  // VERIFICAÇÃO DE SEGURANÇA ADICIONAL
-  // Só envia o header se o token existir E não for a palavra "undefined" ou "null"
-  if (token && token !== 'undefined' && token !== 'null') {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
   return config;
 });
 
-// 2. Interceptor de RESPOSTA
+// Tenta refresh token se expirar
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      if (window.location.pathname !== '/') {
-        // Limpa o lixo
-        localStorage.removeItem('@BusinessFlow:token');
-        localStorage.removeItem('@BusinessFlow:user');
-        // Redireciona
-        window.location.href = '/';
+  (res) => res,
+  async (error) => {
+    if (error.response?.status === 401) {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) return Promise.reject(error);
+
+      try {
+        const { data } = await api.post("/auth/refresh-token", { refreshToken });
+
+        localStorage.setItem("accessToken", data.accessToken);
+        error.config.headers.Authorization = `Bearer ${data.accessToken}`;
+
+        return api(error.config);
+      } catch (err) {
+        localStorage.clear();
+        window.location.href = "/";
       }
     }
     return Promise.reject(error);

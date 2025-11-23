@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://businessflow-backend-ixh7.onrender.com/api",
+  baseURL: "https://businessflow-backend.vercel.app/api",
 });
 
 // Adiciona token automaticamente
