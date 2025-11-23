@@ -4,10 +4,9 @@
   "type": "module",
   "main": "src/server.js",
 "scripts": {
-  "start": "node src/server.js",
-  "dev": "node src/server.js",
-  "postinstall": "prisma generate"
-},
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
   "dependencies": {
     "@prisma/client": "5.16.2",
     "@faker-js/faker": "^10.1.0",
