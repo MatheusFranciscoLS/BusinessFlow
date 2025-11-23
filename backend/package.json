@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/server.js",
-"scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+  "scripts": {
+    "dev": "node src/server.js",
+    "start": "node src/server.js"
   },
   "dependencies": {
-    "@prisma/client": "5.16.2",
+    "@prisma/client": "5.16",
     "@faker-js/faker": "^10.1.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
@@ -23,6 +23,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "prisma": "5.16.2"
+    "prisma": "5.16"
   }
 }
