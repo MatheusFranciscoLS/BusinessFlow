@@ -8,12 +8,16 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+// --- CORREÇÃO DO CORS (LIBERA TUDO) ---
+app.use(cors({
+  origin: "*", // Permite qualquer site (Vercel, Localhost, etc)
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Permite todos os métodos
+  allowedHeaders: ["Content-Type", "Authorization"], // Permite envio de JSON e Token
+}));
+
 app.use(express.json());
 
-// --- CORREÇÃO AQUI ---
-// process.cwd() pega a raiz do projeto (onde está o package.json)
-// Assim ele acha a pasta 'uploads' com certeza.
+// Configuração de Uploads (Mantida igual você mandou)
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use("/api", routes);
