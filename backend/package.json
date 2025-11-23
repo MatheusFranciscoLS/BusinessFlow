@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "main": "src/server.js",
-  "scripts": {
+"scripts": {
+  "start": "node src/server.js",
   "dev": "node src/server.js",
-  "build": "prisma generate",
-  "start": "node src/server.js"
-  },
+  "postinstall": "prisma generate"
+},
   "dependencies": {
-    "@prisma/client": "5.16",
+    "@prisma/client": "5.16.2",
     "@faker-js/faker": "^10.1.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
@@ -24,7 +24,6 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "typescript": "^5.9.3"
+    "prisma": "5.16.2"
   }
 }
