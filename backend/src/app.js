@@ -11,21 +11,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// --- OPÇÃO NUCLEAR DE CORS (Manual) ---
-// Isso força os cabeçalhos em TODAS as respostas
+// CORS manual global
 app.use((req, res, next) => {
-  // Permite qualquer origem (Frontend)
-  res.header("Access-Control-Allow-Origin", "*"); 
-  
-  // Permite os métodos que usamos
-  res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS, PATCH");
-  
-  // Permite os cabeçalhos que o axios manda
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-  // Se for o "batedor" (OPTIONS), responde OK imediatamente e para por aqui
   if (req.method === "OPTIONS") {
-    return res.status(200).send({});
+    return res.sendStatus(200);
   }
 
   next();
