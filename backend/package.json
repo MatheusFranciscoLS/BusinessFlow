@@ -1,24 +1,16 @@
 {
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  },
   "name": "backend",
   "version": "1.0.0",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "dev": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "prisma": "prisma"
+    "postinstall": "prisma generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
     "@prisma/client": "5.16",
-    "@prisma/config": "^7.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -32,8 +24,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "prisma": "5.16",
-    "typescript": "^5.9.3"
+    "nodemon": "^3.0.1",
+    "prisma": "5.16"
   }
 }
