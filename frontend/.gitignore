@@ -21,3 +21,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+git add .gitignore
+git commit -m "chore: ignore zip files"
+git push
+
