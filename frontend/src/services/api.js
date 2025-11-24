@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://businessflow-backend-ixh7.onrender.com/api",
+  baseURL: "https://businessflow.onrender.com/api",
 });
 
 // Adiciona token automaticamente
