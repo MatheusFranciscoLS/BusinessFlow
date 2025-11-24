@@ -8,8 +8,8 @@
     "start": "node src/server.js"
   },
   "dependencies": {
-    "@prisma/client": "5.16",
     "@faker-js/faker": "^10.1.0",
+    "@prisma/client": "5.16",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
