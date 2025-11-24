@@ -1,25 +1,31 @@
-import logo from './logo.svg';
-import './App.css';
+import express from "express";
+import cors from "cors"; // Importe a biblioteca
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import routes from "./routes/index.js";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+dotenv.config();
 
-export default App;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// --- CONFIGURAÇÃO CORS ---
+// 1. Libera tudo
+app.use(cors());
+
+// 2. Força o Express a responder requisições OPTIONS (Preflight) em todas as rotas
+// Isso resolve o erro 404 no OPTIONS
+app.options('*', cors());
+
+app.use(express.json());
+
+// Pasta de uploads pública
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+// Rotas da API
+app.use("/api", routes);
+
+export default app;
