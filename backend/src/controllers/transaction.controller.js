@@ -2,7 +2,9 @@ import * as transactionService from "../services/transaction.service.js";
 
 export async function create(req, res) {
   try {
-    const transaction = await transactionService.create(req.body);
+    // O userId geralmente vem do authMiddleware (verifique se é req.userId ou req.user.id)
+    const userId = req.userId; 
+    const transaction = await transactionService.create(req.body, userId); // <--- Passa o ID aqui
     res.status(201).json(transaction);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -10,8 +12,13 @@ export async function create(req, res) {
 }
 
 export async function getAll(req, res) {
-  const transactions = await transactionService.getAll();
-  res.json(transactions);
+  try {
+    const userId = req.userId; // <--- Pega o ID do usuário logado
+    const transactions = await transactionService.getAll(userId); // <--- Passa o ID aqui
+    res.json(transactions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
 export async function getById(req, res) {

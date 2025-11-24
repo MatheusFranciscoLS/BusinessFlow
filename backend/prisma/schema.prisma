@@ -67,6 +67,8 @@ model ProductImage {
 
 model Transaction {
   id          String   @id @default(uuid())
+  userId      String 
+  user        User     @relation(fields: [userId], references: [id])
   type        String   // "entrada" | "saida"
   amount      Float
   description String

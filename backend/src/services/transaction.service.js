@@ -1,26 +1,30 @@
 import prisma from "../config/prisma.js";
 
-export async function create(data) {
-  // Converte tipos do front (income/outcome) para o banco (entrada/saida) se necessário
+// Recebe o userId como segundo argumento
+export async function create(data, userId) {
   const typeMap = { income: "entrada", outcome: "saida", entrada: "entrada", saida: "saida" };
 
   return prisma.transaction.create({
     data: {
-      description: data.title || data.description, // Aceita ambos
+      description: data.title || data.description,
       amount: parseFloat(data.price || data.amount),
       category: data.category,
       type: typeMap[data.type],
-      date: new Date(data.date), // Garante formato Date
+      date: new Date(data.date),
+      userId: userId, // <--- Salva a transação com o dono dela!
     },
   });
 }
 
-export async function getAll() {
+// Recebe o userId
+export async function getAll(userId) {
   const transactions = await prisma.transaction.findMany({
-    orderBy: { date: "desc" }, // Ordenar pela data da transação, não criação
+    where: {
+      userId: userId, // <--- O FILTRO MÁGICO: "Traga apenas onde o userId for igual ao meu"
+    },
+    orderBy: { date: "desc" },
   });
 
-  // Mapeia para o formato que o Frontend espera
   return transactions.map(t => ({
     id: t.id,
     title: t.description,
