@@ -23,7 +23,7 @@
 <br>
 
 <div align="center">
-  <img src="screenshots/dashboard.png" alt="Dashboard BusinessFlow" width="100%">
+  <img src="screenshots/dashboard1.png" alt="Dashboard BusinessFlow" width="100%">
 </div>
 
 ---
@@ -98,33 +98,33 @@ Uma prévia das principais telas do sistema BusinessFlow.
 
 ### 🔐 Tela de Login
 <div align="center">
-  <img src="screenshots/login.png" width="100%">
+  <img src="screenshots/login1.png" width="100%">
 </div>
 
 ### 👥 Clientes
 <div align="center">
-  <img src="screenshots/clientes.png" width="100%">
+  <img src="screenshots/clientes1.png" width="100%">
 </div>
 
 ### 🛠️ Serviços
 <div align="center">
-  <img src="screenshots/servicos.png" width="100%">
+  <img src="screenshots/servicos1.png" width="100%">
 </div>
 
 ### 📅 Agenda
 <div align="center">
-  <img src="screenshots/agenda.png" width="100%">
+  <img src="screenshots/agenda1.png" width="100%">
 </div>
 
 ### 💰 Financeiro
 <div align="center">
-  <img src="screenshots/financeiro.png" width="100%">
+  <img src="screenshots/financeiro1.png" width="100%">
 </div>
 
 ### 📄 Relatórios PDF
 <div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/relatorio-financeiro.png" width="48%">
-  <img src="screenshots/relatorio-clientes.png" width="48%">
+  <img src="screenshots/relatorio-financeiro1.png" width="48%">
+  <img src="screenshots/relatorio-clientes1.png" width="48%">
 </div>
 
 ---
