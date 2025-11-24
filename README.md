@@ -24,7 +24,7 @@
 <br>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/dashboard.png" alt="Dashboard BusinessFlow" width="100%">
+  <img src="screenshots/dashboard.png" alt="Dashboard BusinessFlow" width="100%">
 </div>
 
 ---
@@ -99,33 +99,33 @@ Uma prévia das principais telas do sistema BusinessFlow.
 
 ### 🔐 Tela de Login
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/login.png" width="100%">
+  <img src="screenshots/login.png" width="100%">
 </div>
 
 ### 👥 Clientes
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/clientes.png" width="100%">
+  <img src="screenshots/clientes.png" width="100%">
 </div>
 
 ### 🛠️ Serviços
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/servicos.png" width="100%">
+  <img src="screenshots/servicos.png" width="100%">
 </div>
 
 ### 📅 Agenda
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/agenda.png" width="100%">
+  <img src="screenshots/agenda.png" width="100%">
 </div>
 
 ### 💰 Financeiro
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/financeiro.png" width="100%">
+  <img src="screenshots/financeiro.png" width="100%">
 </div>
 
 ### 📄 Relatórios PDF
 <div style="display: flex; justify-content: space-between;">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/relatorio-financeiro.png" width="48%">
-  <img src="https://raw.githubusercontent.com/MatheusFranciscoLS/BusinessFlow/main/screenshots/relatorio-clientes.png" width="48%">
+  <img src="screenshots/relatorio-financeiro.png" width="48%">
+  <img src="screenshots/relatorio-clientes.png" width="48%">
 </div>
 
 ---
@@ -158,6 +158,8 @@ npm run dev
 cd ../frontend
 npm install
 npm start
+
+--- 
 
 ## 🔑 Acesso ao Sistema
 O seed cria automaticamente um usuário administrador:
