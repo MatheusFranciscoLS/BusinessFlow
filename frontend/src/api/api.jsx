@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "https://businessflow.onrender.com/api",
+  withCredentials: false,
 });
 
 // Adiciona token automaticamente
@@ -13,7 +14,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Tenta refresh token se expirar
+// Refresh automático
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -22,7 +23,7 @@ api.interceptors.response.use(
       if (!refreshToken) return Promise.reject(error);
 
       try {
-        const { data } = await api.post("/auth/refresh", { refreshToken });
+        const { data } = await api.post("/auth/refresh-token", { refreshToken });
 
         localStorage.setItem("accessToken", data.accessToken);
         error.config.headers.Authorization = `Bearer ${data.accessToken}`;
@@ -33,6 +34,7 @@ api.interceptors.response.use(
         window.location.href = "/";
       }
     }
+
     return Promise.reject(error);
   }
 );
