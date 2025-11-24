@@ -11,7 +11,6 @@
   <a href="#-tecnologias">Tecnologias</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-funcionalidades">Funcionalidades</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-layout">Layout</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#-demonstracao-visual">Demonstração Visual</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-como-rodar">Como Rodar</a>
 </p>
 
@@ -93,99 +92,59 @@ Este projeto demonstra domínio em arquitetura de software, integração entre f
 
 ---
 
-## 📸 Layout
-
-### Financeiro
-<div align="center">
-  <img src="screenshots/financeiro.png" width="100%">
-</div>
-
-### Agenda e Serviços
-<div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/agenda.png" width="48%">
-  <img src="screenshots/servicos.png" width="48%">
-</div>
-
----
-
 ## 📸 Demonstração Visual
 
 Uma prévia das principais telas do sistema BusinessFlow.
-
----
 
 ### 🔐 Tela de Login
 <div align="center">
   <img src="screenshots/login.png" width="100%">
 </div>
 
----
-
-### 📊 Dashboard
-<div align="center">
-  <img src="screenshots/dashboard.png" width="100%">
-</div>
-
----
-
 ### 👥 Clientes
 <div align="center">
   <img src="screenshots/clientes.png" width="100%">
 </div>
-
----
 
 ### 🛠️ Serviços
 <div align="center">
   <img src="screenshots/servicos.png" width="100%">
 </div>
 
----
-
 ### 📅 Agenda
 <div align="center">
   <img src="screenshots/agenda.png" width="100%">
 </div>
-
----
 
 ### 💰 Financeiro
 <div align="center">
   <img src="screenshots/financeiro.png" width="100%">
 </div>
 
----
-
 ### 📄 Relatórios PDF
-
-#### Relatório Financeiro
-<div align="center">
-  <img src="screenshots/relatorio-financeiro.png" width="100%">
-</div>
-
-#### Relatório de Clientes
-<div align="center">
-  <img src="screenshots/relatorio-clientes.png" width="100%">
+<div style="display: flex; justify-content: space-between;">
+  <img src="screenshots/relatorio-financeiro.png" width="48%">
+  <img src="screenshots/relatorio-clientes.png" width="48%">
 </div>
 
 ---
 
 ## 🔧 Como Rodar
 
-### **Bloco único e copiável**
+### Pré-requisitos
+- Node.js instalado
+- PostgreSQL rodando
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/MatheusFranciscoLS/businessflow.git
-cd businessflow
+git clone https://github.com/MatheusFranciscoLS/BusinessFlow.git
+cd BusinessFlow
 
 # 2. Configurando o Backend
 cd backend
 npm install
 
-# Crie o arquivo .env
-echo 'DATABASE_URL="postgresql://user:password@localhost:5432/businessflow"' > .env
-echo 'JWT_SECRET="sua-chave-secreta"' >> .env
+# Crie o arquivo .env na pasta backend com suas credenciais do banco e JWT
 
 # Execute migrações e seed
 npx prisma migrate dev
@@ -199,14 +158,12 @@ cd ../frontend
 npm install
 npm start
 
-## 🔑 Acesso ao Sistema
-
+##  🔑 Acesso ao Sistema
 O seed cria automaticamente um usuário administrador:
 
 E-mail: admin@admin.com
 
 Senha: 123456
 
-## 📝 Licença
-
+##  📝 Licença
 Este projeto está sob a licença MIT.
