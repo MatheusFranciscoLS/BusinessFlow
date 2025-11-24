@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import api from "../../api/api.jsx";
+import api from '../services/api';
  // <--- O erro "api is not defined" era falta dessa linha
 
 const AuthContext = createContext({});
