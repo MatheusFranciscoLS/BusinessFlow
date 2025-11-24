@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import routes from "./routes/index.js";
@@ -11,31 +12,20 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// --- CORS DINÂMICO (ACEITA TUDO) ---
-app.use((req, res, next) => {
-  // Pega quem está chamando (Vercel ou Localhost)
-  const origin = req.headers.origin;
+// --- CONFIGURAÇÃO CORS BLINDADA ---
+// 1. Permite qualquer origem (Vercel, Localhost, etc)
+app.use(cors());
 
-  // Devolve o cabeçalho permitindo exatamente quem chamou
-  // Se não tiver origem (ex: Postman), permite '*'
-  res.header("Access-Control-Allow-Origin", origin || "*");
-
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  // Responde ao Preflight (OPTIONS) imediatamente
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  next();
-});
+// 2. Responde explicitamente a requisições OPTIONS (Preflight)
+// Isso corrige o erro 404 que você está vendo
+app.options("*", cors());
 
 app.use(express.json());
 
+// Configuração de Uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// Rotas da API
 app.use("/api", routes);
 
 export default app;
