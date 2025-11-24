@@ -11,6 +11,7 @@
   <a href="#-tecnologias">Tecnologias</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-funcionalidades">Funcionalidades</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-layout">Layout</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#-demonstracao-visual">Demonstração Visual</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#-como-rodar">Como Rodar</a>
 </p>
 
@@ -23,7 +24,7 @@
 <br>
 
 <div align="center">
-  <img src="screenshots/dashboard.png" alt="Dashboard BusinessFlow" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/dashboard.png?raw=true" alt="Dashboard BusinessFlow" width="100%">
 </div>
 
 ---
@@ -98,33 +99,33 @@ Uma prévia das principais telas do sistema BusinessFlow.
 
 ### 🔐 Tela de Login
 <div align="center">
-  <img src="screenshots/login.png" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/login.png?raw=true" width="100%">
 </div>
 
 ### 👥 Clientes
 <div align="center">
-  <img src="screenshots/clientes.png" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/clientes.png?raw=true" width="100%">
 </div>
 
 ### 🛠️ Serviços
 <div align="center">
-  <img src="screenshots/servicos.png" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/servicos.png?raw=true" width="100%">
 </div>
 
 ### 📅 Agenda
 <div align="center">
-  <img src="screenshots/agenda.png" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/agenda.png?raw=true" width="100%">
 </div>
 
 ### 💰 Financeiro
 <div align="center">
-  <img src="screenshots/financeiro.png" width="100%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/financeiro.png?raw=true" width="100%">
 </div>
 
 ### 📄 Relatórios PDF
 <div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/relatorio-financeiro.png" width="48%">
-  <img src="screenshots/relatorio-clientes.png" width="48%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/relatorio-financeiro.png?raw=true" width="48%">
+  <img src="https://github.com/MatheusFranciscoLS/BusinessFlow/blob/main/screenshots/relatorio-clientes.png?raw=true" width="48%">
 </div>
 
 ---
@@ -137,7 +138,7 @@ Uma prévia das principais telas do sistema BusinessFlow.
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/MatheusFranciscoLS/BusinessFlow.git
+git clone [https://github.com/MatheusFranciscoLS/BusinessFlow.git](https://github.com/MatheusFranciscoLS/BusinessFlow.git)
 cd BusinessFlow
 
 # 2. Configurando o Backend
@@ -157,13 +158,3 @@ npm run dev
 cd ../frontend
 npm install
 npm start
-
-##  🔑 Acesso ao Sistema
-O seed cria automaticamente um usuário administrador:
-
-E-mail: admin@admin.com
-
-Senha: 123456
-
-##  📝 Licença
-Este projeto está sob a licença MIT.
