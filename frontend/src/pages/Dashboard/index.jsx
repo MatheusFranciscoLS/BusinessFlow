@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 import { 
   AreaChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend 
 } from 'recharts';
@@ -10,7 +11,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState({ entradas: 0, saidas: 0, saldo: 0 });
   const [monthlyData, setMonthlyData] = useState([]);
   const [topClients, setTopClients] = useState([]);
-  const [recentTransactions, setRecentTransactions] = useState([]); // <--- NOVO ESTADO
+  const [recentTransactions, setRecentTransactions] = useState([]); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,12 +20,12 @@ export default function Dashboard() {
       if (!token) return; 
 
       try {
-        // Adicionamos a chamada para /recent aqui
+        setLoading(true);
         const [summaryRes, monthlyRes, topClientsRes, recentRes] = await Promise.all([
           api.get('/dashboard/summary'),
           api.get('/dashboard/monthly'),
           api.get('/dashboard/top-clients'),
-          api.get('/dashboard/recent') // <--- NOVA ROTA
+          api.get('/dashboard/recent') 
         ]);
 
         setSummary(summaryRes.data);
@@ -38,11 +39,11 @@ export default function Dashboard() {
         setMonthlyData(formattedChart);
 
         setTopClients(topClientsRes.data);
-        setRecentTransactions(recentRes.data); // <--- SALVA NO ESTADO
+        setRecentTransactions(recentRes.data); 
 
       } catch (error) {
         if (error.response?.status !== 401) {
-           console.error("Erro ao carregar dashboard", error);
+           toast.error("Erro ao carregar dados do painel.");
         }
       } finally {
         setLoading(false);
@@ -57,7 +58,7 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return <Container><h2 style={{marginTop: 20, color: '#4a5568'}}>Carregando indicadores...</h2></Container>;
+    return <Container><h2 style={{marginTop: 20, color: '#4a5568'}}>A carregar indicadores...</h2></Container>;
   }
 
   return (
@@ -122,7 +123,6 @@ export default function Dashboard() {
         </ChartContainer>
       </div>
 
-      {/* --- NOVA TABELA: ÚLTIMAS MOVIMENTAÇÕES --- */}
       <ChartContainer>
         <h3>Últimas Movimentações</h3>
         <div style={{ marginTop: 16, overflowX: 'auto' }}>
@@ -156,7 +156,6 @@ export default function Dashboard() {
           </table>
         </div>
       </ChartContainer>
-
     </Container>
   );
 }

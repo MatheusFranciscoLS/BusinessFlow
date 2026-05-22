@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { Plus, User, Check, X, Trash2, Clock } from 'lucide-react';
@@ -11,6 +11,7 @@ export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
   const [clients, setClients] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   const [clientId, setClientId] = useState('');
   const [date, setDate] = useState('');
@@ -19,6 +20,7 @@ export default function Appointments() {
 
   async function loadData() {
     try {
+      setLoading(true);
       const [appRes, cliRes] = await Promise.all([
         api.get('/appointments'),
         api.get('/clients')
@@ -26,24 +28,28 @@ export default function Appointments() {
       setAppointments(appRes.data);
       setClients(cliRes.data);
     } catch (error) {
-      console.error("Erro ao carregar", error);
+      toast.error("Erro ao carregar a agenda.");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => { loadData(); }, []);
 
-  // --- AGRUPAR POR DATA (A Mágica do UX) ---
-  const groupedAppointments = appointments.reduce((groups, app) => {
-    const dateKey = new Date(app.date).toLocaleDateString('pt-BR', { 
-      weekday: 'long', day: 'numeric', month: 'long' 
-    }); // Ex: "segunda-feira, 25 de novembro"
-    
-    if (!groups[dateKey]) {
-      groups[dateKey] = [];
-    }
-    groups[dateKey].push(app);
-    return groups;
-  }, {});
+  // --- A MÁGICA DA PERFORMANCE: useMemo ---
+  const groupedAppointments = useMemo(() => {
+    return appointments.reduce((groups, app) => {
+      const dateKey = new Date(app.date).toLocaleDateString('pt-BR', { 
+        weekday: 'long', day: 'numeric', month: 'long' 
+      }); 
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(app);
+      return groups;
+    }, {});
+  }, [appointments]);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -56,7 +62,9 @@ export default function Appointments() {
       loadData();
       setClientId(''); setDate(''); setTime(''); setNotes('');
       toast.success("Agendamento criado!", { id: toastId });
-    } catch { toast.error("Erro ao agendar.", { id: toastId }); }
+    } catch { 
+      toast.error("Erro ao agendar.", { id: toastId }); 
+    }
   }
 
   async function updateStatus(id, newStatus) {
@@ -64,7 +72,9 @@ export default function Appointments() {
       await api.put(`/appointments/${id}`, { status: newStatus });
       loadData();
       toast.success(newStatus === 'concluido' ? "Concluído!" : "Cancelado.");
-    } catch { toast.error("Erro ao atualizar."); }
+    } catch { 
+      toast.error("Erro ao atualizar status."); 
+    }
   }
 
   async function handleDelete(id) {
@@ -73,7 +83,9 @@ export default function Appointments() {
         await api.delete(`/appointments/${id}`);
         loadData();
         toast.success("Removido.");
-      } catch { toast.error("Erro ao remover."); }
+      } catch { 
+        toast.error("Erro ao remover."); 
+      }
     }
   }
 
@@ -89,8 +101,9 @@ export default function Appointments() {
         <button onClick={() => setIsModalOpen(true)}><Plus size={20} /> Novo Agendamento</button>
       </Header>
 
-      {/* Renderiza os grupos de datas */}
-      {Object.keys(groupedAppointments).length === 0 ? (
+      {loading ? (
+        <p style={{textAlign:'center', color:'#a0aec0', marginTop: 40}}>A carregar agenda...</p>
+      ) : Object.keys(groupedAppointments).length === 0 ? (
         <p style={{textAlign:'center', color:'#a0aec0', marginTop: 40}}>Nenhum agendamento encontrado.</p>
       ) : (
         Object.keys(groupedAppointments).map(dateKey => (

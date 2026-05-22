@@ -1,224 +1,103 @@
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
+
+const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 
 export const Container = styled.div`
-  width: 100%;
-  padding-bottom: 40px;
+  width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;
 `;
 
 export const Header = styled.header`
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 32px;
-
-  h1 {
-    font-size: 24px;
-    color: #1a202c;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
+  display: flex; flex-direction: column; margin-bottom: 32px;
+  h1 { font-size: 26px; color: #1a202c; font-weight: 800; margin-bottom: 20px; }
 `;
 
 export const Toolbar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+  @media (max-width: 768px) { flex-direction: column; align-items: stretch; }
 `;
 
 export const FilterGroup = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
 `;
 
 export const SearchContainer = styled.div`
-  display: flex;
-  align-items: center;
-  background: white;
-  padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  height: 48px;
+  display: flex; align-items: center; background: white; padding: 0 16px; border-radius: 8px;
+  border: 1px solid #e2e8f0; height: 48px; flex: 1; min-width: 250px; transition: all 0.2s;
 
-  input, select {
-    border: none;
-    outline: none;
-    padding: 10px;
-    width: 100%;
-    font-size: 14px;
-    color: #4a5568;
-    background: transparent;
-    -webkit-appearance: none;
-    -moz-appearance: none;    
-    appearance: none;
-    background-color: white; 
-    padding-right: 25px; 
-    cursor: pointer;
-  }
-  
-  select {
-    min-width: 120px;
-  }
+  &:focus-within { border-color: #3182ce; box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
+  input, select { border: none; outline: none; padding: 10px; width: 100%; font-size: 14px; color: #4a5568; background: transparent; }
 `;
 
 export const ButtonGroup = styled.div`
-  display: flex;
-  gap: 12px;
-  
+  display: flex; gap: 12px;
   button {
-    background: white;
-    color: #3182ce;
-    border: 1px solid #3182ce;
-    padding: 0 20px;
-    height: 48px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.2s;
-    
-    &.primary {
-      background: #3182ce;
-      color: white;
-      &:hover { filter: brightness(0.9); }
-    }
-    &.secondary {
-      &:hover { background: #ebf8ff; }
-    }
+    height: 48px; padding: 0 20px; border-radius: 8px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; border: none;
+    &.primary { background: #3182ce; color: white; &:hover { background: #2c5282; transform: translateY(-2px); } }
+    &.secondary { background: white; color: #4a5568; border: 1px solid #e2e8f0; &:hover { background: #f7fafc; border-color: #cbd5e0; } }
   }
 `;
 
-// --- CARDS ---
-export const SummaryContainer = styled.section`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  margin-bottom: 32px;
-
-  @media (max-width: 800px) {
-    grid-template-columns: 1fr;
-  }
+export const SummaryContainer = styled.div`
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin: 32px 0;
 `;
 
 export const SummaryCard = styled.div`
-  background: ${props => props.$highlight ? '#3182ce' : 'white'};
-  padding: 24px 32px;
-  border-radius: 8px;
-  color: ${props => props.$highlight ? 'white' : '#1a202c'};
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0;
-    
-    span {
-      font-size: 16px;
-      opacity: ${props => props.$highlight ? 0.9 : 0.7};
-    }
-  }
-
-  strong {
-    display: block;
-    margin-top: 16px;
-    font-size: 32px;
-    font-weight: 500;
-    line-height: 48px;
-  }
-`;
-
-// --- TABELA E BADGES ---
-
-// Função para cores das Categorias (USADA NO CATEGORY BADGE)
-const getCategoryColor = (cat) => {
-  const category = cat ? cat.toLowerCase() : '';
-  if (category.includes('venda')) return { bg: '#C6F6D5', color: '#22543D' }; // Verde
-  if (category.includes('serviço')) return { bg: '#BEE3F8', color: '#2C5282' }; // Azul
-  if (category.includes('fixo')) return { bg: '#E2E8F0', color: '#4A5568' }; // Cinza
-  if (category.includes('infra')) return { bg: '#E9D8FD', color: '#44337A' }; // Roxo
-  if (category.includes('pessoal')) return { bg: '#FED7D7', color: '#822727' }; // Vermelho Claro
-  if (category.includes('variavel')) return { bg: '#FEEBC8', color: '#7B341E' }; // Laranja
-  return { bg: '#EDF2F7', color: '#2D3748' }; // Padrão
-};
-
-// Badge Colorida para a Categoria
-export const CategoryBadge = styled.span`
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  display: inline-block;
-  
-  background-color: ${props => getCategoryColor(props.$category).bg};
-  color: ${props => getCategoryColor(props.$category).color};
+  background: ${props => props.$highlight ? '#1a202c' : 'white'};
+  padding: 24px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  display: flex; flex-direction: column; justify-content: space-between; height: 130px; border: 1px solid ${props => props.$highlight ? 'transparent' : '#edf2f7'};
+  header { display: flex; justify-content: space-between; align-items: center; span { color: ${props => props.$highlight ? '#e2e8f0' : '#718096'}; font-size: 15px; font-weight: 600; } }
+  strong { font-size: 28px; font-weight: 800; color: ${props => props.$highlight ? 'white' : '#2d3748'}; }
 `;
 
 export const TableContainer = styled.div`
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  overflow-x: auto;
+  background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); overflow-x: auto;
+  &::-webkit-scrollbar { height: 8px; }
+  &::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
 `;
 
 export const Table = styled.table`
-  width: 100%;
-  border-spacing: 0;
-  
-  th {
-    background: #f7fafc;
-    color: #969cb3;
-    font-weight: 500;
-    padding: 20px 32px;
-    text-align: left;
-    font-size: 14px;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  td {
-    padding: 20px 32px;
-    border: 0;
-    background: white;
-    font-size: 14px;
-    color: #4a5568;
-    border-bottom: 1px solid #eee;
-  }
-
-  tbody tr {
-    transition: background 0.2s;
-    &:hover {
-      background: #f7fafc;
-    }
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
+  width: 100%; border-collapse: collapse; min-width: 600px;
+  th, td { padding: 16px 20px; text-align: left; border-bottom: 1px solid #edf2f7; }
+  th { font-weight: 600; color: #a0aec0; font-size: 12px; text-transform: uppercase; background: #f8fafc; }
+  td { color: #4a5568; font-size: 14px; }
+  tr:hover td { background: #f7fafc; }
 `;
 
 export const ActionButton = styled.button`
-  background: transparent !important;
-  border: none;
-  padding: 8px !important;
-  margin-left: 4px;
-  cursor: pointer;
-  color: ${props => props.color || '#718096'} !important;
-  &:hover {
-    opacity: 0.7;
-    background: rgba(0,0,0,0.05) !important;
-  }
+  background: transparent; border: none; color: ${props => props.color || '#a0aec0'}; padding: 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+  &:hover { background: #edf2f7; transform: scale(1.1); }
 `;
 
-// --- MODAL ---
-export const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 999;`;
-export const ModalContent = styled.div`width: 100%; max-width: 576px; background: white; padding: 48px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); h2 { color: #363f5f; font-size: 24px; margin-bottom: 32px; }`;
-export const FormGroup = styled.div`margin-bottom: 20px; label { font-size: 14px; color: #969cb3; margin-bottom: 8px; display: block; } input, select { width: 100%; padding: 0 24px; height: 56px; border-radius: 5px; border: 1px solid #d7d7d7; background: #e7e9ee; font-size: 16px; &:focus { border-color: #3182ce; outline: none; } }`;
-export const TransactionTypeContainer = styled.div`margin: 16px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;`;
-export const RadioBox = styled.button`height: 64px; border: 1px solid #d7d7d7; border-radius: 5px; background: ${props => props.$isActive ? (props.$activeColor === 'green' ? 'rgba(18, 164, 84, 0.1)' : 'rgba(229, 46, 77, 0.1)') : 'transparent'}; display: flex; align-items: center; justify-content: center; cursor: pointer; &:hover { border-color: #aaa; } span { margin-left: 16px; font-size: 16px; color: #363f5f; }`;
-export const ModalActions = styled.div`display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; button { width: 100%; padding: 0 24px; height: 64px; border-radius: 5px; border: 0; font-size: 16px; margin-top: 24px; font-weight: 600; cursor: pointer; &.cancel { background: #e7e9ee; color: #363f5f; } &.save { background: #33cc95; color: #fff; } }`;
+export const ModalOverlay = styled.div`
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 15, 30, 0.6); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 999;
+`;
+
+export const ModalContent = styled.div`
+  width: 100%; max-width: 500px; background: white; padding: 32px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); animation: ${fadeIn} 0.3s ease;
+  h2 { color: #1a202c; font-size: 24px; margin-bottom: 24px; font-weight: 700; }
+`;
+
+export const FormGroup = styled.div`
+  margin-bottom: 16px;
+  label { font-size: 13px; font-weight: 600; color: #4a5568; margin-bottom: 8px; display: block; }
+  input, select { width: 100%; padding: 0 16px; height: 48px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 15px; transition: all 0.2s; &:focus { border-color: #3182ce; box-shadow: 0 0 0 3px rgba(49,130,206,0.1); outline: none; } }
+`;
+
+export const TransactionTypeContainer = styled.div`
+  margin: 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+`;
+
+export const RadioBox = styled.button`
+  height: 56px; border: 2px solid ${props => props.$isActive ? (props.$activeColor === 'green' ? '#48bb78' : '#f56565') : '#e2e8f0'};
+  border-radius: 8px; background: ${props => props.$isActive ? (props.$activeColor === 'green' ? '#f0fff4' : '#fff5f5') : 'transparent'};
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s; outline: none;
+  span { font-size: 15px; font-weight: 600; color: ${props => props.$isActive ? '#1a202c' : '#718096'}; }
+`;
+
+export const ModalActions = styled.div`
+  display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;
+  button { padding: 0 24px; height: 48px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none;
+    &.cancel { background: #edf2f7; color: #4a5568; &:hover { background: #e2e8f0; } }
+    &.save { background: #3182ce; color: white; &:hover { background: #2c5282; transform: translateY(-2px); } }
+  }
+`;

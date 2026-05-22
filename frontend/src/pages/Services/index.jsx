@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Search, Edit, Trash2, Image as ImageIcon, Package } from 'lucide-react';
@@ -13,6 +13,7 @@ export default function Services() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
   
   // Form Data
   const [name, setName] = useState('');
@@ -22,20 +23,25 @@ export default function Services() {
 
   async function loadServices() {
     try {
+      setLoading(true);
       const response = await api.get('/products');
       setServices(response.data);
     } catch (error) {
-      console.log("Erro ao carregar serviços");
+      toast.error("Erro ao carregar os serviços/produtos.");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => { loadServices(); }, []);
 
-  // Filtro de Busca
-  const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // --- FILTRO OTIMIZADO ---
+  const filteredServices = useMemo(() => {
+    return services.filter(s => 
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [services, searchTerm]);
 
   function formatPrice(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -62,7 +68,9 @@ export default function Services() {
         await api.delete(`/products/${id}`);
         setServices(services.filter(s => s.id !== id));
         toast.success("Item removido.");
-      } catch { toast.error("Erro ao excluir."); }
+      } catch { 
+        toast.error("Erro ao excluir o serviço."); 
+      }
     }
   }
 
@@ -113,48 +121,54 @@ export default function Services() {
         </Toolbar>
       </Header>
 
-      <GridContainer>
-        {filteredServices.map(service => (
-          <ServiceCard key={service.id}>
-            {/* Área da Imagem */}
-            <ImageContainer>
-              {service.images && service.images.length > 0 ? (
-                <img src={service.images[0].url} alt={service.name} />
-              ) : (
-                <Package size={64} strokeWidth={1} />
-              )}
-            </ImageContainer>
+      {loading ? (
+        <p style={{textAlign: 'center', marginTop: 40}}>A carregar catálogo...</p>
+      ) : filteredServices.length === 0 ? (
+        <p style={{textAlign: 'center', marginTop: 40, color: '#718096'}}>Nenhum serviço ou produto encontrado.</p>
+      ) : (
+        <GridContainer>
+          {filteredServices.map(service => (
+            <ServiceCard key={service.id}>
+              {/* Área da Imagem */}
+              <ImageContainer>
+                {service.images && service.images.length > 0 ? (
+                  <img src={service.images[0].url} alt={service.name} />
+                ) : (
+                  <Package size={64} strokeWidth={1} />
+                )}
+              </ImageContainer>
 
-            {/* Conteúdo */}
-            <CardContent>
-              <span className="category">{service.category || 'Geral'}</span>
-              <h3 title={service.name}>{service.name}</h3>
+              {/* Conteúdo */}
+              <CardContent>
+                <span className="category">{service.category || 'Geral'}</span>
+                <h3 title={service.name}>{service.name}</h3>
 
-              <CardFooter>
-                <span className="price">{formatPrice(service.price)}</span>
-                <Actions>
-                  <ActionButton 
-                    onClick={() => handleEdit(service)} 
-                    color="#718096" 
-                    $bgHover="#ebf8ff"
-                    $hoverColor="#3182ce"
-                  >
-                    <Edit size={18} />
-                  </ActionButton>
-                  <ActionButton 
-                    onClick={() => handleDelete(service.id)} 
-                    color="#718096" 
-                    $bgHover="#fff5f5"
-                    $hoverColor="#e53e3e"
-                  >
-                    <Trash2 size={18} />
-                  </ActionButton>
-                </Actions>
-              </CardFooter>
-            </CardContent>
-          </ServiceCard>
-        ))}
-      </GridContainer>
+                <CardFooter>
+                  <span className="price">{formatPrice(service.price)}</span>
+                  <Actions>
+                    <ActionButton 
+                      onClick={() => handleEdit(service)} 
+                      color="#718096" 
+                      $bgHover="#ebf8ff"
+                      $hoverColor="#3182ce"
+                    >
+                      <Edit size={18} />
+                    </ActionButton>
+                    <ActionButton 
+                      onClick={() => handleDelete(service.id)} 
+                      color="#718096" 
+                      $bgHover="#fff5f5"
+                      $hoverColor="#e53e3e"
+                    >
+                      <Trash2 size={18} />
+                    </ActionButton>
+                  </Actions>
+                </CardFooter>
+              </CardContent>
+            </ServiceCard>
+          ))}
+        </GridContainer>
+      )}
 
       {/* MODAL */}
       {isModalOpen && (

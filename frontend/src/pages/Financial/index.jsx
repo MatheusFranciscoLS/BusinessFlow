@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -12,9 +12,9 @@ import {
 
 export default function Financial() {
     const [transactions, setTransactions] = useState([]);
-    const [summary, setSummary] = useState({ entradas: 0, saidas: 0, saldo: 0 });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     // --- FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,28 +28,37 @@ export default function Financial() {
     const [type, setType] = useState('income');
     const [date, setDate] = useState('');
 
-    // 1. CARREGAR DADOS
     async function loadTransactions() {
         try {
+            setLoading(true);
             const response = await api.get('/transactions');
             const data = response.data;
             setTransactions(data);
-            calculateSummary(data);
 
             const uniqueCats = [...new Set(data.map(t => t.category).filter(Boolean))];
             setCategories(['Todos', ...uniqueCats]);
 
         } catch (error) {
-            console.error("Erro ao carregar financeiro:", error);
-            toast.error("Falha ao carregar dados.");
+            toast.error("Falha ao carregar transações.");
+        } finally {
+            setLoading(false);
         }
     }
 
     useEffect(() => { loadTransactions(); }, []);
 
-    // 2. CÁLCULOS E FORMATAÇÃO
-    function calculateSummary(data) {
-        const sum = data.reduce((acc, transaction) => {
+    // --- LÓGICA DE FILTRO OTIMIZADA ---
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = filterCategory === 'Todos' || !filterCategory || t.category === filterCategory;
+            return matchesSearch && matchesCategory;
+        });
+    }, [transactions, searchTerm, filterCategory]);
+
+    // Recalcula resumo filtrado automaticamente sem travar a interface
+    const filteredSummary = useMemo(() => {
+        return filteredTransactions.reduce((acc, transaction) => {
             if (transaction.type === 'income') {
                 acc.entradas += transaction.price;
                 acc.total += transaction.price;
@@ -59,8 +68,7 @@ export default function Financial() {
             }
             return acc;
         }, { entradas: 0, saidas: 0, total: 0 });
-        setSummary(sum);
-    }
+    }, [filteredTransactions]);
 
     function formatCurrency(value) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -72,26 +80,6 @@ export default function Financial() {
         return `${day}/${month}/${year}`;
     }
 
-    // 3. LÓGICA DE FILTRO
-    const filteredTransactions = transactions.filter(t => {
-        const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = filterCategory === 'Todos' || !filterCategory || t.category === filterCategory;
-        return matchesSearch && matchesCategory;
-    });
-
-    // Recalcula resumo filtrado
-    const filteredSummary = filteredTransactions.reduce((acc, transaction) => {
-        if (transaction.type === 'income') {
-            acc.entradas += transaction.price;
-            acc.total += transaction.price;
-        } else {
-            acc.saidas += transaction.price;
-            acc.total -= transaction.price;
-        }
-        return acc;
-    }, { entradas: 0, saidas: 0, total: 0 });
-
-    // 4. EXPORTAR PDF
     function handleExportPDF() {
         const doc = new jsPDF();
         doc.setFontSize(14);
@@ -120,7 +108,6 @@ export default function Financial() {
         toast.success("PDF baixado!");
     }
 
-    // --- CRUD ---
     function handleOpenNew() {
         setEditingId(null);
         setTitle(''); setPrice(0); setCategory(''); setType('income'); setDate('');
@@ -138,12 +125,14 @@ export default function Financial() {
     }
 
     async function handleDelete(id) {
-        if (window.confirm("Excluir transação?")) {
+        if (window.confirm("Excluir transação permanentemente?")) {
             try {
                 await api.delete(`/transactions/${id}`);
                 loadTransactions();
                 toast.success("Excluído!");
-            } catch { toast.error("Erro ao excluir."); }
+            } catch { 
+                toast.error("Erro ao excluir."); 
+            }
         }
     }
 
@@ -175,7 +164,7 @@ export default function Financial() {
                         <SearchContainer>
                             <Search size={20} color="#a0aec0" />
                             <input
-                                placeholder="Buscar por descrição..."  // <--- Aqui estava aparecendo "null"
+                                placeholder="Buscar por descrição..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -212,49 +201,50 @@ export default function Financial() {
                 </SummaryCard>
             </SummaryContainer>
 
-            <TableContainer>
-                <Table>
-                    <thead>
-                        <tr>
-                            <th>Título</th>
-                            <th>Valor</th>
-                            <th>Categoria</th>
-                            <th>Data</th>
-                            <th style={{ textAlign: 'right' }}>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredTransactions.map(t => (
-                            <tr key={t.id}>
-                                <td>{t.title}</td>
-
-                                {/* AQUI ESTÁ A CORREÇÃO DEFINITIVA DA COR */}
-                                <td>
-                                    <span style={{
-                                        color: t.type === 'income' ? '#12a454' : '#e52e4d',
-                                        fontWeight: 'bold',
-                                        display: 'block'
-                                    }}>
-                                        {t.type === 'outcome' && '- '}
-                                        {formatCurrency(t.price)}
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
-                                        {t.category || 'GERAL'}
-                                    </span>
-                                </td>
-                                <td>{formatDateDisplay(t.date)}</td>
-                                <td style={{ textAlign: 'right' }}>
-                                    <ActionButton onClick={() => handleEdit(t)} color="#3182ce"><Edit size={18} /></ActionButton>
-                                    <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
-                                </td>
+            {loading ? (
+                <p style={{textAlign: 'center', marginTop: 40}}>A carregar histórico...</p>
+            ) : (
+                <TableContainer>
+                    <Table>
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Valor</th>
+                                <th>Categoria</th>
+                                <th>Data</th>
+                                <th style={{ textAlign: 'right' }}>Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </Table>
-            </TableContainer>
+                        </thead>
+                        <tbody>
+                            {filteredTransactions.map(t => (
+                                <tr key={t.id}>
+                                    <td>{t.title}</td>
+                                    <td>
+                                        <span style={{
+                                            color: t.type === 'income' ? '#12a454' : '#e52e4d',
+                                            fontWeight: 'bold',
+                                            display: 'block'
+                                        }}>
+                                            {t.type === 'outcome' && '- '}
+                                            {formatCurrency(t.price)}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
+                                            {t.category || 'GERAL'}
+                                        </span>
+                                    </td>
+                                    <td>{formatDateDisplay(t.date)}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                        <ActionButton onClick={() => handleEdit(t)} color="#3182ce"><Edit size={18} /></ActionButton>
+                                        <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </Table>
+                </TableContainer>
+            )}
 
             {/* MODAL */}
             {isModalOpen && (

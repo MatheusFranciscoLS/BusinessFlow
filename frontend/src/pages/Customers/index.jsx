@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // <--- MUDANÇA 1: Importação explícita
+import autoTable from 'jspdf-autotable';
 import { Plus, Edit, Trash2, Search, FileText, Ghost } from 'lucide-react';
 import { 
   Container, Header, Toolbar, SearchContainer, ButtonGroup, TableContainer, Table, 
@@ -13,6 +13,7 @@ import {
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState(''); 
+  const [loading, setLoading] = useState(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -29,24 +30,27 @@ export default function Customers() {
 
   async function loadCustomers() {
     try {
+      setLoading(true);
       const response = await api.get('/clients');
       setCustomers(response.data);
     } catch (error) {
-      console.log("Erro ao carregar");
+      toast.error("Erro ao carregar clientes.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  // --- LÓGICA DE BUSCA ---
-  const filteredCustomers = customers.filter(customer => 
-    customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.cpf.includes(searchTerm)
-  );
+  // --- LÓGICA DE BUSCA OTIMIZADA ---
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(customer => 
+      customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.cpf.includes(searchTerm)
+    );
+  }, [customers, searchTerm]);
 
-  // --- LÓGICA DE PDF (CORRIGIDA) ---
   function handleExportPDF() {
     const doc = new jsPDF();
-
     doc.setFontSize(18);
     doc.text("Relatório de Clientes - BusinessFlow", 14, 22);
     doc.setFontSize(10);
@@ -59,14 +63,13 @@ export default function Customers() {
       const customerData = [
         customer.fullName,
         maskCPF_CNPJ(customer.cpf),
-        customer.email,
+        customer.email || 'N/A',
         maskPhone(customer.phone || ''),
         customer.tag
       ];
       tableRows.push(customerData);
     });
 
-    // <--- MUDANÇA 2: Uso da função importada
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
@@ -80,7 +83,6 @@ export default function Customers() {
     toast.success("Relatório baixado com sucesso!");
   }
 
-  // --- MÁSCARAS ---
   const maskCPF_CNPJ = (v) => { v=v.replace(/\D/g,""); if(v.length<=11){return v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{return v.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2").slice(0,18)} };
   const maskPhone = (v) => { v=v.replace(/\D/g,""); v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); v=v.replace(/(\d)(\d{4})$/,"$1-$2"); return v.slice(0,15); };
   const maskCEP = (v) => { return v.replace(/\D/g,"").replace(/^(\d{5})(\d)/,"$1-$2").slice(0,9); };
@@ -98,13 +100,17 @@ export default function Customers() {
     const cep = e.target.value.replace(/\D/g, '');
     if (cep.length !== 8) return;
     setCepLoading(true);
-    const tId = toast.loading('Buscando...');
+    const tId = toast.loading('A procurar...');
     try {
       const { data } = await axios.get(`https://brasilapi.com.br/api/cep/v1/${cep}`);
       setForm(prev => ({ ...prev, street: data.street, neighborhood: data.neighborhood, city: data.city, state: data.state }));
       toast.success('Encontrado!', { id: tId });
       setTimeout(() => numberInputRef.current?.focus(), 100);
-    } catch { toast.error('CEP inválido', { id: tId }); } finally { setCepLoading(false); }
+    } catch { 
+      toast.error('CEP inválido', { id: tId }); 
+    } finally { 
+      setCepLoading(false); 
+    }
   }
 
   function handleOpenNew() {
@@ -132,12 +138,14 @@ export default function Customers() {
   }
 
   async function handleDelete(id) {
-    if (window.confirm('Excluir cliente?')) {
+    if (window.confirm('Excluir cliente permanentemente?')) {
       try {
         await api.delete(`/clients/${id}`);
         setCustomers(customers.filter(c => c.id !== id));
-        toast.success('Removido!');
-      } catch { toast.error('Erro ao excluir.'); }
+        toast.success('Removido com sucesso!');
+      } catch { 
+        toast.error('Erro ao excluir.'); 
+      }
     }
   }
 
@@ -186,18 +194,18 @@ export default function Customers() {
 
           <ButtonGroup>
             <button className="secondary" onClick={handleExportPDF}>
-              <FileText size={18} />
-              Relatório PDF
+              <FileText size={18} /> Relatório PDF
             </button>
             <button className="primary" onClick={handleOpenNew}>
-              <Plus size={20} />
-              Novo Cliente
+              <Plus size={20} /> Novo Cliente
             </button>
           </ButtonGroup>
         </Toolbar>
       </Header>
 
-      {customers.length === 0 ? (
+      {loading ? (
+        <EmptyState><p>A carregar clientes...</p></EmptyState>
+      ) : customers.length === 0 ? (
         <EmptyState>
           <Ghost size={48} />
           <p>Nenhum cliente cadastrado ainda.</p>
@@ -228,8 +236,8 @@ export default function Customers() {
                     <strong>{customer.fullName || customer.name}</strong><br/>
                     <small style={{ color: '#aaa' }}>{maskCPF_CNPJ(customer.cpf)}</small>
                   </td>
-                  <td>{customer.email}<br/><small>{customer.phone}</small></td>
-                  <td>{customer.address}</td>
+                  <td>{customer.email || 'N/A'}<br/><small>{customer.phone}</small></td>
+                  <td>{customer.address || 'N/A'}</td>
                   <td><StatusBadge $tag={customer.tag}>{customer.tag}</StatusBadge></td>
                   <td style={{ textAlign: 'right' }}>
                     <ActionButton onClick={() => handleEdit(customer)} color="#3182ce"><Edit size={18} /></ActionButton>
