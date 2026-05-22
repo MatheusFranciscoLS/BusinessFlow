@@ -1,6 +1,6 @@
 import prisma from "../config/prisma.js";
 
-export async function create(data, imageUrls = []) {
+export async function create(data, imageUrls = [], userId) {
   const imagesData = imageUrls.map(url => ({ url }));
 
   return prisma.product.create({
@@ -10,22 +10,32 @@ export async function create(data, imageUrls = []) {
       price: parseFloat(data.price),
       category: data.category,
       stock: parseInt(data.stock || 0),
-      images: {
-        create: imagesData
-      }
+      userId, // Salva com o ID do dono
+      images: { create: imagesData }
     },
     include: { images: true },
   });
 }
 
-export async function getAll() {
+export async function getAll(userId) {
   return prisma.product.findMany({
+    where: { userId }, // Filtra só os produtos dessa empresa
     include: { images: true },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function updateProduct(id, data, imageUrls) {
+export async function getById(id, userId) {
+  const product = await prisma.product.findFirst({
+    where: { id, userId }, include: { images: true }
+  });
+  if (!product) throw new Error("Produto não encontrado ou acesso negado.");
+  return product;
+}
+
+export async function updateProduct(id, data, imageUrls, userId) {
+  await getById(id, userId); // Trava de segurança
+
   const updateData = {
     name: data.name,
     description: data.description || data.category,
@@ -34,17 +44,9 @@ export async function updateProduct(id, data, imageUrls) {
     stock: data.stock ? parseInt(data.stock) : undefined,
   };
 
-  // --- A CORREÇÃO MÁGICA ESTÁ AQUI ---
   if (imageUrls && imageUrls.length > 0) {
-    // 1. Primeiro, deletamos todas as imagens antigas desse produto
-    await prisma.productImage.deleteMany({
-      where: { productId: id }
-    });
-
-    // 2. Depois, adicionamos a nova (que agora será a images[0])
-    updateData.images = {
-      create: imageUrls.map(url => ({ url }))
-    };
+    await prisma.productImage.deleteMany({ where: { productId: id } });
+    updateData.images = { create: imageUrls.map(url => ({ url })) };
   }
 
   return await prisma.product.update({
@@ -54,6 +56,7 @@ export async function updateProduct(id, data, imageUrls) {
   });
 }
 
-export async function remove(id) {
+export async function remove(id, userId) {
+  await getById(id, userId); // Trava de segurança
   return prisma.product.delete({ where: { id } });
 }

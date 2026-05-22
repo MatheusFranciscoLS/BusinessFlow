@@ -1,18 +1,18 @@
 import prisma from "../config/prisma.js";
-import { startOfMonth, endOfMonth, subDays } from "date-fns"; // <--- ADICIONE subDays AQUI
+import { startOfMonth, endOfMonth, subDays } from "date-fns";
 
-export async function getSummary() {
+export async function getSummary(userId) {
   const now = new Date();
   const start = startOfMonth(now);
   const end = endOfMonth(now);
 
   const entradas = await prisma.transaction.aggregate({
-    where: { type: "entrada", date: { gte: start, lte: end } },
+    where: { type: "entrada", userId, date: { gte: start, lte: end } },
     _sum: { amount: true },
   });
 
   const saidas = await prisma.transaction.aggregate({
-    where: { type: "saida", date: { gte: start, lte: end } },
+    where: { type: "saida", userId, date: { gte: start, lte: end } },
     _sum: { amount: true },
   });
 
@@ -23,9 +23,10 @@ export async function getSummary() {
   };
 }
 
-export async function byCategory() {
+export async function byCategory(userId) {
   const result = await prisma.transaction.groupBy({
     by: ["category"],
+    where: { userId },
     _sum: { amount: true },
   });
 
@@ -35,11 +36,11 @@ export async function byCategory() {
   }));
 }
 
-export async function daily() {
-  const start = subDays(new Date(), 30); // <--- Agora funciona
+export async function daily(userId) {
+  const start = subDays(new Date(), 30);
 
   const transactions = await prisma.transaction.findMany({
-    where: { date: { gte: start } },
+    where: { userId, date: { gte: start } },
     orderBy: { date: "asc" },
   });
 
@@ -55,27 +56,20 @@ export async function daily() {
   return result;
 }
 
-export async function monthly() {
+export async function monthly(userId) {
   const now = new Date();
   const currentYear = now.getFullYear();
-  // Pega transações apenas do ano atual para o gráfico não ficar confuso
   const startOfYear = new Date(currentYear, 0, 1);
   const endOfYear = new Date(currentYear, 11, 31);
 
   const transactions = await prisma.transaction.findMany({
-    where: {
-      date: { gte: startOfYear, lte: endOfYear }
-    }
+    where: { userId, date: { gte: startOfYear, lte: endOfYear } }
   });
 
-  // Inicializa array de 12 meses
-  const result = Array(12).fill(null).map(() => ({
-    entradas: 0,
-    saidas: 0
-  }));
+  const result = Array(12).fill(null).map(() => ({ entradas: 0, saidas: 0 }));
 
   transactions.forEach((t) => {
-    const month = t.date.getMonth(); // 0–11
+    const month = t.date.getMonth();
     if (t.type === "entrada") result[month].entradas += t.amount;
     if (t.type === "saida") result[month].saidas += t.amount;
   });
@@ -83,46 +77,42 @@ export async function monthly() {
   return result;
 }
 
-export async function topClients() {
-  // Filtra apenas transações que tem clientId
+export async function topClients(userId) {
   const transactions = await prisma.transaction.groupBy({
     by: ["clientId"],
-    where: { clientId: { not: null } },
+    where: { userId, clientId: { not: null } },
     _sum: { amount: true },
     orderBy: { _sum: { amount: "desc" } },
     take: 5,
   });
 
-  const result = [];
+  const clientIds = transactions.map(t => t.clientId);
+  const clients = await prisma.client.findMany({
+    where: { id: { in: clientIds } }
+  });
 
-  for (const t of transactions) {
-    const client = await prisma.client.findUnique({
-      where: { id: t.clientId }
-    });
-
-    if (client) {
-      result.push({
-        clientName: client.fullName, // ou client.name dependendo do seu schema
-        total: t._sum.amount || 0
-      });
-    }
-  }
-
-  return result;
+  return transactions.map(t => {
+    const client = clients.find(c => c.id === t.clientId);
+    return {
+      clientName: client ? client.fullName : "Cliente Omitido",
+      total: t._sum.amount || 0
+    };
+  });
 }
 
-export async function recent() {
+export async function recent(userId) {
   const transactions = await prisma.transaction.findMany({
-    take: 5, // Pega apenas as 5 últimas
-    orderBy: { date: "desc" }, // Ordena da mais nova para a mais velha
-    include: { client: true }, // Traz o nome do cliente (opcional)
+    where: { userId },
+    take: 5, 
+    orderBy: { date: "desc" }, 
+    include: { client: true }, 
   });
 
   return transactions.map(t => ({
     id: t.id,
     title: t.description,
     amount: t.amount,
-    type: t.type === 'entrada' ? 'income' : 'outcome', // Padroniza para o Front
+    type: t.type === 'entrada' ? 'income' : 'outcome', 
     date: t.date.toISOString().split('T')[0]
   }));
 }

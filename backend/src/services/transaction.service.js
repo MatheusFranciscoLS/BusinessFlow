@@ -1,6 +1,5 @@
 import prisma from "../config/prisma.js";
 
-// Recebe o userId como segundo argumento
 export async function create(data, userId) {
   const typeMap = { income: "entrada", outcome: "saida", entrada: "entrada", saida: "saida" };
 
@@ -11,17 +10,14 @@ export async function create(data, userId) {
       category: data.category,
       type: typeMap[data.type],
       date: new Date(data.date),
-      userId: userId, // <--- Salva a transação com o dono dela!
+      userId: userId, 
     },
   });
 }
 
-// Recebe o userId
 export async function getAll(userId) {
   const transactions = await prisma.transaction.findMany({
-    where: {
-      userId: userId, // <--- O FILTRO MÁGICO: "Traga apenas onde o userId for igual ao meu"
-    },
+    where: { userId: userId }, 
     orderBy: { date: "desc" },
   });
 
@@ -35,17 +31,25 @@ export async function getAll(userId) {
   }));
 }
 
-export async function update(id, data) {
-  // Mapeia income/outcome para entrada/saida se necessário
+export async function getById(id, userId) {
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, userId }
+  });
+  if (!transaction) throw new Error("Transação não encontrada ou acesso negado.");
+  return transaction;
+}
+
+export async function update(id, data, userId) {
+  await getById(id, userId); 
+
   const typeMap = { income: "entrada", outcome: "saida", entrada: "entrada", saida: "saida" };
 
-  // Prepara o objeto para o Prisma
   const updateData = {
     amount: parseFloat(data.price || data.amount),
     description: data.title || data.description,
     category: data.category,
     type: typeMap[data.type] || data.type,
-    date: new Date(data.date), // Garante que a data seja atualizada
+    date: new Date(data.date),
   };
 
   return prisma.transaction.update({
@@ -54,6 +58,7 @@ export async function update(id, data) {
   });
 }
 
-export async function remove(id) {
+export async function remove(id, userId) {
+  await getById(id, userId); 
   return prisma.transaction.delete({ where: { id } });
 }

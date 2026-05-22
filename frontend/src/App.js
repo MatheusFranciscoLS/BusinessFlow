@@ -13,8 +13,12 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // --- CONFIGURAÇÃO CORS ---
-// 1. Libera tudo
-app.use(cors());
+const corsOptions = {
+  origin: ['https://flowbusiness.vercel.app', 'http://localhost:3000'],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 // 2. Força o Express a responder requisições OPTIONS (Preflight) em todas as rotas
 // Isso resolve o erro 404 no OPTIONS

@@ -14,18 +14,16 @@ const createSchema = z.object({
 
 async function fetchAddressFromCep(cep) {
   if (!cep) return null;
-
   try {
     const response = await axios.get(`https://brasilapi.com.br/api/cep/v1/${cep}`);
     const data = response.data;
-
     return `${data.street}, ${data.neighborhood}, ${data.city} - ${data.state}`;
   } catch (e) {
-    return null; // não quebra o cadastro
+    return null; 
   }
 }
 
-export async function create(data) {
+export async function create(data, userId) {
   const validated = createSchema.parse(data);
 
   const existingCpf = await prisma.client.findUnique({
@@ -37,43 +35,36 @@ export async function create(data) {
   const address = await fetchAddressFromCep(validated.cep);
 
   return prisma.client.create({
-    data: {
-      ...validated,
-      address,
-    },
+    data: { ...validated, address, userId }, // Salva com o ID do dono
   });
 }
 
-export async function getAll() {
+export async function getAll(userId) {
   return prisma.client.findMany({
+    where: { userId }, // Filtra só os clientes dessa empresa
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function getById(id) {
-  const client = await prisma.client.findUnique({ where: { id } });
-  if (!client) throw new Error("Cliente não encontrado.");
+export async function getById(id, userId) {
+  const client = await prisma.client.findFirst({ where: { id, userId } });
+  if (!client) throw new Error("Cliente não encontrado ou acesso negado.");
   return client;
 }
 
-export async function update(id, data) {
+export async function update(id, data, userId) {
+  await getById(id, userId); // Trava de segurança
   const validated = createSchema.partial().parse(data);
-
   let address = undefined;
-
-  if (validated.cep) {
-    address = await fetchAddressFromCep(validated.cep);
-  }
+  if (validated.cep) address = await fetchAddressFromCep(validated.cep);
 
   return prisma.client.update({
     where: { id },
-    data: {
-      ...validated,
-      ...(address && { address }),
-    },
+    data: { ...validated, ...(address && { address }) },
   });
 }
 
-export async function remove(id) {
+export async function remove(id, userId) {
+  await getById(id, userId); // Trava de segurança
   return prisma.client.delete({ where: { id } });
 }
