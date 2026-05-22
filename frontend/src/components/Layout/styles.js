@@ -6,35 +6,36 @@ export const Container = styled.div`
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: #f7f9fc; /* Fundo claro da área de conteúdo */
+  background-color: #f7fafc; 
 `;
 
 export const SidebarContainer = styled.aside`
   width: 260px;
-  background-color: #1a202c; /* Cor escura "Slate" */
+  background: linear-gradient(180deg, #1a202c 0%, #2d3748 100%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 24px;
   color: white;
-  box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+  box-shadow: 4px 0 15px rgba(0,0,0,0.05);
+  z-index: 10;
 
   @media (max-width: 768px) {
-    display: none; /* Em mobile seria um menu hambúrguer (podemos ver depois) */
+    display: none; 
   }
 `;
 
 export const Logo = styled.div`
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 26px;
+  font-weight: 800;
   color: #fff;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
   display: flex;
   align-items: center;
   gap: 10px;
   
   span {
-    color: #3182ce; /* Destaque azul */
+    color: #3182ce; 
   }
 `;
 
@@ -44,25 +45,24 @@ export const NavMenu = styled.nav`
   gap: 8px;
 `;
 
-// Estilizando o Link do React Router
 export const StyledNavLink = styled(NavLink)`
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   text-decoration: none;
   color: #a0aec0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-weight: 600;
+  transition: all 0.2s ease;
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.05);
     color: white;
+    transform: translateX(4px);
   }
 
-  /* Classe automática do React Router quando o link está ativo */
   &.active {
     background-color: #3182ce;
     color: white;
@@ -71,28 +71,31 @@ export const StyledNavLink = styled(NavLink)`
 `;
 
 export const LogoutButton = styled.button`
-  background: transparent;
-  border: 1px solid #4a5568;
-  color: #cbd5e0;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  transition: all 0.2s;
-  margin-top: auto; /* Empurra para o final */
+  background-color: rgba(229, 62, 62, 0.1);
+  color: #fc8181;
+  border: 1px solid rgba(229, 62, 62, 0.2);
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 
   &:hover {
-    background: rgba(229, 62, 62, 0.1);
-    border-color: #e53e3e;
-    color: #e53e3e;
+    background-color: #e53e3e;
+    color: white;
   }
 `;
 
 export const MainContent = styled.main`
   flex: 1;
-  padding: 32px;
-  overflow-y: auto; /* Permite scroll apenas no conteúdo, sidebar fixa */
+  padding: 40px;
+  overflow-y: auto;
+  position: relative;
+
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
 `;
