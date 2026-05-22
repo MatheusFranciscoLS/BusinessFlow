@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
-import routes from "./routes/index.js";
 import { fileURLToPath } from "url";
+import routes from "./routes/index.js";
 
 dotenv.config();
 
@@ -12,18 +12,29 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// --- CONFIGURAÇÃO CORS BLINDADA ---
-// 1. Permite qualquer origem (Vercel, Localhost, etc)
-app.use(cors());
+// 🔒 SEGURANÇA: Configuração de CORS Restrito (Whitelist)
+const corsOptions = {
+  origin: [
+    "https://flowbusiness.vercel.app", // Seu domínio de produção
+    "http://localhost:5173",           // Porta padrão do Vite
+    "http://localhost:3000"            // Porta padrão do Create React App
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+};
 
-// 2. Responde explicitamente a requisições OPTIONS (Preflight)
-// Isso corrige o erro 404 que você está vendo
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
-app.use(express.json());
+// 🔒 SEGURANÇA: Limita o tamanho do JSON para evitar sobrecarga de memória
+app.use(express.json({ limit: "10mb" }));
 
-// Configuração de Uploads
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Pasta de uploads pública com trava para não executar scripts acidentalmente
+app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
+  setHeaders: (res, path) => {
+    res.set("X-Content-Type-Options", "nosniff");
+  }
+}));
 
 // Rotas da API
 app.use("/api", routes);

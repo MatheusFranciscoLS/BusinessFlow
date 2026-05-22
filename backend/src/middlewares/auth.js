@@ -1,26 +1,23 @@
 import jwt from "jsonwebtoken";
 
 export function authMiddleware(req, res, next) {
-  console.log("HEADER RECEBIDO:", req.headers.authorization);
-
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-    console.log("ERRO: Nenhum token enviado.");
-    return res.status(401).json({ message: "Token não enviado." });
+    return res.status(401).json({ message: "Acesso negado. Token não fornecido." });
   }
 
   const [, token] = authHeader.split(" ");
 
-  console.log("TOKEN EXTRAÍDO:", token);
+  if (!token) {
+    return res.status(401).json({ message: "Formato de token inválido." });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("TOKEN DECODIFICADO:", decoded);
-    req.user = decoded;
+    req.user = decoded; // Injeta o ID e dados do usuário na requisição
     next();
   } catch (err) {
-    console.log("ERRO NO JWT:", err.message);
-    return res.status(401).json({ message: "Token inválido." });
+    return res.status(401).json({ message: "Sessão expirada ou token inválido." });
   }
 }
