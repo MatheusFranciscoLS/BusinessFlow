@@ -1,26 +1,28 @@
 import app from "./app.js";
 import { execSync } from "child_process";
 
-// 1. Garante que o Prisma esteja gerado antes de iniciar
 try {
-  console.log("🔄 Sincronizando Prisma Client...");
-  execSync("npx prisma generate", { stdio: "ignore" }); // 'ignore' deixa o log mais limpo
+  console.log(
+    "🔄 Sincronizando Prisma e atualizando o Banco de Dados na nuvem...",
+  );
+  execSync("npx prisma generate", { stdio: "ignore" });
+  // O comando abaixo garante que as tabelas no Render fiquem idênticas ao seu schema
+  execSync("npx prisma db push --accept-data-loss", { stdio: "ignore" });
 } catch (err) {
-  console.error("⚠️ Falha ao gerar Prisma Client:", err.message);
+  console.error(
+    "⚠️ Aviso no Prisma (pode ser ignorado se o banco já estiver atualizado).",
+  );
 }
 
 const PORT = process.env.PORT || 3001;
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
 
-// 2. A MÁGICA DO "DESLIGAMENTO GRACIOSO"
-// Se o servidor receber um sinal de desligamento (SIGTERM/SIGINT), ele fecha o banco e para de aceitar novas requisições
 process.on("SIGTERM", () => {
   console.log("🛑 SIGTERM recebido. Fechando servidor...");
   server.close(() => {
-    console.log("✅ Servidor fechado com sucesso.");
     process.exit(0);
   });
 });

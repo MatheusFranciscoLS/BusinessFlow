@@ -63,10 +63,12 @@ export async function monthly(userId) {
   const endOfYear = new Date(currentYear, 11, 31);
 
   const transactions = await prisma.transaction.findMany({
-    where: { userId, date: { gte: startOfYear, lte: endOfYear } }
+    where: { userId, date: { gte: startOfYear, lte: endOfYear } },
   });
 
-  const result = Array(12).fill(null).map(() => ({ entradas: 0, saidas: 0 }));
+  const result = Array(12)
+    .fill(null)
+    .map(() => ({ entradas: 0, saidas: 0 }));
 
   transactions.forEach((t) => {
     const month = t.date.getMonth();
@@ -86,16 +88,16 @@ export async function topClients(userId) {
     take: 5,
   });
 
-  const clientIds = transactions.map(t => t.clientId);
+  const clientIds = transactions.map((t) => t.clientId);
   const clients = await prisma.client.findMany({
-    where: { id: { in: clientIds } }
+    where: { id: { in: clientIds } },
   });
 
-  return transactions.map(t => {
-    const client = clients.find(c => c.id === t.clientId);
+  return transactions.map((t) => {
+    const client = clients.find((c) => c.id === t.clientId);
     return {
-      clientName: client ? client.fullName : "Cliente Omitido",
-      total: t._sum.amount || 0
+      clientName: client ? client.fullName : "Cliente Deletado",
+      total: t._sum.amount || 0,
     };
   });
 }
@@ -103,16 +105,16 @@ export async function topClients(userId) {
 export async function recent(userId) {
   const transactions = await prisma.transaction.findMany({
     where: { userId },
-    take: 5, 
-    orderBy: { date: "desc" }, 
-    include: { client: true }, 
+    take: 5,
+    orderBy: { date: "desc" },
+    include: { client: true },
   });
 
-  return transactions.map(t => ({
+  return transactions.map((t) => ({
     id: t.id,
     title: t.description,
     amount: t.amount,
-    type: t.type === 'entrada' ? 'income' : 'outcome', 
-    date: t.date.toISOString().split('T')[0]
+    type: t.type === "entrada" ? "income" : "outcome",
+    date: t.date.toISOString().split("T")[0],
   }));
 }
