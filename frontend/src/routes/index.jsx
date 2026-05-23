@@ -1,5 +1,6 @@
 import React from 'react';
-import { HashRouter, Routes, Route } from "react-router-dom"; 
+// 👇 AQUI ESTAVA O ERRO! Adicionei o 'Navigate' na importação!
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom"; 
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
@@ -7,7 +8,7 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import Login from '../pages/Auth';
 import Register from '../pages/Auth/Register';
 import ForgotPassword from '../pages/Auth/ForgotPassword';
-import ResetPassword from '../pages/Auth/ResetPassword'; // <--- Importação da nova tela
+import ResetPassword from '../pages/Auth/ResetPassword';
 
 import Layout from '../components/Layout';
 import Dashboard from '../pages/Dashboard';
@@ -50,15 +51,13 @@ const AppRoutes = () => {
             <PublicRoute><Register /></PublicRoute>
           } />
           
-<Route path="/forgot-password" element={
+          <Route path="/forgot-password" element={
             <PublicRoute><ForgotPassword /></PublicRoute>
           } />
 
           <Route path="/reset-password" element={
             <PublicRoute><ResetPassword /></PublicRoute>
           } />
-
-
 
           {/* ================================================== */}
           {/* GRUPO 2: PÁGINAS DO SISTEMA (COM LAYOUT / SIDEBAR) */}
