@@ -1,8 +1,6 @@
-import { createGlobalStyle } from 'styled-components';
+import { createGlobalStyle } from "styled-components";
 
 export default createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
   * {
     margin: 0;
     padding: 0;
@@ -11,7 +9,7 @@ export default createGlobalStyle`
   }
 
   body {
-    background: #f7fafc; /* Cor de fundo moderna */
+    background: #f7fafc;
     -webkit-font-smoothing: antialiased;
     color: #1a202c;
   }
