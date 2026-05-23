@@ -54,7 +54,6 @@ const AppRoutes = () => {
             <PublicRoute><ForgotPassword /></PublicRoute>
           } />
 
-          {/* ADICIONE ESTA ROTA AQUI 👇 */}
           <Route path="/reset-password" element={
             <PublicRoute><ResetPassword /></PublicRoute>
           } />
