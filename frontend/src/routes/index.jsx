@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route } from "react-router-dom"; 
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
@@ -33,7 +33,7 @@ const PublicRoute = ({ children }) => {
 
 const AppRoutes = () => {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
 
@@ -76,7 +76,7 @@ const AppRoutes = () => {
 
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 };
 
