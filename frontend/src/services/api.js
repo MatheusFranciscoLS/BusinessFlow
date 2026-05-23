@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   // Já configurado para o seu backend no Render
-  baseURL: "https://businessflow-api.onrender.com",
+  baseURL: "https://businessflow-api.onrender.com/api",
 });
 
 api.interceptors.request.use((config) => {
