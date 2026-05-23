@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/:prefix*/static/:file*",
+      "destination": "/static/:file*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
