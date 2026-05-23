@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Trophy } from 'lucide-react';
 import { Container, Header, CardsContainer, Card, ChartContainer } from './styles';
+import { Skeleton, Grid, Box } from "@mui/material";
 
 export default function Dashboard() {
   const [summary, setSummary] = useState({ entradas: 0, saidas: 0, saldo: 0 });
@@ -57,8 +58,38 @@ export default function Dashboard() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   }
 
-  if (loading) {
-    return <Container><h2 style={{marginTop: 20, color: '#4a5568'}}>A carregar indicadores...</h2></Container>;
+if (loading) {
+    return (
+      <Box sx={{ p: 3, width: '100%' }}>
+        <Grid container spacing={3}>
+          {/* Esqueletos dos 3 Cards Superiores (Entradas, Saídas, Saldo) */}
+          <Grid item xs={12} md={4}>
+            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+
+          {/* Esqueleto do Gráfico Principal (Fluxo de Caixa) */}
+          <Grid item xs={12} md={8}>
+            <Skeleton variant="rounded" height={350} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+
+          {/* Esqueleto da Lista Lateral (Top Clientes) */}
+          <Grid item xs={12} md={4}>
+            <Skeleton variant="rounded" height={350} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+
+          {/* Esqueleto da Tabela Inferior (Últimas Movimentações) */}
+          <Grid item xs={12}>
+            <Skeleton variant="rounded" height={250} animation="wave" sx={{ borderRadius: 3 }} />
+          </Grid>
+        </Grid>
+      </Box>
+    );
   }
 
   return (
