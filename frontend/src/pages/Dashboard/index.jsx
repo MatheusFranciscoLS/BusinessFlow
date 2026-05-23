@@ -6,7 +6,32 @@ import {
 } from 'recharts';
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Trophy } from 'lucide-react';
 import { Container, Header, CardsContainer, Card, ChartContainer } from './styles';
-import { Skeleton, Grid, Box } from "@mui/material";
+import styled, { keyframes } from "styled-components";
+
+// Animação de brilho suave
+const shimmer = keyframes`
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+`;
+
+// O nosso componente Skeleton customizado e leve
+const SkeletonCard = styled.div`
+  height: ${(props) => props.height || "140px"};
+  width: 100%;
+  border-radius: 8px;
+  background: #f0f0f0;
+  background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
+  background-size: 1000px 100%;
+  animation: ${shimmer} 2s infinite linear;
+`;
+
+const SkeletonContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  width: 100%;
+  padding: 20px;
+`;
 
 export default function Dashboard() {
   const [summary, setSummary] = useState({ entradas: 0, saidas: 0, saldo: 0 });
@@ -60,35 +85,21 @@ export default function Dashboard() {
 
 if (loading) {
     return (
-      <Box sx={{ p: 3, width: '100%' }}>
-        <Grid container spacing={3}>
-          {/* Esqueletos dos 3 Cards Superiores (Entradas, Saídas, Saldo) */}
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rounded" height={140} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
+      <SkeletonContainer>
+        {/* 3 Cards Superiores */}
+        <SkeletonCard height="140px" />
+        <SkeletonCard height="140px" />
+        <SkeletonCard height="140px" />
 
-          {/* Esqueleto do Gráfico Principal (Fluxo de Caixa) */}
-          <Grid item xs={12} md={8}>
-            <Skeleton variant="rounded" height={350} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
+        {/* Gráfico Principal ocupando a largura toda */}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <SkeletonCard height="350px" />
+        </div>
 
-          {/* Esqueleto da Lista Lateral (Top Clientes) */}
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rounded" height={350} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
-
-          {/* Esqueleto da Tabela Inferior (Últimas Movimentações) */}
-          <Grid item xs={12}>
-            <Skeleton variant="rounded" height={250} animation="wave" sx={{ borderRadius: 3 }} />
-          </Grid>
-        </Grid>
-      </Box>
+        {/* Tabelas inferiores */}
+        <SkeletonCard height="250px" />
+        <SkeletonCard height="250px" />
+      </SkeletonContainer>
     );
   }
 
