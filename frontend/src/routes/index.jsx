@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy } from 'react';
 // 👇 AQUI ESTAVA O ERRO! Adicionei o 'Navigate' na importação!
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom"; 
 import { Toaster } from 'react-hot-toast';
@@ -11,12 +11,12 @@ import ForgotPassword from '../pages/Auth/ForgotPassword';
 import ResetPassword from '../pages/Auth/ResetPassword';
 
 import Layout from '../components/Layout';
-import Dashboard from '../pages/Dashboard';
-import Customers from '../pages/Customers';
-import Services from '../pages/Services';
-import Financial from '../pages/Financial';
-import Appointments from '../pages/Appointments';
-import Profile from '../pages/Profile';
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const Customers = lazy(() => import('../pages/Customers'));
+const Services = lazy(() => import('../pages/Services'));
+const Appointments = lazy(() => import('../pages/Appointments'));
+const Financial = lazy(() => import('../pages/Financial'));
+const Profile = lazy(() => import('../pages/Profile'));
 
 // --- COMPONENTES DE PROTEÇÃO ---
 

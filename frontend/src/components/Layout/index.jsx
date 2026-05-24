@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import api from '../../services/api'; // 🔥 IMPORTAÇÃO CORRIGIDA AQUI
@@ -85,8 +85,17 @@ export default function Layout() {
         </LogoutButton>
       </SidebarContainer>
 
-      <MainContent>
-        <Outlet />
+<MainContent>
+        {/* O para-quedas mágico! */}
+        <Suspense 
+          fallback={
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20vh', color: '#3182ce', fontWeight: 'bold', fontSize: '18px' }}>
+              A carregar módulo...
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </MainContent>
     </Container>
   );
