@@ -1,139 +1,215 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Arrays de dados fictícios para gerar combinações realistas
+const nomes = [
+  "Ana",
+  "Bruno",
+  "Carlos",
+  "Daniela",
+  "Eduardo",
+  "Fernanda",
+  "Gabriel",
+  "Helena",
+  "Igor",
+  "Juliana",
+  "Lucas",
+  "Mariana",
+  "Nicolas",
+  "Olivia",
+  "Pedro",
+  "Rafael",
+  "Sofia",
+  "Tiago",
+  "Vitória",
+  "Wesley",
+];
+const sobrenomes = [
+  "Silva",
+  "Santos",
+  "Oliveira",
+  "Souza",
+  "Rodrigues",
+  "Ferreira",
+  "Alves",
+  "Pereira",
+  "Lima",
+  "Gomes",
+  "Costa",
+  "Ribeiro",
+  "Martins",
+  "Carvalho",
+];
+const tags = ["NOVO", "RECORRENTE", "VIP", "INADIMPLENTE"];
+
+const servicosIniciais = [
+  {
+    name: "Consultoria em Gestão de TI",
+    category: "Consultoria",
+    price: 2500,
+    description: "Análise e planeamento de infraestrutura",
+    stock: 999,
+  },
+  {
+    name: "Desenvolvimento de Landing Page",
+    category: "Desenvolvimento",
+    price: 1200,
+    description: "Página de alta conversão",
+    stock: 999,
+  },
+  {
+    name: "Suporte Técnico Mensal",
+    category: "Suporte",
+    price: 500,
+    description: "Manutenção e suporte 24/7",
+    stock: 999,
+  },
+  {
+    name: "Migração para Cloud",
+    category: "Infraestrutura",
+    price: 3500,
+    description: "Migração de dados para AWS/Azure",
+    stock: 999,
+  },
+  {
+    name: "Auditoria de Segurança",
+    category: "Consultoria",
+    price: 4000,
+    description: "Teste de invasão e relatórios",
+    stock: 999,
+  },
+  {
+    name: "Desenvolvimento de App Mobile",
+    category: "Desenvolvimento",
+    price: 8000,
+    description: "App iOS e Android nativo",
+    stock: 999,
+  },
+  {
+    name: "Gestão de Tráfego Pago",
+    category: "Marketing",
+    price: 1500,
+    description: "Google Ads e Meta Ads",
+    stock: 999,
+  },
+  {
+    name: "Otimização de SEO",
+    category: "Marketing",
+    price: 900,
+    description: "SEO On-page e Off-page",
+    stock: 999,
+  },
+  {
+    name: "Design de Identidade Visual",
+    category: "Design",
+    price: 1800,
+    description: "Logo e manual da marca",
+    stock: 999,
+  },
+  {
+    name: "Instalação de Redes",
+    category: "Infraestrutura",
+    price: 750,
+    description: "Cabeamento estruturado",
+    stock: 999,
+  },
+];
+
+function getRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function getRandomDate(daysBack) {
+  const date = new Date();
+  date.setDate(date.getDate() - getRandomInt(0, daysBack));
+  return date;
+}
+
 async function main() {
-  console.log('🌱 Iniciando Seed "Modo Demonstração Real"...');
+  console.log("🌱 A preparar o terreno para o Business Intelligence...");
 
-  // 1. Limpar o banco
-  await prisma.transaction.deleteMany();
-  await prisma.appointment.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.client.deleteMany();
-  await prisma.user.deleteMany();
+  // Identificar a conta do utilizador principal (para associar os dados corretamente)
+  const user = await prisma.user.findFirst();
+  if (!user) {
+    console.error(
+      "❌ Erro: Nenhum utilizador encontrado. Crie uma conta no Front-end primeiro!",
+    );
+    return;
+  }
+  console.log(`👤 A injetar dados na conta de: ${user.name}`);
 
-  // 2. Criar Admin
-  const passwordHash = await bcrypt.hash("123456", 10);
-  await prisma.user.create({
-    data: {
-      name: "Matheus Desenvolvedor",
-      email: "admin@admin.com", // <--- Alterado para seu email preferido
-      password: passwordHash,
-      role: "ADMIN",
-    },
-  });
-  console.log("✅ Admin criado: admin@admin.com / 123456");
-
-  // 3. Criar Clientes
-  const client1 = await prisma.client.create({
-    data: {
-      fullName: "Padaria do Seu João Ltda",
-      cpf: "12.345.678/0001-90",
-      email: "contato@padariajoao.com.br",
-      phone: "(11) 98765-4321",
-      cep: "01001-000",
-      address: "Praça da Sé, 100, Centro - São Paulo/SP",
-      tag: "RECORRENTE",
-    },
-  });
-
-  const client2 = await prisma.client.create({
-    data: {
-      fullName: "Ana Beatriz Silva",
-      cpf: "123.456.789-00",
-      email: "ana.bea@gmail.com",
-      phone: "(21) 99999-8888",
-      cep: "22041-001",
-      address: "Av. Atlântica, 1500, Copacabana - Rio de Janeiro/RJ",
-      tag: "NOVO",
-    },
-  });
-
-  const client3 = await prisma.client.create({
-    data: {
-      fullName: "Tech Startups S.A.",
-      cpf: "98.765.432/0001-10",
-      email: "financeiro@techstart.com.br",
-      phone: "(31) 3333-4444",
-      cep: "30140-071",
-      address: "Rua dos Tupis, 300, Centro - Belo Horizonte/MG",
-      tag: "VIP",
-    },
-  });
-
-  // 4. Criar Serviços
-  await prisma.product.createMany({
-    data: [
-      { name: "Desenvolvimento de Site Institucional", description: "Site One Page", price: 2500.00, category: "Desenvolvimento", stock: 0 },
-      { name: "Manutenção de Computadores", description: "Limpeza e formatação", price: 150.00, category: "Suporte", stock: 0 },
-      { name: "Consultoria de Redes", description: "Configuração Wi-Fi", price: 450.00, category: "Infraestrutura", stock: 0 },
-      { name: "Sistema de Gestão (SaaS)", description: "Mensalidade", price: 199.90, category: "Assinatura", stock: 0 },
-    ]
-  });
-
-  // 5. Funções de Data e Hora
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-
-  // Gera data sem hora (para transações)
-  const getDate = (monthOffset, day) => {
-    return new Date(currentYear, currentMonth + monthOffset, day);
-  };
-
-  // Gera data COM HORA (para agendamentos)
-  const getDateTime = (monthOffset, day, hour, minute) => {
-    return new Date(currentYear, currentMonth + monthOffset, day, hour, minute);
-  };
-
-  // 6. Criar Transações
-  await prisma.transaction.createMany({
-    data: [
-      { description: "Criação de Site - Padaria", amount: 2500.00, type: "entrada", category: "Venda", date: getDate(-1, 10), clientId: client1.id },
-      { description: "Hospedagem AWS", amount: 150.00, type: "saida", category: "Infraestrutura", date: getDate(-1, 15) },
-      { description: "Consultoria Tech Startups", amount: 4500.00, type: "entrada", category: "Serviço", date: getDate(0, 5), clientId: client3.id },
-      { description: "Formatação Ana Beatriz", amount: 150.00, type: "entrada", category: "Serviço", date: getDate(0, 12), clientId: client2.id },
-      { description: "Aluguel do Escritório", amount: 1200.00, type: "saida", category: "Despesas Fixas", date: getDate(0, 10) },
-      { description: "Conta de Internet", amount: 250.00, type: "saida", category: "Despesas Fixas", date: getDate(0, 20) },
-      { description: "Venda de Licença SaaS", amount: 199.90, type: "entrada", category: "Venda", date: getDate(0, today.getDate()) },
-      { description: "Pagamento Freelancer Design", amount: 800.00, type: "saida", category: "Pessoal", date: getDate(0, 18) },
-    ]
-  });
-
-  // 7. Criar Agendamentos (COM HORÁRIOS CORRETOS)
-  await prisma.appointment.createMany({
-    data: [
-      // Amanhã às 14:30
-      { 
-        date: getDateTime(0, today.getDate() + 1, 14, 30), 
-        status: "pendente", 
-        notes: "Reunião de alinhamento", 
-        clientId: client3.id 
+  // 1. Injetar Clientes
+  console.log("👥 A semear 50 clientes premium...");
+  const clients = [];
+  for (let i = 0; i < 50; i++) {
+    const client = await prisma.client.create({
+      data: {
+        fullName: `${getRandom(nomes)} ${getRandom(sobrenomes)} ${getRandom(sobrenomes)}`,
+        cpf: Math.floor(10000000000 + Math.random() * 90000000000).toString(),
+        email: `cliente${i}@exemplo.com`,
+        phone: `119${getRandomInt(1000, 9999)}${getRandomInt(1000, 9999)}`,
+        tag: getRandom(tags),
+        userId: user.id,
       },
-      // Daqui a 3 dias às 09:00
-      { 
-        date: getDateTime(0, today.getDate() + 3, 9, 0), 
-        status: "pendente", 
-        notes: "Entregar computador formatado", 
-        clientId: client2.id 
-      },
-      // Mês passado às 16:00 (Concluído)
-      { 
-        date: getDateTime(-1, 15, 16, 0), 
-        status: "concluido", 
-        notes: "Instalação finalizada", 
-        clientId: client1.id 
-      },
-    ]
-  });
+    });
+    clients.push(client);
+  }
 
-  console.log('🚀 Seed Finalizado! Horários ajustados.');
+  // 2. Injetar Catálogo de Serviços
+  console.log("💼 A configurar o catálogo de produtos e serviços...");
+  const products = [];
+  for (const servico of servicosIniciais) {
+    const product = await prisma.product.create({
+      data: { ...servico, userId: user.id },
+    });
+    products.push(product);
+  }
+
+  // 3. Injetar Transações Financeiras Históricas
+  console.log(
+    "💸 A gerar o histórico financeiro dos últimos 365 dias (Isto pode demorar alguns segundos)...",
+  );
+  const transactionsData = [];
+  for (let i = 0; i < 200; i++) {
+    const isIncome = Math.random() > 0.35; // 65% de taxa de conversão (entradas), 35% de saídas
+    const selectedProduct = getRandom(products);
+    const selectedClient = getRandom(clients);
+
+    transactionsData.push({
+      type: isIncome ? "entrada" : "saida",
+      amount: isIncome ? selectedProduct.price : getRandomInt(100, 2500),
+      description: isIncome
+        ? `Fatura: ${selectedProduct.name}`
+        : getRandom([
+            "Pagamento de Impostos",
+            "Licenças de Software",
+            "Material de Escritório",
+            "Anúncios Digitais",
+            "Manutenção de Servidores",
+          ]),
+      category: isIncome
+        ? selectedProduct.category
+        : getRandom(["Impostos", "Fixo", "Variavel", "Infraestrutura"]),
+      date: getRandomDate(365),
+      clientId: isIncome ? selectedClient.id : null,
+      userId: user.id,
+    });
+  }
+
+  // Grava todas as 200 transações na base de dados de uma só vez para máxima performance
+  await prisma.transaction.createMany({ data: transactionsData });
+
+  console.log(
+    "✅ Concluído com sucesso! O seu SaaS agora tem o volume de dados de uma empresa real em pleno funcionamento.",
+  );
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Ocorreu um erro catastrófico durante a semeadura:", e);
     process.exit(1);
   })
   .finally(async () => {
