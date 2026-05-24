@@ -27,7 +27,7 @@ export default function Financial() {
     // --- MÁQUINA DO TEMPO ---
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-    const [showAllTime, setShowAllTime] = useState(false); // NOVO ESTADO OPCIONAL
+    const [showAllTime, setShowAllTime] = useState(false); 
 
     // --- OUTROS FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +44,6 @@ export default function Financial() {
     async function loadTransactions() {
         try {
             setLoading(true);
-            // Se showAllTime for true, envia os parâmetros vazios (o Back-end devolve tudo)
             const params = showAllTime ? {} : { month: currentMonth, year: currentYear };
             
             const response = await api.get('/transactions', { params });
@@ -61,7 +60,6 @@ export default function Financial() {
         }
     }
 
-    // Recarrega sempre que o mês, ano ou o botão "Ver Tudo" mudarem
     useEffect(() => { 
         loadTransactions(); 
     }, [currentMonth, currentYear, showAllTime]);
@@ -213,8 +211,9 @@ export default function Financial() {
                 <h1>Financeiro</h1>
                 <Toolbar>
                     <FilterGroup>
-                        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <SearchContainer>
+                        {/* NOVO AGRUPAMENTO DE INTERFACE PARA PREVENIR QUEBRA */}
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+                            <SearchContainer style={{ flex: '1 1 250px', maxWidth: 'none' }}>
                                 <Search size={20} color="#a0aec0" />
                                 <input
                                     placeholder="Buscar por descrição..."
@@ -223,34 +222,36 @@ export default function Financial() {
                                 />
                             </SearchContainer>
 
-                            {/* NAVEGADOR CRONOLÓGICO */}
-                            <MonthNavigator style={{ 
-                                opacity: showAllTime ? 0.4 : 1, 
-                                pointerEvents: showAllTime ? 'none' : 'auto' 
-                            }}>
-                                <button onClick={handlePreviousMonth} title="Mês Anterior">
-                                    <ChevronLeft size={20} />
-                                </button>
-                                <span>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
-                                <button onClick={handleNextMonth} title="Próximo Mês">
-                                    <ChevronRight size={20} />
-                                </button>
-                            </MonthNavigator>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                {/* NAVEGADOR CRONOLÓGICO */}
+                                <MonthNavigator style={{ 
+                                    opacity: showAllTime ? 0.4 : 1, 
+                                    pointerEvents: showAllTime ? 'none' : 'auto' 
+                                }}>
+                                    <button onClick={handlePreviousMonth} title="Mês Anterior">
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                    <span>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
+                                    <button onClick={handleNextMonth} title="Próximo Mês">
+                                        <ChevronRight size={20} />
+                                    </button>
+                                </MonthNavigator>
 
-                            {/* BOTÃO OPcional "VER TUDO" */}
-                            <button 
-                                onClick={() => setShowAllTime(!showAllTime)}
-                                style={{
-                                    height: 48, padding: '0 16px', borderRadius: 8, border: '1px solid',
-                                    background: showAllTime ? '#ebf8ff' : 'white',
-                                    color: showAllTime ? '#3182ce' : '#718096',
-                                    borderColor: showAllTime ? '#3182ce' : '#e2e8f0',
-                                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
-                                {showAllTime ? 'Filtrar por Mês' : 'Todo o Histórico'}
-                            </button>
+                                {/* BOTÃO OPcional "VER TUDO" */}
+                                <button 
+                                    onClick={() => setShowAllTime(!showAllTime)}
+                                    style={{
+                                        height: 48, padding: '0 16px', borderRadius: 8, border: '1px solid',
+                                        background: showAllTime ? '#ebf8ff' : 'white',
+                                        color: showAllTime ? '#3182ce' : '#718096',
+                                        borderColor: showAllTime ? '#3182ce' : '#e2e8f0',
+                                        fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {showAllTime ? 'Filtrar por Mês' : 'Todo o Histórico'}
+                                </button>
+                            </div>
                         </div>
                         
                         <FilterPillsContainer>

@@ -4,10 +4,11 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Plus, Edit, Trash2, Search, FileText, Ghost } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, FileText, Ghost, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
   Container, Header, Toolbar, SearchContainer, ButtonGroup, TableContainer, Table, 
-  StatusBadge, ActionButton, ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState
+  StatusBadge, ActionButton, ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState,
+  PaginationContainer, ProfileHeader, ProfileStats, HistoryList
 } from './styles';
 
 export default function Customers() {
@@ -15,18 +16,27 @@ export default function Customers() {
   const [searchTerm, setSearchTerm] = useState(''); 
   const [loading, setLoading] = useState(false);
   
+  // Controles de Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewingClient, setViewingClient] = useState(null);
+  
   const [editingId, setEditingId] = useState(null);
   const [cepLoading, setCepLoading] = useState(false);
   const numberInputRef = useRef(null);
 
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 7;
+
   const [form, setForm] = useState({
     name: '', email: '', phone: '', cpf: '',
-    cep: '', street: '', number: '', neighborhood: '', city: '', state: '',
-    tag: 'NOVO'
+    cep: '', street: '', number: '', neighborhood: '', city: '', state: '', tag: 'NOVO'
   });
 
   useEffect(() => { loadCustomers(); }, []);
+
+  // Reseta a página para 1 sempre que o utilizador faz uma busca
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   async function loadCustomers() {
     try {
@@ -40,7 +50,6 @@ export default function Customers() {
     }
   }
 
-  // --- LÓGICA DE BUSCA OTIMIZADA ---
   const filteredCustomers = useMemo(() => {
     return customers.filter(customer => 
       customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,38 +58,27 @@ export default function Customers() {
     );
   }, [customers, searchTerm]);
 
+  // Fatiar a lista para a Paginação
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  function formatCurrency(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  }
+
   function handleExportPDF() {
     const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text("Relatório de Clientes - BusinessFlow", 14, 22);
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 28);
-
-    const tableColumn = ["Nome / Razão Social", "CPF/CNPJ", "E-mail", "Telefone", "Status"];
-    const tableRows = [];
-
-    filteredCustomers.forEach(customer => {
-      const customerData = [
-        customer.fullName,
-        maskCPF_CNPJ(customer.cpf),
-        customer.email || 'N/A',
-        maskPhone(customer.phone || ''),
-        customer.tag
-      ];
-      tableRows.push(customerData);
-    });
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 35,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [49, 130, 206] }
-    });
-
-    doc.save("clientes_businessflow.pdf");
-    toast.success("Relatório baixado com sucesso!");
+    doc.setFontSize(18); doc.text("Relatório de Clientes", 14, 22);
+    doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 28);
+    const tableColumn = ["Nome", "CPF/CNPJ", "E-mail", "Telefone", "Status"];
+    const tableRows = filteredCustomers.map(c => [
+      c.fullName, maskCPF_CNPJ(c.cpf), c.email || 'N/A', maskPhone(c.phone || ''), c.tag
+    ]);
+    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 35, styles: { fontSize: 8 }, headStyles: { fillColor: [49, 130, 206] } });
+    doc.save("clientes.pdf"); toast.success("PDF baixado!");
   }
 
   const maskCPF_CNPJ = (v) => { v=v.replace(/\D/g,""); if(v.length<=11){return v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{return v.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2").slice(0,18)} };
@@ -99,17 +97,23 @@ export default function Customers() {
   async function handleBlurCep(e) {
     const cep = e.target.value.replace(/\D/g, '');
     if (cep.length !== 8) return;
-    setCepLoading(true);
-    const tId = toast.loading('A procurar...');
+    setCepLoading(true); const tId = toast.loading('A procurar...');
     try {
       const { data } = await axios.get(`https://brasilapi.com.br/api/cep/v1/${cep}`);
       setForm(prev => ({ ...prev, street: data.street, neighborhood: data.neighborhood, city: data.city, state: data.state }));
-      toast.success('Encontrado!', { id: tId });
-      setTimeout(() => numberInputRef.current?.focus(), 100);
-    } catch { 
-      toast.error('CEP inválido', { id: tId }); 
-    } finally { 
-      setCepLoading(false); 
+      toast.success('Encontrado!', { id: tId }); setTimeout(() => numberInputRef.current?.focus(), 100);
+    } catch { toast.error('CEP inválido', { id: tId }); } finally { setCepLoading(false); }
+  }
+
+  // A Mágica do Mini-CRM (Busca dados completos)
+  async function openProfile(id) {
+    const toastId = toast.loading('A carregar perfil...');
+    try {
+      const res = await api.get(`/clients/${id}`);
+      setViewingClient(res.data);
+      toast.dismiss(toastId);
+    } catch {
+      toast.error('Erro ao carregar o perfil.', { id: toastId });
     }
   }
 
@@ -122,30 +126,17 @@ export default function Customers() {
   function handleEdit(customer) {
     setEditingId(customer.id);
     const parts = customer.address ? customer.address.split(',') : [];
-    const street = parts[0] || '';
     setForm({
-      ...customer,
-      name: customer.fullName || customer.name,
-      cpf: maskCPF_CNPJ(customer.cpf),
-      phone: customer.phone ? maskPhone(customer.phone) : '',
-      cep: customer.cep ? maskCEP(customer.cep) : '',
-      street: street, 
-      number: '', 
-      neighborhood: '', city: '', state: '',
-      tag: customer.tag || 'NOVO'
+      ...customer, name: customer.fullName || customer.name, cpf: maskCPF_CNPJ(customer.cpf), phone: customer.phone ? maskPhone(customer.phone) : '',
+      cep: customer.cep ? maskCEP(customer.cep) : '', street: parts[0] || '', number: '', neighborhood: '', city: '', state: '', tag: customer.tag || 'NOVO'
     });
     setIsModalOpen(true);
   }
 
   async function handleDelete(id) {
-    if (window.confirm('Excluir cliente permanentemente?')) {
-      try {
-        await api.delete(`/clients/${id}`);
-        setCustomers(customers.filter(c => c.id !== id));
-        toast.success('Removido com sucesso!');
-      } catch { 
-        toast.error('Erro ao excluir.'); 
-      }
+    if (window.confirm('Excluir cliente permanentemente? O histórico também será apagado!')) {
+      try { await api.delete(`/clients/${id}`); setCustomers(customers.filter(c => c.id !== id)); toast.success('Removido com sucesso!'); } 
+      catch { toast.error('Erro ao excluir.'); }
     }
   }
 
@@ -153,29 +144,18 @@ export default function Customers() {
     e.preventDefault();
     if (!form.name) return toast.error('Nome obrigatório');
     const cleanCpf = form.cpf.replace(/\D/g, '');
-    if (cleanCpf.length < 11) return toast.error('CPF inválido');
+    if (cleanCpf.length < 11) return toast.error('CPF/CNPJ inválido');
 
-    const tId = toast.loading('Salvando...');
+    const tId = toast.loading('A guardar...');
     try {
-      const payload = {
-        fullName: form.name, cpf: cleanCpf, email: form.email, phone: form.phone,
-        cep: form.cep.replace(/\D/g, ''), address: `${form.street}, ${form.number}`, tag: form.tag,
-      };
-
+      const payload = { fullName: form.name, cpf: cleanCpf, email: form.email, phone: form.phone, cep: form.cep.replace(/\D/g, ''), address: `${form.street}, ${form.number}`, tag: form.tag };
       if (editingId) {
-        await api.put(`/clients/${editingId}`, payload);
-        loadCustomers();
-        toast.success('Atualizado!', { id: tId });
+        await api.put(`/clients/${editingId}`, payload); loadCustomers(); toast.success('Atualizado!', { id: tId });
       } else {
-        const response = await api.post('/clients', payload);
-        setCustomers([...customers, response.data]); 
-        toast.success('Cadastrado!', { id: tId });
+        const response = await api.post('/clients', payload); setCustomers([response.data, ...customers]); toast.success('Cadastrado!', { id: tId });
       }
       setIsModalOpen(false);
-    } catch (error) {
-      const msg = error.response?.data?.error || 'Erro ao salvar.';
-      toast.error(msg, { id: tId });
-    }
+    } catch (error) { toast.error(error.response?.data?.error || 'Erro ao salvar.', { id: tId }); }
   }
 
   return (
@@ -185,39 +165,19 @@ export default function Customers() {
         <Toolbar>
           <SearchContainer>
             <Search size={20} color="#a0aec0" />
-            <input 
-              placeholder="Buscar por nome, email ou CPF..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <input placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </SearchContainer>
-
           <ButtonGroup>
-            <button className="secondary" onClick={handleExportPDF}>
-              <FileText size={18} /> Relatório PDF
-            </button>
-            <button className="primary" onClick={handleOpenNew}>
-              <Plus size={20} /> Novo Cliente
-            </button>
+            <button className="secondary" onClick={handleExportPDF}><FileText size={18} /> Relatório PDF</button>
+            <button className="primary" onClick={handleOpenNew}><Plus size={20} /> Novo Cliente</button>
           </ButtonGroup>
         </Toolbar>
       </Header>
 
-      {loading ? (
-        <EmptyState><p>A carregar clientes...</p></EmptyState>
-      ) : customers.length === 0 ? (
-        <EmptyState>
-          <Ghost size={48} />
-          <p>Nenhum cliente cadastrado ainda.</p>
-          <small>Clique no botão "Novo Cliente" para começar.</small>
-        </EmptyState>
-      ) : filteredCustomers.length === 0 ? (
-        <EmptyState>
-          <Search size={48} />
-          <p>Nenhum resultado para "{searchTerm}"</p>
-          <small>Tente buscar por outro termo.</small>
-        </EmptyState>
-      ) : (
+      {loading ? ( <EmptyState><p>A carregar clientes...</p></EmptyState> ) 
+      : customers.length === 0 ? ( <EmptyState><Ghost size={48} /><p>Nenhum cliente cadastrado.</p></EmptyState> ) 
+      : filteredCustomers.length === 0 ? ( <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p></EmptyState> ) 
+      : (
         <TableContainer>
           <Table>
             <thead>
@@ -230,37 +190,105 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.map(customer => (
+              {paginatedCustomers.map(customer => (
                 <tr key={customer.id}>
                   <td>
                     <strong>{customer.fullName || customer.name}</strong><br/>
-                    <small style={{ color: '#aaa' }}>{maskCPF_CNPJ(customer.cpf)}</small>
+                    <small style={{ color: '#a0aec0' }}>{maskCPF_CNPJ(customer.cpf)}</small>
                   </td>
-                  <td>{customer.email || 'N/A'}<br/><small>{customer.phone}</small></td>
+                  <td>{customer.email || 'N/A'}<br/><small>{customer.phone ? maskPhone(customer.phone) : ''}</small></td>
                   <td>{customer.address || 'N/A'}</td>
                   <td><StatusBadge $tag={customer.tag}>{customer.tag}</StatusBadge></td>
                   <td style={{ textAlign: 'right' }}>
-                    <ActionButton onClick={() => handleEdit(customer)} color="#3182ce"><Edit size={18} /></ActionButton>
-                    <ActionButton onClick={() => handleDelete(customer.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
+                    <ActionButton onClick={() => openProfile(customer.id)} color="#38b2ac" title="Ver Perfil CRM"><Eye size={18} /></ActionButton>
+                    <ActionButton onClick={() => handleEdit(customer)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
+                    <ActionButton onClick={() => handleDelete(customer.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
                   </td>
                 </tr>
               ))}
             </tbody>
           </Table>
+          
+          {/* PAGINAÇÃO INFERIOR */}
+          <PaginationContainer>
+            <span>Mostrando {paginatedCustomers.length} de {filteredCustomers.length} clientes</span>
+            <div>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}><ChevronLeft size={16} /> Anterior</button>
+              <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)}>Próxima <ChevronRight size={16} /></button>
+            </div>
+          </PaginationContainer>
         </TableContainer>
       )}
 
+      {/* MODAL DE PERFIL DO CLIENTE (MINI-CRM) */}
+      {viewingClient && (
+        <ModalOverlay>
+          <ModalContent>
+            <ProfileHeader>
+              <div className="avatar">{viewingClient.fullName?.charAt(0)}</div>
+              <div className="info">
+                <h2>{viewingClient.fullName}</h2>
+                <p>{viewingClient.email || 'Sem e-mail'} | {maskPhone(viewingClient.phone || '')}</p>
+                <p style={{marginTop: 4}}>{viewingClient.address}</p>
+              </div>
+              <StatusBadge $tag={viewingClient.tag}>{viewingClient.tag}</StatusBadge>
+            </ProfileHeader>
+
+            <ProfileStats>
+              <div>
+                <span>LTV (Total Gasto)</span>
+                <strong className="green">
+                  {formatCurrency(viewingClient.transactions?.filter(t => t.type === 'entrada' || t.type === 'income').reduce((a,b) => a + (b.amount || 0), 0))}
+                </strong>
+              </div>
+              <div>
+                <span>Total de Interações</span>
+                <strong>{viewingClient.transactions?.length || 0}</strong>
+              </div>
+            </ProfileStats>
+
+            <HistoryList>
+              <h3>Últimas Movimentações</h3>
+              {(!viewingClient.transactions || viewingClient.transactions.length === 0) ? (
+                <p style={{ color: '#a0aec0', fontSize: 14 }}>Nenhum histórico financeiro registado.</p>
+              ) : (
+                <ul>
+                  {viewingClient.transactions.slice(0, 5).map(t => {
+                    const isIncome = t.type === 'entrada' || t.type === 'income';
+                    return (
+                      <li key={t.id}>
+                        <div>
+                          <div className="desc">{t.title || t.description || 'Serviço Prestado'}</div>
+                          <div className="date">{new Date(t.date).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        <div className="val" style={{ color: isIncome ? '#12a454' : '#e53e3e' }}>
+                          {isIncome ? '+ ' : '- '}{formatCurrency(t.amount)}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </HistoryList>
+
+            <ModalActions>
+              <button type="button" className="cancel" onClick={() => setViewingClient(null)}>Fechar Perfil</button>
+              <button type="button" className="save" onClick={() => { setViewingClient(null); handleEdit(viewingClient); }}>Editar Dados</button>
+            </ModalActions>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+
+      {/* MODAL DE EDIÇÃO/CRIAÇÃO (MANTIDO O ORIGINAL) */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
             <h2>{editingId ? 'Editar' : 'Novo'} Cliente</h2>
             <form onSubmit={handleSave}>
-              <FormGroup>
-                <label>Nome Completo</label>
-                <input name="name" value={form.name} onChange={handleChange} autoFocus />
-              </FormGroup>
+              {/* O formulário de criação original continua a funcionar aqui */}
+              <FormGroup><label>Nome Completo</label><input name="name" value={form.name} onChange={handleChange} autoFocus required/></FormGroup>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <FormGroup><label>CPF / CNPJ</label><input name="cpf" value={form.cpf} onChange={handleChange} maxLength={18} /></FormGroup>
+                <FormGroup><label>CPF / CNPJ</label><input name="cpf" value={form.cpf} onChange={handleChange} maxLength={18} required/></FormGroup>
                 <FormGroup><label>Categoria</label>
                   <select name="tag" value={form.tag} onChange={handleChange}>
                     <option value="NOVO">Novo</option>
@@ -276,10 +304,7 @@ export default function Customers() {
               </div>
               <h3 style={{ fontSize: '14px', color: '#718096', margin: '20px 0 10px', borderBottom: '1px solid #eee' }}>Endereço</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px' }}>
-                <FormGroup>
-                  <label>CEP {cepLoading && '...'}</label>
-                  <input name="cep" value={form.cep} onChange={handleChange} onBlur={handleBlurCep} maxLength={9} />
-                </FormGroup>
+                <FormGroup><label>CEP {cepLoading && '...'}</label><input name="cep" value={form.cep} onChange={handleChange} onBlur={handleBlurCep} maxLength={9} /></FormGroup>
                 <FormGroup><label>Rua</label><input name="street" value={form.street} onChange={handleChange} readOnly style={{background:'#f7fafc'}}/></FormGroup>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 60px', gap: '16px' }}>
