@@ -10,7 +10,7 @@ import {
 import {
     Container, Header, SummaryContainer, SummaryCard, TableContainer, Table,
     ModalOverlay, ModalContent, FormGroup, TransactionTypeContainer, RadioBox, ModalActions, ActionButton,
-    Toolbar, FilterGroup, SearchContainer, ButtonGroup, FilterPillsContainer, FilterPill, MonthNavigator
+    SearchContainer, ButtonGroup, FilterPillsContainer, FilterPill, MonthNavigator
 } from './styles';
 
 const MONTHS_BR = [
@@ -207,71 +207,63 @@ export default function Financial() {
 
     return (
         <Container>
-            <Header>
-                <h1>Financeiro</h1>
-                <Toolbar>
-                    <FilterGroup>
-                        {/* NOVO AGRUPAMENTO DE INTERFACE PARA PREVENIR QUEBRA */}
-                        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
-                            <SearchContainer style={{ flex: '1 1 250px', maxWidth: 'none' }}>
-                                <Search size={20} color="#a0aec0" />
-                                <input
-                                    placeholder="Buscar por descrição..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </SearchContainer>
-
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                {/* NAVEGADOR CRONOLÓGICO */}
-                                <MonthNavigator style={{ 
-                                    opacity: showAllTime ? 0.4 : 1, 
-                                    pointerEvents: showAllTime ? 'none' : 'auto' 
-                                }}>
-                                    <button onClick={handlePreviousMonth} title="Mês Anterior">
-                                        <ChevronLeft size={20} />
-                                    </button>
-                                    <span>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
-                                    <button onClick={handleNextMonth} title="Próximo Mês">
-                                        <ChevronRight size={20} />
-                                    </button>
-                                </MonthNavigator>
-
-                                {/* BOTÃO OPcional "VER TUDO" */}
-                                <button 
-                                    onClick={() => setShowAllTime(!showAllTime)}
-                                    style={{
-                                        height: 48, padding: '0 16px', borderRadius: 8, border: '1px solid',
-                                        background: showAllTime ? '#ebf8ff' : 'white',
-                                        color: showAllTime ? '#3182ce' : '#718096',
-                                        borderColor: showAllTime ? '#3182ce' : '#e2e8f0',
-                                        fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
-                                    {showAllTime ? 'Filtrar por Mês' : 'Todo o Histórico'}
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <FilterPillsContainer>
-                            {categories.map(cat => (
-                                <FilterPill 
-                                    key={cat} 
-                                    $active={filterCategory === cat}
-                                    onClick={() => setFilterCategory(cat)}
-                                >
-                                    {cat}
-                                </FilterPill>
-                            ))}
-                        </FilterPillsContainer>
-                    </FilterGroup>
-
+            <Header style={{ marginBottom: 32 }}>
+                
+                {/* LINHA 1: TÍTULO E BOTÕES DE AÇÃO (Blindados) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+                    <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
                     <ButtonGroup>
                         <button className="secondary" onClick={handleExportPDF}><FileText size={18} /> Exportar PDF</button>
                         <button className="primary" onClick={handleOpenNew}><Plus size={20} /> Nova Transação</button>
                     </ButtonGroup>
-                </Toolbar>
+                </div>
+
+                {/* LINHA 2: BARRA DE BUSCA E NAVEGADOR DE TEMPO */}
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%', marginBottom: 16 }}>
+                    <SearchContainer style={{ flex: '1 1 250px', maxWidth: 'none', margin: 0 }}>
+                        <Search size={20} color="#a0aec0" />
+                        <input
+                            placeholder="Buscar por descrição..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </SearchContainer>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <MonthNavigator style={{ opacity: showAllTime ? 0.4 : 1, pointerEvents: showAllTime ? 'none' : 'auto', margin: 0 }}>
+                            <button onClick={handlePreviousMonth} title="Mês Anterior"><ChevronLeft size={20} /></button>
+                            <span>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
+                            <button onClick={handleNextMonth} title="Próximo Mês"><ChevronRight size={20} /></button>
+                        </MonthNavigator>
+
+                        <button 
+                            onClick={() => setShowAllTime(!showAllTime)}
+                            style={{
+                                height: 48, padding: '0 16px', borderRadius: 8, border: '1px solid',
+                                background: showAllTime ? '#ebf8ff' : 'white',
+                                color: showAllTime ? '#3182ce' : '#718096',
+                                borderColor: showAllTime ? '#3182ce' : '#e2e8f0',
+                                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {showAllTime ? 'Filtrar por Mês' : 'Todo o Histórico'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* LINHA 3: PÍLULAS DE CATEGORIA */}
+                <FilterPillsContainer>
+                    {categories.map(cat => (
+                        <FilterPill 
+                            key={cat} 
+                            $active={filterCategory === cat}
+                            onClick={() => setFilterCategory(cat)}
+                        >
+                            {cat}
+                        </FilterPill>
+                    ))}
+                </FilterPillsContainer>
             </Header>
 
             <SummaryContainer>
