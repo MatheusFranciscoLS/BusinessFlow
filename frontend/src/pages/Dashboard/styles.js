@@ -96,3 +96,26 @@ export const ChartContainer = styled.div`
     margin-bottom: 20px;
   }
 `;
+
+export const ChartsRow = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+
+  /* Quando for tablet/mobile, muda para 1 coluna empilhada! */
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const BottomRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;

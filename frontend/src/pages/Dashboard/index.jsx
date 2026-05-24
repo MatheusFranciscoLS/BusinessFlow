@@ -8,8 +8,9 @@ import {
 import { 
   DollarSign, ArrowUpCircle, ArrowDownCircle, Trophy, TrendingUp, TrendingDown, AlertTriangle 
 } from 'lucide-react';
-import { Container, Header, CardsContainer, Card, ChartContainer } from './styles';
+import { Container, Header, CardsContainer, Card, ChartContainer, ChartsRow, BottomRow } from './styles';
 import styled, { keyframes } from "styled-components";
+
 
 // Animação Skeleton
 const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
@@ -136,7 +137,7 @@ export default function Dashboard() {
       </CardsContainer>
 
       {/* LINHA 1: FLUXO DE CAIXA E DISTRIBUIÇÃO */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: 24 }}>
+      <ChartsRow>
         <ChartContainer>
           <h3>Fluxo de Caixa Anual</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -170,10 +171,10 @@ export default function Dashboard() {
             </ResponsiveContainer>
           )}
         </ChartContainer>
-      </div>
+      </ChartsRow>
 
       {/* LINHA 2: TOP CLIENTES E RADAR DE INADIMPLÊNCIA */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: 24 }}>
+      <BottomRow>
         
         {/* TOP CLIENTES */}
         <ChartContainer>
@@ -218,7 +219,7 @@ export default function Dashboard() {
           )}
         </ChartContainer>
 
-      </div>
+     </BottomRow>
     </Container>
   );
 }

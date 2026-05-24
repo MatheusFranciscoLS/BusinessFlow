@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom'; 
 import { useAuth } from '../../contexts/AuthContext'; 
-import { LayoutDashboard, Users, DollarSign, LogOut, Briefcase, Calendar, Menu, X } from 'lucide-react';
+import api from '../../services/api'; // 🔥 IMPORTAÇÃO CORRIGIDA AQUI
+import { LayoutDashboard, Users, DollarSign, LogOut, Briefcase, Calendar, Menu, X, Settings, CircleUser } from 'lucide-react';
 import { 
   Container, SidebarContainer, MainContent, Logo, NavMenu, 
   StyledNavLink, LogoutButton, MobileHeader, HamburgerButton, Overlay 
@@ -36,9 +37,21 @@ export default function Layout() {
             Business<span>Flow</span>
           </Logo>
           
-          <div style={{ marginBottom: 40, color: '#a0aec0', fontSize: 13, fontWeight: 500 }}>
-            Olá, <strong style={{ color: 'white' }}>{user?.name || 'Gestor'}</strong>
-          </div>
+          {/* 🔥 BLOCO DO AVATAR CORRIGIDO COM O FECHAMENTO DA DIV 🔥 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#2d3748', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #3182ce' }}>
+              {user?.avatarUrl ? (
+                <img src={`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <CircleUser size={38} color="#a0aec0" strokeWidth={1.5} />
+              )}
+            </div>
+            <div style={{ color: '#a0aec0', fontSize: 13, fontWeight: 500 }}>
+              Olá, <br />
+              <strong style={{ color: 'white', fontSize: 14 }}>{user?.name || 'Gestor'}</strong>
+            </div>
+          </div> 
+          {/* FIM DO BLOCO DO AVATAR */}
 
           <NavMenu>
             <StyledNavLink to="/app" end onClick={closeMenu}> 
@@ -59,6 +72,10 @@ export default function Layout() {
 
             <StyledNavLink to="/app/financeiro" onClick={closeMenu}>
               <DollarSign size={20} /> Financeiro
+            </StyledNavLink>
+
+            <StyledNavLink to="/app/perfil" onClick={closeMenu}>
+              <Settings size={20} /> Configurações
             </StyledNavLink>
           </NavMenu>
         </div>
