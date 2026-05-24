@@ -24,9 +24,10 @@ export default function Financial() {
     const [editingId, setEditingId] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    // --- MÁQUINA DO TEMPO (FILTROS TEMPORAIS) ---
-    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1 - 12
+    // --- MÁQUINA DO TEMPO ---
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+    const [showAllTime, setShowAllTime] = useState(false); // NOVO ESTADO OPCIONAL
 
     // --- OUTROS FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -43,10 +44,10 @@ export default function Financial() {
     async function loadTransactions() {
         try {
             setLoading(true);
-            // Faz a chamada enviando o mês e ano selecionados
-            const response = await api.get('/transactions', {
-                params: { month: currentMonth, year: currentYear }
-            });
+            // Se showAllTime for true, envia os parâmetros vazios (o Back-end devolve tudo)
+            const params = showAllTime ? {} : { month: currentMonth, year: currentYear };
+            
+            const response = await api.get('/transactions', { params });
             const data = response.data;
             setTransactions(data);
 
@@ -60,12 +61,11 @@ export default function Financial() {
         }
     }
 
-    // Recarrega automaticamente as transações sempre que o utilizador altera o mês ou o ano
+    // Recarrega sempre que o mês, ano ou o botão "Ver Tudo" mudarem
     useEffect(() => { 
         loadTransactions(); 
-    }, [currentMonth, currentYear]);
+    }, [currentMonth, currentYear, showAllTime]);
 
-    // Funções para avançar e recuar na cronologia
     function handlePreviousMonth() {
         if (currentMonth === 1) {
             setCurrentMonth(12);
@@ -114,7 +114,6 @@ export default function Financial() {
     function formatDateDisplay(dateString) {
         if (!dateString) return '-';
         const d = new Date(dateString);
-        // Corrige fuso horário local na exibição
         const day = String(d.getUTCDate()).padStart(2, '0');
         const month = String(d.getUTCMonth() + 1).padStart(2, '0');
         const year = d.getUTCFullYear();
@@ -124,7 +123,11 @@ export default function Financial() {
     function handleExportPDF() {
         const doc = new jsPDF();
         doc.setFontSize(14);
-        doc.text(`Relatório Financeiro - ${MONTHS_BR[currentMonth - 1]} / ${currentYear}`, 14, 22);
+        const reportTitle = showAllTime 
+            ? "Relatório Financeiro - Todo o Histórico" 
+            : `Relatório Financeiro - ${MONTHS_BR[currentMonth - 1]} / ${currentYear}`;
+            
+        doc.text(reportTitle, 14, 22);
         doc.setFontSize(10);
         doc.text(`Balanço do Período: ${formatCurrency(filteredSummary.total)}`, 14, 28);
 
@@ -146,7 +149,7 @@ export default function Financial() {
             headStyles: { fillColor: [49, 130, 206] }
         });
 
-        doc.save(`financeiro_${MONTHS_BR[currentMonth - 1]}_${currentYear}.pdf`);
+        doc.save(`financeiro.pdf`);
         toast.success("PDF gerado!");
     }
 
@@ -186,7 +189,6 @@ export default function Financial() {
 
     async function handleSave(e) {
         e.preventDefault();
-        // Mapeia para o formato que o back-end espera receber
         const apiType = type === 'income' ? 'entrada' : 'saida';
         const payload = { title, amount: parseFloat(price), category, type: apiType, date: new Date(date).toISOString() };
         const toastId = toast.loading('A guardar...');
@@ -222,7 +224,10 @@ export default function Financial() {
                             </SearchContainer>
 
                             {/* NAVEGADOR CRONOLÓGICO */}
-                            <MonthNavigator>
+                            <MonthNavigator style={{ 
+                                opacity: showAllTime ? 0.4 : 1, 
+                                pointerEvents: showAllTime ? 'none' : 'auto' 
+                            }}>
                                 <button onClick={handlePreviousMonth} title="Mês Anterior">
                                     <ChevronLeft size={20} />
                                 </button>
@@ -231,6 +236,21 @@ export default function Financial() {
                                     <ChevronRight size={20} />
                                 </button>
                             </MonthNavigator>
+
+                            {/* BOTÃO OPcional "VER TUDO" */}
+                            <button 
+                                onClick={() => setShowAllTime(!showAllTime)}
+                                style={{
+                                    height: 48, padding: '0 16px', borderRadius: 8, border: '1px solid',
+                                    background: showAllTime ? '#ebf8ff' : 'white',
+                                    color: showAllTime ? '#3182ce' : '#718096',
+                                    borderColor: showAllTime ? '#3182ce' : '#e2e8f0',
+                                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {showAllTime ? 'Filtrar por Mês' : 'Todo o Histórico'}
+                            </button>
                         </div>
                         
                         <FilterPillsContainer>
@@ -272,9 +292,9 @@ export default function Financial() {
             </SummaryContainer>
 
             {loading ? (
-                <p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>A carregar histórico do período...</p>
+                <p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>A carregar histórico...</p>
             ) : filteredTransactions.length === 0 ? (
-                <p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>Nenhuma movimentação registada neste mês.</p>
+                <p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>Nenhuma movimentação encontrada.</p>
             ) : (
                 <TableContainer>
                     <Table>
