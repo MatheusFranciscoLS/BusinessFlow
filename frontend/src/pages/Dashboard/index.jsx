@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import useSWR from 'swr'; 
+import React from 'react';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
   PieChart, Pie, Cell 
@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Container, Header, CardsContainer, Card, ChartContainer, ChartsRow, BottomRow } from './styles';
 import styled, { keyframes } from "styled-components";
-
 
 // Animação Skeleton
 const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
@@ -24,55 +23,42 @@ const SkeletonContainer = styled.div`display: grid; grid-template-columns: repea
 // Paleta de Cores Premium para o Gráfico de Tarte
 const PIE_COLORS = ['#3182ce', '#38b2ac', '#ecc94b', '#ed8936', '#9f7aea', '#e53e3e'];
 
+const fetcher = (url) => api.get(url).then((res) => res.data);
+
 export default function Dashboard() {
-  const [summary, setSummary] = useState({ 
-    entradas: 0, saidas: 0, saldo: 0, growthEntradas: 0, growthSaidas: 0, 
-    distribuicao: [], inadimplentes: [] 
-  });
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [topClients, setTopClients] = useState([]);
-  const [recentTransactions, setRecentTransactions] = useState([]); 
-  const [loading, setLoading] = useState(true);
+  // 🔥 A MÁGICA DO SWR: Ele cria o estado, faz a requisição e guarda em cache, tudo numa linha!
+  const { data: summary, error: errorSummary } = useSWR('/dashboard/summary', fetcher);
+  const { data: rawMonthlyData, error: errorMonthly } = useSWR('/dashboard/monthly', fetcher);
+  const { data: topClients, error: errorTop } = useSWR('/dashboard/top-clients', fetcher);
+  const { data: recentTransactions, error: errorRecent } = useSWR('/dashboard/recent', fetcher);
 
-  useEffect(() => {
-    async function loadDashboardData() {
-      const token = localStorage.getItem('@BusinessFlow:token');
-      if (!token) return; 
+  // O sistema entende que está a carregar (loading) se os dados ainda não existirem
+  const isLoading = !summary || !rawMonthlyData || !topClients || !recentTransactions;
+  const hasError = errorSummary || errorMonthly || errorTop || errorRecent;
 
-      try {
-        setLoading(true);
-        const [summaryRes, monthlyRes, topClientsRes, recentRes] = await Promise.all([
-          api.get('/dashboard/summary'),
-          api.get('/dashboard/monthly'),
-          api.get('/dashboard/top-clients'),
-          api.get('/dashboard/recent') 
-        ]);
+  if (hasError) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados.</div>;
 
-        setSummary(summaryRes.data);
-        
-        const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-        const formattedChart = monthlyRes.data.map((item, index) => ({
-          name: months[index],
-          Entradas: item.entradas,
-          Saídas: item.saidas
-        }));
-        setMonthlyData(formattedChart);
-        setTopClients(topClientsRes.data);
-        setRecentTransactions(recentRes.data); 
+  if (isLoading) {
+    return (
+      <SkeletonContainer>
+        <SkeletonCard height="140px" /><SkeletonCard height="140px" /><SkeletonCard height="140px" />
+        <div style={{ gridColumn: "1 / -1" }}><SkeletonCard height="350px" /></div>
+      </SkeletonContainer>
+    );
+  }
 
-      } catch (error) {
-        if (error.response?.status !== 401) toast.error("Erro ao carregar dados de BI.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadDashboardData();
-  }, []);
+  // Formata os dados do gráfico apenas quando eles chegarem
+  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const monthlyData = rawMonthlyData.map((item, index) => ({
+    name: months[index],
+    Entradas: item.entradas,
+    Saídas: item.saidas
+  }));
 
   function formatCurrency(value) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   }
-
+  
   // Componente de Badge Dinâmico para Crescimento
   const GrowthBadge = ({ value }) => {
     const isPositive = value >= 0;
@@ -85,15 +71,6 @@ export default function Dashboard() {
       </div>
     );
   };
-
-  if (loading) {
-    return (
-      <SkeletonContainer>
-        <SkeletonCard height="140px" /><SkeletonCard height="140px" /><SkeletonCard height="140px" />
-        <div style={{ gridColumn: "1 / -1" }}><SkeletonCard height="350px" /></div>
-      </SkeletonContainer>
-    );
-  }
 
   function formatPhone(phone) {
     if (!phone) return 'Sem telefone';
@@ -125,14 +102,12 @@ export default function Dashboard() {
           </header>
           <strong>{formatCurrency(summary.saidas)}</strong>
         </Card>
-<Card $highlight={true}>
+        <Card $highlight={true}>
           <header>
             <span>Saldo Líquido</span>
             <DollarSign size={24} color="white" />
           </header>
-          <strong>
-            {formatCurrency(summary.saldo)}
-          </strong>
+          <strong>{formatCurrency(summary.saldo)}</strong>
         </Card>
       </CardsContainer>
 
@@ -175,8 +150,6 @@ export default function Dashboard() {
 
       {/* LINHA 2: TOP CLIENTES E RADAR DE INADIMPLÊNCIA */}
       <BottomRow>
-        
-        {/* TOP CLIENTES */}
         <ChartContainer>
           <h3>Top Clientes (Receita)</h3>
           {topClients.length === 0 ? (
@@ -198,7 +171,6 @@ export default function Dashboard() {
           )}
         </ChartContainer>
 
-        {/* RADAR DE INADIMPLÊNCIA */}
         <ChartContainer style={{ borderLeft: '4px solid #e53e3e' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e53e3e' }}>
             <AlertTriangle size={20} /> Radar de Inadimplência
@@ -211,16 +183,17 @@ export default function Dashboard() {
                 <li key={index} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', background: '#fff5f5', padding: '12px', borderRadius: '8px' }}>
                   <strong style={{ color: '#2d3748', fontSize: 14 }}>{item.fullName}</strong>
                   <span style={{ color: '#e53e3e', fontSize: 12, fontWeight: 600 }}>
-    {formatPhone(item.phone)}
-  </span>
+                    {formatPhone(item.phone)}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
         </ChartContainer>
+      </BottomRow>
 
-     </BottomRow>
-     <ChartContainer>
+      {/* LINHA 3: ÚLTIMAS MOVIMENTAÇÕES */}
+      <ChartContainer>
         <h3>Últimas Movimentações</h3>
         {recentTransactions?.length === 0 ? (
           <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma transação recente.</p>
