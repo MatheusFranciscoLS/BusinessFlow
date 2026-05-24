@@ -1,5 +1,5 @@
 import useSWR from 'swr'; 
-import React from 'react';
+import React, { useState } from 'react';
 import api from '../../services/api';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
@@ -20,19 +20,34 @@ const SkeletonCard = styled.div`
 `;
 const SkeletonContainer = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; width: 100%; padding: 20px;`;
 
+// 🔥 NOVO: Estilo para os Filtros de Período
+const FilterContainer = styled.div`
+  display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px;
+  button {
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;
+    border: 1px solid #e2e8f0; background: white; color: #4a5568;
+    &.active { background: #3182ce; color: white; border-color: #3182ce; }
+    &:hover:not(.active) { background: #f7fafc; }
+  }
+  /* Esconde a barra de scroll no Windows/Mac mas permite deslizar no celular */
+  &::-webkit-scrollbar { display: none; }
+`;
+
 // Paleta de Cores Premium para o Gráfico de Tarte
 const PIE_COLORS = ['#3182ce', '#38b2ac', '#ecc94b', '#ed8936', '#9f7aea', '#e53e3e'];
 
 const fetcher = (url) => api.get(url).then((res) => res.data);
 
 export default function Dashboard() {
-  // 🔥 A MÁGICA DO SWR: Ele cria o estado, faz a requisição e guarda em cache, tudo numa linha!
-  const { data: summary, error: errorSummary } = useSWR('/dashboard/summary', fetcher);
-  const { data: rawMonthlyData, error: errorMonthly } = useSWR('/dashboard/monthly', fetcher);
-  const { data: topClients, error: errorTop } = useSWR('/dashboard/top-clients', fetcher);
-  const { data: recentTransactions, error: errorRecent } = useSWR('/dashboard/recent', fetcher);
+  // 🔥 NOVO: O Estado que controla a "Máquina do Tempo" do Dashboard
+  const [period, setPeriod] = useState('mes'); 
 
-  // O sistema entende que está a carregar (loading) se os dados ainda não existirem
+  // 🔥 O SWR agora escuta a variável "period". Se ela mudar, ele refaz a busca e faz cache na hora!
+  const { data: summary, error: errorSummary } = useSWR(`/dashboard/summary?period=${period}`, fetcher);
+  const { data: rawMonthlyData, error: errorMonthly } = useSWR(`/dashboard/monthly?period=${period}`, fetcher);
+  const { data: topClients, error: errorTop } = useSWR(`/dashboard/top-clients?period=${period}`, fetcher);
+  const { data: recentTransactions, error: errorRecent } = useSWR(`/dashboard/recent?period=${period}`, fetcher);
+
   const isLoading = !summary || !rawMonthlyData || !topClients || !recentTransactions;
   const hasError = errorSummary || errorMonthly || errorTop || errorRecent;
 
@@ -40,14 +55,21 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <SkeletonContainer>
-        <SkeletonCard height="140px" /><SkeletonCard height="140px" /><SkeletonCard height="140px" />
-        <div style={{ gridColumn: "1 / -1" }}><SkeletonCard height="350px" /></div>
-      </SkeletonContainer>
+      <Container>
+        <Header>
+          <h1>Business Intelligence</h1>
+        </Header>
+        <FilterContainer>
+          <button className="active">A carregar filtros...</button>
+        </FilterContainer>
+        <SkeletonContainer>
+          <SkeletonCard height="140px" /><SkeletonCard height="140px" /><SkeletonCard height="140px" />
+          <div style={{ gridColumn: "1 / -1" }}><SkeletonCard height="350px" /></div>
+        </SkeletonContainer>
+      </Container>
     );
   }
 
-  // Formata os dados do gráfico apenas quando eles chegarem
   const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
   const monthlyData = rawMonthlyData.map((item, index) => ({
     name: months[index],
@@ -59,7 +81,6 @@ export default function Dashboard() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   }
   
-  // Componente de Badge Dinâmico para Crescimento
   const GrowthBadge = ({ value }) => {
     const isPositive = value >= 0;
     return (
@@ -74,7 +95,7 @@ export default function Dashboard() {
 
   function formatPhone(phone) {
     if (!phone) return 'Sem telefone';
-    const p = phone.replace(/\D/g, ''); // Limpa tudo que não é número
+    const p = phone.replace(/\D/g, ''); 
     if (p.length === 11) return p.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
     if (p.length === 10) return p.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
     return phone;
@@ -86,6 +107,15 @@ export default function Dashboard() {
         <h1>Business Intelligence</h1>
         <p>Análise avançada de crescimento e fluxo de caixa</p>
       </Header>
+
+      {/* 🔥 OS BOTÕES DE FILTRO */}
+      <FilterContainer>
+        <button className={period === 'hoje' ? 'active' : ''} onClick={() => setPeriod('hoje')}>Hoje</button>
+        <button className={period === '7dias' ? 'active' : ''} onClick={() => setPeriod('7dias')}>Últimos 7 Dias</button>
+        <button className={period === 'mes' ? 'active' : ''} onClick={() => setPeriod('mes')}>Este Mês</button>
+        <button className={period === 'ano' ? 'active' : ''} onClick={() => setPeriod('ano')}>Este Ano</button>
+        <button className={period === 'tudo' ? 'active' : ''} onClick={() => setPeriod('tudo')}>Todo o Histórico</button>
+      </FilterContainer>
 
       <CardsContainer>
         <Card>
@@ -111,7 +141,6 @@ export default function Dashboard() {
         </Card>
       </CardsContainer>
 
-      {/* LINHA 1: FLUXO DE CAIXA E DISTRIBUIÇÃO */}
       <ChartsRow>
         <ChartContainer>
           <h3>Fluxo de Caixa Anual</h3>
@@ -131,7 +160,7 @@ export default function Dashboard() {
         <ChartContainer>
           <h3>Origem de Receita</h3>
           {summary.distribuicao?.length === 0 ? (
-            <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma entrada registada no mês.</p>
+            <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma entrada registada no período.</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -148,12 +177,11 @@ export default function Dashboard() {
         </ChartContainer>
       </ChartsRow>
 
-      {/* LINHA 2: TOP CLIENTES E RADAR DE INADIMPLÊNCIA */}
       <BottomRow>
         <ChartContainer>
           <h3>Top Clientes (Receita)</h3>
           {topClients.length === 0 ? (
-            <p style={{ color: '#718096', marginTop: 10 }}>Nenhum dado ainda.</p>
+            <p style={{ color: '#718096', marginTop: 10 }}>Nenhum dado no período.</p>
           ) : (
             <ul style={{ listStyle: 'none', marginTop: '16px' }}>
               {topClients.map((item, index) => (
@@ -176,7 +204,7 @@ export default function Dashboard() {
             <AlertTriangle size={20} /> Radar de Inadimplência
           </h3>
           {summary.inadimplentes?.length === 0 ? (
-            <p style={{ color: '#48bb78', marginTop: 10, fontWeight: 600 }}>Zero clientes em atraso! Excelente!</p>
+            <p style={{ color: '#48bb78', marginTop: 10, fontWeight: 600 }}>Zero clientes em atraso!</p>
           ) : (
             <ul style={{ listStyle: 'none', marginTop: '16px' }}>
               {summary.inadimplentes.map((item, index) => (
@@ -192,11 +220,10 @@ export default function Dashboard() {
         </ChartContainer>
       </BottomRow>
 
-      {/* LINHA 3: ÚLTIMAS MOVIMENTAÇÕES */}
       <ChartContainer>
         <h3>Últimas Movimentações</h3>
         {recentTransactions?.length === 0 ? (
-          <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma transação recente.</p>
+          <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma transação no período.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
