@@ -86,52 +86,97 @@ export const ButtonGroup = styled.div`
       &:hover {
         background: #2c5282;
         transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
       }
     }
   }
 `;
 
-export const TableContainer = styled.div`
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-  overflow-x: auto;
-  border: 1px solid #edf2f7;
+// --- O SEU LAYOUT DE CARDS COM PADRÃO PREMIUM ---
+export const GridContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
   margin-top: 24px;
-  &::-webkit-scrollbar {
-    height: 6px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
-    border-radius: 4px;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
   }
 `;
 
-export const Table = styled.table`
+export const ServiceCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #edf2f7;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+export const ImageContainer = styled.div`
   width: 100%;
-  border-collapse: collapse;
-  min-width: 600px;
-  th,
-  td {
-    padding: 16px 20px;
-    text-align: left;
-    border-bottom: 1px solid #edf2f7;
+  height: 160px;
+  background: #f7fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #cbd5e0;
+  overflow: hidden;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-  th {
-    font-weight: 600;
-    color: #a0aec0;
-    font-size: 12px;
+`;
+
+export const CardContent = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  .category {
+    font-size: 11px;
+    font-weight: 700;
+    color: #3182ce;
     text-transform: uppercase;
-    background: #f8fafc;
     letter-spacing: 0.5px;
+    margin-bottom: 8px;
   }
-  td {
-    color: #4a5568;
-    font-size: 14px;
+  h3 {
+    font-size: 16px;
+    color: #2d3748;
+    font-weight: 700;
+    margin-bottom: auto;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
-  tr:hover td {
-    background: #f7fafc;
+`;
+
+export const CardFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #edf2f7;
+  .price {
+    font-size: 18px;
+    font-weight: 800;
+    color: #12a454;
   }
+`;
+
+export const Actions = styled.div`
+  display: flex;
+  gap: 8px;
 `;
 
 export const ActionButton = styled.button`
@@ -139,15 +184,39 @@ export const ActionButton = styled.button`
   border: none;
   color: ${(props) => props.color || "#a0aec0"};
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   &:hover {
-    background: ${(props) => (props.color ? `${props.color}15` : "#edf2f7")};
-    transform: scale(1.1);
+    background: ${(props) => props.$bgHover || "#edf2f7"};
+    color: ${(props) => props.$hoverColor || "#1a202c"};
   }
 `;
 
+export const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #a0aec0;
+  gap: 12px;
+  margin-top: 40px;
+  p {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+  }
+  small {
+    font-size: 13px;
+  }
+`;
+
+// --- MODAL ---
 export const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -165,17 +234,22 @@ export const ModalOverlay = styled.div`
 
 export const ModalContent = styled.div`
   width: 100%;
-  max-width: 450px;
+  max-width: 500px;
   background: white;
   padding: 32px;
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: ${fadeIn} 0.3s ease;
+  max-height: 90vh;
+  overflow-y: auto;
   h2 {
     color: #1a202c;
-    font-size: 22px;
+    font-size: 24px;
     margin-bottom: 24px;
     font-weight: 700;
+  }
+  @media (max-width: 768px) {
+    padding: 24px;
   }
 `;
 
@@ -195,7 +269,7 @@ export const FormGroup = styled.div`
     padding: 12px 16px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
-    font-size: 14px;
+    font-size: 15px;
     transition: all 0.2s;
     &:focus {
       border-color: #3182ce;
@@ -207,16 +281,18 @@ export const FormGroup = styled.div`
 
 export const ModalActions = styled.div`
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 32px;
   button {
-    flex: 1;
+    padding: 0 24px;
     height: 48px;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     border: none;
+    flex: 1;
     &.cancel {
       background: #edf2f7;
       color: #4a5568;
@@ -227,61 +303,12 @@ export const ModalActions = styled.div`
     &.save {
       background: #3182ce;
       color: white;
+      box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
       &:hover {
         background: #2c5282;
         transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
       }
     }
-  }
-`;
-export const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-  color: #a0aec0;
-  gap: 12px;
-  p {
-    font-size: 16px;
-    font-weight: 600;
-    color: #4a5568;
-  }
-  small {
-    font-size: 13px;
-  }
-`;
-
-export const StatusBadge = styled.span`
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: #f7fafc;
-  color: #4a5568;
-`;
-
-export const NewButton = styled.button`
-  height: 48px;
-  padding: 0 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  background: #3182ce;
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
-
-  &:hover {
-    background: #2c5282;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
   }
 `;

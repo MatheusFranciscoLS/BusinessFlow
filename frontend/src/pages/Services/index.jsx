@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit, Trash2, Image as ImageIcon, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Image as ImageIcon, Package, Ghost } from 'lucide-react';
 import { 
-  Container, Header, Toolbar, SearchContainer, NewButton, GridContainer, 
+  Container, Header, Toolbar, SearchContainer, ButtonGroup, GridContainer, 
   ServiceCard, ImageContainer, CardContent, CardFooter, Actions, ActionButton,
-  ModalOverlay, ModalContent, FormGroup, ModalActions 
+  ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState 
 } from './styles';
 
 export default function Services() {
@@ -35,7 +35,6 @@ export default function Services() {
 
   useEffect(() => { loadServices(); }, []);
 
-  // --- FILTRO OTIMIZADO ---
   const filteredServices = useMemo(() => {
     return services.filter(s => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -115,21 +114,32 @@ export default function Services() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </SearchContainer>
-          <NewButton onClick={handleOpenNew}>
-            <Plus size={20} /> Novo Item
-          </NewButton>
+          <ButtonGroup>
+            <button className="primary" onClick={handleOpenNew}>
+              <Plus size={20} /> Novo Item
+            </button>
+          </ButtonGroup>
         </Toolbar>
       </Header>
 
       {loading ? (
-        <p style={{textAlign: 'center', marginTop: 40}}>A carregar catálogo...</p>
+        <EmptyState><p>A carregar catálogo...</p></EmptyState>
+      ) : services.length === 0 ? (
+        <EmptyState>
+          <Ghost size={48} />
+          <p>Nenhum serviço ou produto cadastrado.</p>
+          <small>Clique no botão "Novo Item" para começar.</small>
+        </EmptyState>
       ) : filteredServices.length === 0 ? (
-        <p style={{textAlign: 'center', marginTop: 40, color: '#718096'}}>Nenhum serviço ou produto encontrado.</p>
+        <EmptyState>
+          <Search size={48} />
+          <p>Nenhum resultado para "{searchTerm}"</p>
+          <small>Tente buscar por outro termo.</small>
+        </EmptyState>
       ) : (
         <GridContainer>
           {filteredServices.map(service => (
             <ServiceCard key={service.id}>
-              {/* Área da Imagem */}
               <ImageContainer>
                 {service.images && service.images.length > 0 ? (
                   <img src={service.images[0].url} alt={service.name} />
@@ -138,7 +148,6 @@ export default function Services() {
                 )}
               </ImageContainer>
 
-              {/* Conteúdo */}
               <CardContent>
                 <span className="category">{service.category || 'Geral'}</span>
                 <h3 title={service.name}>{service.name}</h3>
@@ -151,6 +160,7 @@ export default function Services() {
                       color="#718096" 
                       $bgHover="#ebf8ff"
                       $hoverColor="#3182ce"
+                      title="Editar"
                     >
                       <Edit size={18} />
                     </ActionButton>
@@ -159,6 +169,7 @@ export default function Services() {
                       color="#718096" 
                       $bgHover="#fff5f5"
                       $hoverColor="#e53e3e"
+                      title="Excluir"
                     >
                       <Trash2 size={18} />
                     </ActionButton>
@@ -194,7 +205,7 @@ export default function Services() {
                 </FormGroup>
                 <FormGroup>
                   <label>Preço (R$)</label>
-                  <input type="number" value={price} onChange={e => setPrice(e.target.value)} required />
+                  <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
                 </FormGroup>
               </div>
               <FormGroup>
