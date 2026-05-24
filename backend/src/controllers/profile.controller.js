@@ -1,7 +1,7 @@
 import * as profileService from "../services/profile.service.js";
 import fs from "fs";
+import path from "path";
 
-// 🛡️ VACINA 1: Se a pasta de uploads não existir no Render, nós criamos agora!
 const avatarFolder = path.resolve("uploads/avatars");
 if (!fs.existsSync(avatarFolder)) {
   fs.mkdirSync(avatarFolder, { recursive: true });
