@@ -263,3 +263,25 @@ export const StatusBadge = styled.span`
   background: #f7fafc;
   color: #4a5568;
 `;
+
+export const NewButton = styled.button`
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: #3182ce;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
+
+  &:hover {
+    background: #2c5282;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
+  }
+`;
