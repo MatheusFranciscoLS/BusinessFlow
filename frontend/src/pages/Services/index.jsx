@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { Plus, Search, Edit, Trash2, Image as ImageIcon, Package, Ghost } from 'lucide-react';
@@ -7,35 +8,34 @@ import {
   ServiceCard, ImageContainer, CardContent, CardFooter, Actions, ActionButton,
   ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState 
 } from './styles';
+import styled, { keyframes } from 'styled-components';
+
+// 🔥 Animação Shimmer em Cartões
+const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
+const SkeletonCard = styled.div`
+  height: 280px; width: 100%; border-radius: 16px; border: 1px solid #edf2f7;
+  background: #f0f0f0; background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
+  background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;
+`;
+
+const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Services() {
-  const [services, setServices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
   
+  // 🔥 SWR: Otimização de Performance
+  const { data: services, error, mutate } = useSWR('/products', fetcher);
+
   // Form Data
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState(null);
 
-  async function loadServices() {
-    try {
-      setLoading(true);
-      const response = await api.get('/products');
-      setServices(response.data);
-    } catch (error) {
-      toast.error("Erro ao carregar os serviços/produtos.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { loadServices(); }, []);
-
   const filteredServices = useMemo(() => {
+    if (!services) return [];
     return services.filter(s => 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.category?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -47,17 +47,12 @@ export default function Services() {
   }
 
   function handleOpenNew() {
-    setEditingId(null);
-    setName(''); setCategory(''); setPrice(''); setImage(null);
+    setEditingId(null); setName(''); setCategory(''); setPrice(''); setImage(null);
     setIsModalOpen(true);
   }
 
   function handleEdit(service) {
-    setEditingId(service.id);
-    setName(service.name);
-    setCategory(service.category || '');
-    setPrice(service.price);
-    setImage(null); 
+    setEditingId(service.id); setName(service.name); setCategory(service.category || ''); setPrice(service.price); setImage(null); 
     setIsModalOpen(true);
   }
 
@@ -65,41 +60,30 @@ export default function Services() {
     if (window.confirm("Excluir este item?")) {
       try {
         await api.delete(`/products/${id}`);
-        setServices(services.filter(s => s.id !== id));
+        mutate(); // 🔥 Recarrega instantaneamente na interface
         toast.success("Item removido.");
-      } catch { 
-        toast.error("Erro ao excluir o serviço."); 
-      }
+      } catch { toast.error("Erro ao excluir o serviço."); }
     }
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    
     const formData = new FormData();
-    formData.append('name', name);
-    formData.append('category', category);
-    formData.append('price', price);
-    formData.append('stock', 100); 
+    formData.append('name', name); formData.append('category', category); formData.append('price', price); formData.append('stock', 100); 
     if (image) formData.append('images', image);
 
     const loadingToast = toast.loading('Salvando...');
-
     try {
-      if (editingId) {
-        await api.put(`/products/${editingId}`, formData);
-        toast.success("Atualizado com sucesso!", { id: loadingToast });
-      } else {
-        await api.post('/products', formData);
-        toast.success("Criado com sucesso!", { id: loadingToast });
-      }
+      if (editingId) await api.put(`/products/${editingId}`, formData);
+      else await api.post('/products', formData);
       
       setIsModalOpen(false);
-      loadServices();
-    } catch (error) {
-      toast.error("Erro ao salvar.", { id: loadingToast });
-    }
+      mutate(); // 🔥 Puxa o produto novo na hora!
+      toast.success("Salvo com sucesso!", { id: loadingToast });
+    } catch (err) { toast.error("Erro ao salvar.", { id: loadingToast }); }
   }
+
+  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar serviços.</div>;
 
   return (
     <Container>
@@ -108,34 +92,23 @@ export default function Services() {
         <Toolbar>
           <SearchContainer>
             <Search size={20} color="#a0aec0" />
-            <input 
-              placeholder="Buscar produto..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <input placeholder="Buscar produto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={!services} />
           </SearchContainer>
           <ButtonGroup>
-            <button className="primary" onClick={handleOpenNew}>
-              <Plus size={20} /> Novo Item
-            </button>
+            <button className="primary" onClick={handleOpenNew} disabled={!services}><Plus size={20} /> Novo Item</button>
           </ButtonGroup>
         </Toolbar>
       </Header>
 
-      {loading ? (
-        <EmptyState><p>A carregar catálogo...</p></EmptyState>
+      {/* 🔥 ESTADO DE CARREGAMENTO (SKELETONS) */}
+      {!services ? (
+        <GridContainer>
+          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </GridContainer>
       ) : services.length === 0 ? (
-        <EmptyState>
-          <Ghost size={48} />
-          <p>Nenhum serviço ou produto cadastrado.</p>
-          <small>Clique no botão "Novo Item" para começar.</small>
-        </EmptyState>
+        <EmptyState><Ghost size={48} /><p>Nenhum serviço ou produto cadastrado.</p><small>Clique no botão "Novo Item" para começar.</small></EmptyState>
       ) : filteredServices.length === 0 ? (
-        <EmptyState>
-          <Search size={48} />
-          <p>Nenhum resultado para "{searchTerm}"</p>
-          <small>Tente buscar por outro termo.</small>
-        </EmptyState>
+        <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p><small>Tente buscar por outro termo.</small></EmptyState>
       ) : (
         <GridContainer>
           {filteredServices.map(service => (
@@ -144,7 +117,7 @@ export default function Services() {
                 {service.images && service.images.length > 0 ? (
                   <img src={service.images[0].url} alt={service.name} />
                 ) : (
-                  <Package size={64} strokeWidth={1} />
+                  <Package size={64} strokeWidth={1} color="#a0aec0" />
                 )}
               </ImageContainer>
 
@@ -155,24 +128,8 @@ export default function Services() {
                 <CardFooter>
                   <span className="price">{formatPrice(service.price)}</span>
                   <Actions>
-                    <ActionButton 
-                      onClick={() => handleEdit(service)} 
-                      color="#718096" 
-                      $bgHover="#ebf8ff"
-                      $hoverColor="#3182ce"
-                      title="Editar"
-                    >
-                      <Edit size={18} />
-                    </ActionButton>
-                    <ActionButton 
-                      onClick={() => handleDelete(service.id)} 
-                      color="#718096" 
-                      $bgHover="#fff5f5"
-                      $hoverColor="#e53e3e"
-                      title="Excluir"
-                    >
-                      <Trash2 size={18} />
-                    </ActionButton>
+                    <ActionButton onClick={() => handleEdit(service)} color="#718096" $bgHover="#ebf8ff" $hoverColor="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
+                    <ActionButton onClick={() => handleDelete(service.id)} color="#718096" $bgHover="#fff5f5" $hoverColor="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
                   </Actions>
                 </CardFooter>
               </CardContent>
@@ -187,10 +144,7 @@ export default function Services() {
           <ModalContent>
             <h2>{editingId ? 'Editar' : 'Novo'} Item</h2>
             <form onSubmit={handleSave}>
-              <FormGroup>
-                <label>Nome</label>
-                <input value={name} onChange={e => setName(e.target.value)} required />
-              </FormGroup>
+              <FormGroup><label>Nome</label><input value={name} onChange={e => setName(e.target.value)} required /></FormGroup>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>Categoria</label>
@@ -203,24 +157,15 @@ export default function Services() {
                     <option value="Consultoria">Consultoria</option>
                   </select>
                 </FormGroup>
-                <FormGroup>
-                  <label>Preço (R$)</label>
-                  <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
-                </FormGroup>
+                <FormGroup><label>Preço (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
               </div>
               <FormGroup>
                 <label>Imagem (Opcional)</label>
                 <div style={{ border: '1px dashed #cbd5e0', padding: 20, borderRadius: 6, textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                  <input 
-                    type="file" 
-                    onChange={e => setImage(e.target.files[0])} 
-                    style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }}
-                  />
+                  <input type="file" onChange={e => setImage(e.target.files[0])} style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#718096' }}>
                     <ImageIcon size={24} />
-                    <span style={{ fontSize: 12, marginTop: 8 }}>
-                      {image ? image.name : "Clique para upload"}
-                    </span>
+                    <span style={{ fontSize: 12, marginTop: 8 }}>{image ? image.name : "Clique para upload"}</span>
                   </div>
                 </div>
               </FormGroup>
