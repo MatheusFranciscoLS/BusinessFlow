@@ -9,21 +9,27 @@ export default createGlobalStyle`
   }
 
   body {
-    background: #f7fafc;
+    background: #f7fafc; 
     -webkit-font-smoothing: antialiased;
     color: #1a202c;
   }
 
-  body, input, button, textarea, select {
+  body, button, textarea, select {
     font-family: 'Inter', 'Segoe UI', sans-serif;
-    font-size: 15px;
+    font-size: 15px; /* Fonte padrão do sistema */
+  }
+
+  /* 🔥 SEGREDO MOBILE: Obriga inputs a terem no mínimo 16px para evitar o zoom agressivo do iOS */
+  input {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 16px !important; 
   }
 
   button {
     cursor: pointer;
   }
 
-  /* Scrollbar Premium Global */
+  /* Scrollbar Premium Global (Suave e Invisível até usar) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
