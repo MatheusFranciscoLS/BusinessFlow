@@ -234,3 +234,32 @@ export const ModalActions = styled.div`
     }
   }
 `;
+export const EmptyState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #a0aec0;
+  gap: 12px;
+  p {
+    font-size: 16px;
+    font-weight: 600;
+    color: #4a5568;
+  }
+  small {
+    font-size: 13px;
+  }
+`;
+
+export const StatusBadge = styled.span`
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f7fafc;
+  color: #4a5568;
+`;
