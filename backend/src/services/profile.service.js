@@ -21,8 +21,11 @@ export async function updateProfile(userId, data, avatarPath) {
     email: data.email || user.email,
   };
 
+  // Se veio um arquivo novo, salva. Se veio a ordem de apagar, anula a foto!
   if (avatarPath) {
     updateData.avatarUrl = avatarPath;
+  } else if (data.removeAvatar === "true") {
+    updateData.avatarUrl = null;
   }
 
   // Se o utilizador quiser alterar a palavra-passe

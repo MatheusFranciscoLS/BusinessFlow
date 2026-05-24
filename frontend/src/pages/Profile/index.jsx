@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { CircleUser, Upload } from 'lucide-react';
+import { CircleUser, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, ProfileCard, AvatarSection, FormGrid, FormGroup, ActionButton } from './styles';
 
 export default function Profile() {
-  const { user, updateUserData } = useAuth(); // Assume que temos essa função ou recarregamos no Contexto
+  const { user, updateUserData } = useAuth(); 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  
   const [avatar, setAvatar] = useState(null);
   const [preview, setPreview] = useState('');
+  const [removeAvatar, setRemoveAvatar] = useState(false); // NOVO ESTADO
 
   useEffect(() => {
     if (user) {
       setName(user.name || '');
       setEmail(user.email || '');
-      if (user.avatarUrl) setPreview(`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`);
+      if (user.avatarUrl) {
+        setPreview(`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`);
+      }
     }
   }, [user]);
 
@@ -27,6 +31,13 @@ export default function Profile() {
     if (!file) return;
     setAvatar(file);
     setPreview(URL.createObjectURL(file));
+    setRemoveAvatar(false); // Se escolheu uma foto nova, cancela a ordem de remover
+  }
+
+  function handleRemoveAvatar() {
+    setAvatar(null);
+    setPreview('');
+    setRemoveAvatar(true); // Ativa a ordem de apagar no banco de dados
   }
 
   async function handleSubmit(e) {
@@ -34,19 +45,25 @@ export default function Profile() {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('email', email);
+    
     if (oldPassword && newPassword) {
       formData.append('oldPassword', oldPassword);
       formData.append('newPassword', newPassword);
     }
+    
     if (avatar) {
       formData.append('avatar', avatar);
+    }
+    
+    // Se clicou no botão de lixeira, avisa o Back-end
+    if (removeAvatar) {
+      formData.append('removeAvatar', 'true');
     }
 
     const tId = toast.loading('A atualizar perfil...');
     try {
       const response = await api.put('/profile', formData);
       
-      // Atualiza os dados na memória viva da aplicação (Contexto/LocalStorage)
       if (updateUserData) {
         updateUserData(response.data);
       } else {
@@ -55,7 +72,12 @@ export default function Profile() {
 
       setOldPassword('');
       setNewPassword('');
+      setRemoveAvatar(false);
       toast.success('Perfil atualizado com sucesso!', { id: tId });
+      
+      // Um pequeno recarregamento de página para garantir que a foto atualiza no menu lateral imediatamente
+      setTimeout(() => window.location.reload(), 1000);
+
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao atualizar dados.', { id: tId });
     }
@@ -80,9 +102,30 @@ export default function Profile() {
                 </div>
               )}
             </div>
-            <div className="upload-btn">
-              <Upload size={14} style={{ marginRight: 6 }} /> Alterar Foto
-              <input type="file" accept="image/*" onChange={handleAvatarChange} />
+            
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div className="upload-btn">
+                <Upload size={14} style={{ marginRight: 6 }} /> Alterar Foto
+                <input type="file" accept="image/*" onChange={handleAvatarChange} />
+              </div>
+
+              {/* Só mostra o botão de remover se existir uma foto (no banco ou no preview) */}
+              {(preview || user?.avatarUrl) && (
+                <button 
+                  type="button" 
+                  onClick={handleRemoveAvatar} 
+                  style={{ 
+                    background: '#fff5f5', color: '#e53e3e', border: 'none', 
+                    padding: '10px 16px', borderRadius: '8px', fontSize: '13px', 
+                    fontWeight: 600, cursor: 'pointer', display: 'flex', 
+                    alignItems: 'center', gap: '6px', transition: '0.2s' 
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#fed7d7'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#fff5f5'}
+                >
+                  <Trash2 size={14} /> Remover
+                </button>
+              )}
             </div>
           </AvatarSection>
 
