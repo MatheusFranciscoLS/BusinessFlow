@@ -16,6 +16,7 @@ import Customers from '../pages/Customers';
 import Services from '../pages/Services';
 import Financial from '../pages/Financial';
 import Appointments from '../pages/Appointments';
+import Profile from '../pages/Profile';
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -66,11 +67,12 @@ const AppRoutes = () => {
           <Route path="/app" element={
             <PrivateRoute><Layout /></PrivateRoute>
           }>
-            <Route index element={<Dashboard />} />
-            <Route path="clientes" element={<Customers />} />
-            <Route path="servicos" element={<Services />} />
-            <Route path="financeiro" element={<Financial />} />
-            <Route path="agenda" element={<Appointments />} />
+           <Route index element={<Dashboard />} />
+           <Route path="clientes" element={<Customers />} />
+           <Route path="servicos" element={<Services />} />
+           <Route path="agenda" element={<Appointments />} />
+           <Route path="financeiro" element={<Financial />} />
+           <Route path="perfil" element={<Profile />} />
           </Route>
 
         </Routes>
