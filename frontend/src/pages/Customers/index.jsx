@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import useSWR from 'swr';
 import axios from 'axios';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -10,11 +11,24 @@ import {
   StatusBadge, ActionButton, ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState,
   PaginationContainer, ProfileHeader, ProfileStats, HistoryList
 } from './styles';
+import styled, { keyframes } from 'styled-components';
+
+// 🔥 Animação Shimmer para o Skeleton de Carregamento
+const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
+const SkeletonRow = styled.div`
+  height: 60px; width: 100%; border-radius: 8px; margin-bottom: 12px;
+  background: #f0f0f0; background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
+  background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;
+`;
+
+// 🔥 Tradutor do SWR
+const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Customers() {
-  const [customers, setCustomers] = useState([]);
+  // 🔥 A MÁGICA DO SWR: Substitui o useState(customers) e o loadCustomers
+  const { data: customers, error, mutate } = useSWR('/clients', fetcher);
+
   const [searchTerm, setSearchTerm] = useState(''); 
-  const [loading, setLoading] = useState(false);
   
   // Controles de Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -33,28 +47,15 @@ export default function Customers() {
     cep: '', street: '', number: '', neighborhood: '', city: '', state: '', tag: 'NOVO'
   });
 
-  useEffect(() => { loadCustomers(); }, []);
-
   // Reseta a página para 1 sempre que o utilizador faz uma busca
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
-  async function loadCustomers() {
-    try {
-      setLoading(true);
-      const response = await api.get('/clients');
-      setCustomers(response.data);
-    } catch (error) {
-      toast.error("Erro ao carregar clientes.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const filteredCustomers = useMemo(() => {
+    if (!customers) return [];
     return customers.filter(customer => 
-      customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.cpf.includes(searchTerm)
+      customer.cpf?.includes(searchTerm)
     );
   }, [customers, searchTerm]);
 
@@ -105,7 +106,6 @@ export default function Customers() {
     } catch { toast.error('CEP inválido', { id: tId }); } finally { setCepLoading(false); }
   }
 
-  // A Mágica do Mini-CRM (Busca dados completos)
   async function openProfile(id) {
     const toastId = toast.loading('A carregar perfil...');
     try {
@@ -135,7 +135,11 @@ export default function Customers() {
 
   async function handleDelete(id) {
     if (window.confirm('Excluir cliente permanentemente? O histórico também será apagado!')) {
-      try { await api.delete(`/clients/${id}`); setCustomers(customers.filter(c => c.id !== id)); toast.success('Removido com sucesso!'); } 
+      try { 
+        await api.delete(`/clients/${id}`); 
+        mutate(); // 🔥 Atualiza o cache do SWR instantaneamente
+        toast.success('Removido com sucesso!'); 
+      } 
       catch { toast.error('Erro ao excluir.'); }
     }
   }
@@ -150,13 +154,18 @@ export default function Customers() {
     try {
       const payload = { fullName: form.name, cpf: cleanCpf, email: form.email, phone: form.phone, cep: form.cep.replace(/\D/g, ''), address: `${form.street}, ${form.number}`, tag: form.tag };
       if (editingId) {
-        await api.put(`/clients/${editingId}`, payload); loadCustomers(); toast.success('Atualizado!', { id: tId });
+        await api.put(`/clients/${editingId}`, payload);
+        toast.success('Atualizado!', { id: tId });
       } else {
-        const response = await api.post('/clients', payload); setCustomers([response.data, ...customers]); toast.success('Cadastrado!', { id: tId });
+        await api.post('/clients', payload);
+        toast.success('Cadastrado!', { id: tId });
       }
+      mutate(); // 🔥 Pede ao SWR para buscar os novos dados
       setIsModalOpen(false);
     } catch (error) { toast.error(error.response?.data?.error || 'Erro ao salvar.', { id: tId }); }
   }
+
+  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar clientes.</div>;
 
   return (
     <Container>
@@ -168,16 +177,24 @@ export default function Customers() {
             <input placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </SearchContainer>
           <ButtonGroup>
-            <button className="secondary" onClick={handleExportPDF}><FileText size={18} /> Relatório PDF</button>
-            <button className="primary" onClick={handleOpenNew}><Plus size={20} /> Novo Cliente</button>
+            <button className="secondary" onClick={handleExportPDF} disabled={!customers}><FileText size={18} /> Relatório PDF</button>
+            <button className="primary" onClick={handleOpenNew} disabled={!customers}><Plus size={20} /> Novo Cliente</button>
           </ButtonGroup>
         </Toolbar>
       </Header>
 
-      {loading ? ( <EmptyState><p>A carregar clientes...</p></EmptyState> ) 
-      : customers.length === 0 ? ( <EmptyState><Ghost size={48} /><p>Nenhum cliente cadastrado.</p></EmptyState> ) 
-      : filteredCustomers.length === 0 ? ( <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p></EmptyState> ) 
-      : (
+      {/* 🔥 EXIBE O SKELETON SE OS DADOS AINDA NÃO CHEGARAM */}
+      {!customers ? (
+        <TableContainer>
+          <div style={{ padding: 24 }}>
+            <SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow />
+          </div>
+        </TableContainer>
+      ) : customers.length === 0 ? ( 
+        <EmptyState><Ghost size={48} /><p>Nenhum cliente cadastrado.</p></EmptyState> 
+      ) : filteredCustomers.length === 0 ? ( 
+        <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p></EmptyState> 
+      ) : (
         <TableContainer>
           <Table>
             <thead>
@@ -209,7 +226,6 @@ export default function Customers() {
             </tbody>
           </Table>
           
-          {/* PAGINAÇÃO INFERIOR */}
           <PaginationContainer>
             <span>Mostrando {paginatedCustomers.length} de {filteredCustomers.length} clientes</span>
             <div>
@@ -279,13 +295,12 @@ export default function Customers() {
         </ModalOverlay>
       )}
 
-      {/* MODAL DE EDIÇÃO/CRIAÇÃO (MANTIDO O ORIGINAL) */}
+      {/* MODAL DE EDIÇÃO/CRIAÇÃO */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
             <h2>{editingId ? 'Editar' : 'Novo'} Cliente</h2>
             <form onSubmit={handleSave}>
-              {/* O formulário de criação original continua a funcionar aqui */}
               <FormGroup><label>Nome Completo</label><input name="name" value={form.name} onChange={handleChange} autoFocus required/></FormGroup>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <FormGroup><label>CPF / CNPJ</label><input name="cpf" value={form.cpf} onChange={handleChange} maxLength={18} required/></FormGroup>

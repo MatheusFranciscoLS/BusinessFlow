@@ -86,11 +86,26 @@ export default function Layout() {
       </SidebarContainer>
 
 <MainContent>
-        {/* O para-quedas mágico! */}
-        <Suspense 
+<Suspense 
           fallback={
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20vh', color: '#3182ce', fontWeight: 'bold', fontSize: '18px' }}>
-              A carregar módulo...
+            <div style={{ width: '100%', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Título da Página Animado */}
+              <div style={{ width: '200px', height: '32px', background: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+              <div style={{ width: '350px', height: '16px', background: '#edf2f7', borderRadius: '4px', marginBottom: '20px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+              
+              {/* Linhas simulando o conteúdo */}
+              <div style={{ width: '100%', height: '120px', background: '#e2e8f0', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+              <div style={{ width: '100%', height: '80px', background: '#edf2f7', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+              <div style={{ width: '100%', height: '80px', background: '#edf2f7', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
+
+              {/* Regra CSS inline para a animação pulse funcionar sem pesar */}
+              <style>{`
+                @keyframes pulse {
+                  0% { opacity: 0.6; }
+                  50% { opacity: 1; }
+                  100% { opacity: 0.6; }
+                }
+              `}</style>
             </div>
           }
         >
