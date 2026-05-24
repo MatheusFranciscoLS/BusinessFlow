@@ -220,6 +220,46 @@ export default function Dashboard() {
         </ChartContainer>
 
      </BottomRow>
+     <ChartContainer>
+        <h3>Últimas Movimentações</h3>
+        {recentTransactions?.length === 0 ? (
+          <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma transação recente.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Descrição</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Categoria</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Data</th>
+                  <th style={{ textAlign: 'right', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTransactions.map((t, index) => {
+                  const isIncome = t.type === 'entrada' || t.type === 'income';
+                  return (
+                    <tr key={index} style={{ borderBottom: index !== recentTransactions.length - 1 ? '1px solid #f7fafc' : 'none' }}>
+                      <td style={{ padding: '12px 16px', color: '#2d3748', fontSize: 14, fontWeight: 500 }}>{t.description || t.title}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ background: '#edf2f7', color: '#4a5568', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                          {t.category}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#718096', fontSize: 14 }}>
+                        {new Date(t.date).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: isIncome ? '#12a454' : '#e53e3e' }}>
+                        {isIncome ? '+ ' : '- '}{formatCurrency(t.amount)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </ChartContainer>
     </Container>
   );
 }
