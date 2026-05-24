@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Plus, User, Check, X, Trash2, Clock } from 'lucide-react';
+import { Plus, User, Check, X, Trash2, Calendar, Clock, BookmarkCheck } from 'lucide-react';
 import { 
   Container, Header, DateGroup, Grid, AppointmentCard, 
-  ModalOverlay, ModalContent, FormGroup, ModalActions 
+  ModalOverlay, ModalContent, FormGroup, ModalActions, SummaryContainer, SummaryCard
 } from './styles';
 
 export default function Appointments() {
@@ -28,7 +28,7 @@ export default function Appointments() {
       setAppointments(appRes.data);
       setClients(cliRes.data);
     } catch (error) {
-      toast.error("Erro ao carregar a agenda.");
+      if (error.response?.status !== 401) toast.error("Erro ao carregar a agenda.");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,18 @@ export default function Appointments() {
 
   useEffect(() => { loadData(); }, []);
 
-  // --- A MÁGICA DA PERFORMANCE: useMemo ---
+  // --- MÁQUINA DE INDICADORES (MÉTRICAS DO TOPO) ---
+  const stats = useMemo(() => {
+    const hojeStr = new Date().toLocaleDateString('pt-BR');
+    return appointments.reduce((acc, app) => {
+      const appDateStr = new Date(app.date).toLocaleDateString('pt-BR');
+      if (appDateStr === hojeStr) acc.hoje++;
+      if (app.status === 'pendente') acc.pendentes++;
+      if (app.status === 'concluido') acc.concluidos++;
+      return acc;
+    }, { hoje: 0, pendentes: 0, concluidos: 0 });
+  }, [appointments]);
+
   const groupedAppointments = useMemo(() => {
     return appointments.reduce((groups, app) => {
       const dateKey = new Date(app.date).toLocaleDateString('pt-BR', { 
@@ -101,6 +112,22 @@ export default function Appointments() {
         <button onClick={() => setIsModalOpen(true)}><Plus size={20} /> Novo Agendamento</button>
       </Header>
 
+      {/* PAINEL DE MÉTRICAS PREMIUM */}
+      <SummaryContainer>
+        <SummaryCard>
+          <header><span>Agendados para Hoje</span><Calendar size={20} color="#3182ce" /></header>
+          <strong>{stats.hoje}</strong>
+        </SummaryCard>
+        <SummaryCard>
+          <header><span>Compromissos Pendentes</span><Clock size={20} color="#ecc94b" /></header>
+          <strong style={{ color: '#d69e2e' }}>{stats.pendentes}</strong>
+        </SummaryCard>
+        <SummaryCard>
+          <header><span>Atendimentos Concluídos</span><BookmarkCheck size={20} color="#12a454" /></header>
+          <strong style={{ color: '#12a454' }}>{stats.concluidos}</strong>
+        </SummaryCard>
+      </SummaryContainer>
+
       {loading ? (
         <p style={{textAlign:'center', color:'#a0aec0', marginTop: 40}}>A carregar agenda...</p>
       ) : Object.keys(groupedAppointments).length === 0 ? (
@@ -126,14 +153,14 @@ export default function Appointments() {
 
                   <div className="actions">
                     {app.status === 'pendente' ? (
-                      <>
+                      <div className="buttons-group">
                         <button className="check" onClick={() => updateStatus(app.id, 'concluido')}>
                           <Check size={16} /> Concluir
                         </button>
                         <button className="cancel" onClick={() => updateStatus(app.id, 'cancelado')}>
                           <X size={16} /> Cancelar
                         </button>
-                      </>
+                      </div>
                     ) : (
                       <span className={`badge ${app.status === 'concluido' ? 'done' : 'canceled'}`}>
                         {app.status}

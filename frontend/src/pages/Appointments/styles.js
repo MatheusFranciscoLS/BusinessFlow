@@ -13,11 +13,14 @@ export const Header = styled.header`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
   h1 {
     font-size: 26px;
     color: #1a202c;
     font-weight: 800;
   }
+
   button {
     height: 48px;
     padding: 0 20px;
@@ -31,29 +34,76 @@ export const Header = styled.header`
     display: flex;
     align-items: center;
     gap: 8px;
+    box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
     &:hover {
       background: #2c5282;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
+      box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
     }
   }
   @media (max-width: 600px) {
     flex-direction: column;
-    gap: 16px;
     align-items: stretch;
+    button {
+      justify-content: center;
+    }
+  }
+`;
+
+export const SummaryContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const SummaryCard = styled.div`
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 110px;
+  border: 1px solid #edf2f7;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    span {
+      color: #718096;
+      font-size: 14px;
+      font-weight: 600;
+    }
+  }
+  strong {
+    font-size: 26px;
+    font-weight: 800;
+    color: #2d3748;
   }
 `;
 
 export const DateGroup = styled.div`
   margin-bottom: 32px;
   h3 {
-    font-size: 14px;
+    font-size: 13px;
     text-transform: uppercase;
     color: #a0aec0;
     letter-spacing: 1px;
     margin-bottom: 16px;
     border-bottom: 1px solid #edf2f7;
     padding-bottom: 8px;
+    font-weight: 700;
   }
 `;
 
@@ -61,7 +111,7 @@ export const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
-  @media (max-width: 400px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -97,25 +147,30 @@ export const AppointmentCard = styled.div`
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-width: 60px;
+      min-width: 65px;
       height: 60px;
       background: #f7fafc;
       border-radius: 8px;
+      border: 1px solid #e2e8f0;
       strong {
         color: #2d3748;
         font-size: 16px;
+        font-weight: 700;
       }
       span {
         color: #a0aec0;
         font-size: 10px;
         text-transform: uppercase;
         font-weight: 700;
+        margin-top: 2px;
       }
     }
     .details {
+      flex: 1;
       h4 {
         font-size: 15px;
         color: #2d3748;
+        font-weight: 700;
         margin-bottom: 4px;
       }
       p {
@@ -123,13 +178,18 @@ export const AppointmentCard = styled.div`
         color: #718096;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
+        margin-bottom: 2px;
       }
       .note {
         font-style: italic;
         font-size: 12px;
-        margin-top: 8px;
+        margin-top: 6px;
         color: #a0aec0;
+        background: #f7fafc;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #edf2f7;
       }
     }
   }
@@ -140,30 +200,43 @@ export const AppointmentCard = styled.div`
     align-items: center;
     border-top: 1px solid #edf2f7;
     padding-top: 12px;
+    margin-top: auto;
+
     .badge {
       padding: 4px 10px;
       border-radius: 20px;
       font-size: 10px;
       font-weight: 800;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
+      &.done {
+        background: #e6fffa;
+        color: #319795;
+      }
+      &.canceled {
+        background: #fff5f5;
+        color: #c53030;
+      }
     }
-    .done {
-      background: #e6fffa;
-      color: #319795;
-    }
-    .canceled {
-      background: #fff5f5;
-      color: #c53030;
+
+    .buttons-group {
+      display: flex;
+      gap: 4px;
     }
 
     button {
       background: transparent;
       border: none;
-      padding: 6px;
+      padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s;
-      color: #a0aec0;
+      color: #718096;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
       &:hover {
         background: #f7fafc;
         color: #2d3748;
@@ -182,8 +255,10 @@ export const AppointmentCard = styled.div`
       }
       &.delete {
         color: #cbd5e0;
+        padding: 6px;
         &:hover {
           color: #e53e3e;
+          background: #fff5f5;
         }
       }
     }
@@ -211,7 +286,7 @@ export const ModalContent = styled.div`
   background: white;
   padding: 32px;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: ${fadeIn} 0.3s ease;
   h2 {
     color: #1a202c;
@@ -222,6 +297,7 @@ export const ModalContent = styled.div`
   @media (max-width: 500px) {
     padding: 24px;
   }
+  animate: ${fadeIn} 0.3s ease;
 `;
 
 export const FormGroup = styled.div`
@@ -272,6 +348,7 @@ export const ModalActions = styled.div`
     &.save {
       background: #3182ce;
       color: white;
+      box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
       &:hover {
         background: #2c5282;
         transform: translateY(-2px);
