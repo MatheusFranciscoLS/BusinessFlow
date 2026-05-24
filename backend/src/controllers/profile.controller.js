@@ -2,8 +2,9 @@ import * as profileService from "../services/profile.service.js";
 import fs from "fs";
 
 // 🛡️ VACINA 1: Se a pasta de uploads não existir no Render, nós criamos agora!
-if (!fs.existsSync("uploads")) {
-  fs.mkdirSync("uploads", { recursive: true });
+const avatarFolder = path.resolve("uploads/avatars");
+if (!fs.existsSync(avatarFolder)) {
+  fs.mkdirSync(avatarFolder, { recursive: true });
 }
 
 export async function show(req, res) {
@@ -22,8 +23,11 @@ export async function update(req, res) {
   try {
     const userId = req.userId || (req.user && req.user.id);
 
-    // Captura o caminho da foto se ela foi enviada pelo Multer
-    const avatarPath = req.file ? `/uploads/${req.file.filename}` : undefined;
+    // Se o multer processou o arquivo, salvamos com o caminho correto
+    let avatarPath = undefined;
+    if (req.file) {
+      avatarPath = `/uploads/avatars/${req.file.filename}`;
+    }
 
     const updatedUser = await profileService.updateProfile(
       userId,
@@ -32,6 +36,7 @@ export async function update(req, res) {
     );
     return res.json(updatedUser);
   } catch (err) {
-    return res.status(400).json({ error: err.message });
+    console.error("Erro no ProfileController:", err); // Isso vai aparecer nos logs do Render!
+    return res.status(500).json({ error: err.message });
   }
 }
