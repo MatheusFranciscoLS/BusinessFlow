@@ -1,23 +1,14 @@
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes } from 'styled-components';
 
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 
 export const Container = styled.div`
-  width: 100%;
-  padding-bottom: 40px;
-  animation: ${fadeIn} 0.4s ease;
+  width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;
 `;
 
 export const Header = styled.header`
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 32px;
-  h1 {
-    font-size: 26px;
-    color: #1a202c;
-    font-weight: 800;
-    margin-bottom: 20px;
-  }
+  display: flex; flex-direction: column; margin-bottom: 32px;
+  h1 { font-size: 26px; color: #1a202c; font-weight: 800; margin-bottom: 20px; }
 `;
 
 export const Toolbar = styled.div`
@@ -71,7 +62,6 @@ export const SearchContainer = styled.div`
   }
 `;
 
-/* O NOVO COMPONENTE DE FILTRO ESTILO FINTECH */
 export const FilterPillsContainer = styled.div`
   display: flex;
   gap: 8px;
@@ -79,7 +69,7 @@ export const FilterPillsContainer = styled.div`
   padding-bottom: 4px;
   &::-webkit-scrollbar {
     display: none;
-  } /* Esconde a barra de scroll no mobile */
+  }
 `;
 
 export const FilterPill = styled.button`
@@ -100,12 +90,59 @@ export const FilterPill = styled.button`
   }
 `;
 
+/* O NOVO SELETOR DE MÊS ESTILO FINTECH */
+export const MonthNavigator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  height: 48px;
+  padding: 0 8px;
+  min-width: 200px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+
+  span {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2d3748;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  button {
+    background: transparent;
+    border: none;
+    color: #718096;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #f7fafc;
+      color: #3182ce;
+    }
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
 export const ButtonGroup = styled.div`
   display: flex;
   gap: 12px;
+  align-items: center;
   @media (max-width: 768px) {
     flex-direction: column;
-  } /* Botões empilhados no mobile */
+    align-items: stretch;
+  }
 
   button {
     height: 48px;
@@ -126,7 +163,6 @@ export const ButtonGroup = styled.div`
       &:hover {
         background: #2c5282;
         transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
       }
     }
     &.secondary {
@@ -149,7 +185,7 @@ export const SummaryContainer = styled.div`
   margin: 32px 0;
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-  } /* Empilha os cards no mobile */
+  }
 `;
 
 export const SummaryCard = styled.div`
@@ -168,7 +204,6 @@ export const SummaryCard = styled.div`
     transform: translateY(-4px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   }
-
   header {
     display: flex;
     justify-content: space-between;
@@ -204,13 +239,12 @@ export const TableContainer = styled.div`
 export const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px; /* Garante scroll no mobile sem esmagar o texto */
+  min-width: 700px;
   th,
   td {
     padding: 16px 20px;
     text-align: left;
     border-bottom: 1px solid #edf2f7;
-    transition: background 0.2s;
   }
   th {
     font-weight: 600;
@@ -255,7 +289,7 @@ export const ModalOverlay = styled.div`
   justify-content: center;
   align-items: center;
   z-index: 999;
-  padding: 16px; /* Proteção para o modal não colar nas bordas do telemóvel */
+  padding: 16px;
 `;
 
 export const ModalContent = styled.div`
@@ -267,16 +301,12 @@ export const ModalContent = styled.div`
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: ${fadeIn} 0.3s ease;
   max-height: 90vh;
-  overflow-y: auto; /* Permite rolar o formulário se o telemóvel for pequeno */
+  overflow-y: auto;
   h2 {
     color: #1a202c;
     font-size: 24px;
     margin-bottom: 24px;
     font-weight: 700;
-  }
-
-  @media (max-width: 768px) {
-    padding: 24px;
   }
 `;
 
@@ -343,7 +373,6 @@ export const RadioBox = styled.button`
   }
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   }
 `;
 
@@ -360,7 +389,7 @@ export const ModalActions = styled.div`
     cursor: pointer;
     transition: all 0.2s;
     border: none;
-    flex: 1; /* Faz os botões ocuparem 50% cada no mobile */
+    flex: 1;
     &.cancel {
       background: #edf2f7;
       color: #4a5568;
@@ -371,11 +400,9 @@ export const ModalActions = styled.div`
     &.save {
       background: #3182ce;
       color: white;
-      box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
       &:hover {
         background: #2c5282;
         transform: translateY(-2px);
-        box-shadow: 0 6px 8px rgba(49, 130, 206, 0.3);
       }
     }
   }
