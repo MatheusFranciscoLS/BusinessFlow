@@ -1,8 +1,17 @@
 import * as profileService from "../services/profile.service.js";
+import fs from "fs";
+
+// 🛡️ VACINA 1: Se a pasta de uploads não existir no Render, nós criamos agora!
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads", { recursive: true });
+}
 
 export async function show(req, res) {
   try {
-    const user = await profileService.getProfile(req.user.id);
+    // 🛡️ VACINA 2: Aceita o ID independentemente de como o authMiddleware o devolva
+    const userId = req.userId || (req.user && req.user.id);
+
+    const user = await profileService.getProfile(userId);
     return res.json(user);
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -11,11 +20,10 @@ export async function show(req, res) {
 
 export async function update(req, res) {
   try {
-    const userId = req.user.id;
-    // Se houver upload de ficheiro, captura o caminho relativo
-    const avatarPath = req.file
-      ? `/uploads/products/${req.file.filename}`
-      : undefined;
+    const userId = req.userId || (req.user && req.user.id);
+
+    // Captura o caminho da foto se ela foi enviada pelo Multer
+    const avatarPath = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     const updatedUser = await profileService.updateProfile(
       userId,
