@@ -13,8 +13,12 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    const userId = req.user.id; // CORREÇÃO
-    const transactions = await transactionService.getAll(userId); 
+    const userId = req.user.id;
+    // Captura os filtros que vêm do Front-end
+    const { month, year } = req.query;
+
+    // Repassa os filtros para o Service
+    const transactions = await transactionService.getAll(userId, month, year);
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });

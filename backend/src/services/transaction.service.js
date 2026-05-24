@@ -15,20 +15,30 @@ export async function create(data, userId) {
   });
 }
 
-export async function getAll(userId) {
-  const transactions = await prisma.transaction.findMany({
-    where: { userId: userId }, 
+export async function getAll(userId, month, year) {
+  let whereClause = { userId };
+
+  // Se o Front-end enviar o mês e o ano, ativamos a "Máquina do Tempo"
+  if (month && year) {
+    // No JavaScript, o mês começa em 0 (Janeiro = 0, Fevereiro = 1...)
+    const targetMonth = parseInt(month) - 1;
+    const targetYear = parseInt(year);
+
+    // Primeiro e último dia do mês às 23:59:59
+    const startDate = new Date(targetYear, targetMonth, 1);
+    const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+    whereClause.date = {
+      gte: startDate,
+      lte: endDate,
+    };
+  }
+
+  // Trazemos as transações filtradas e já ordenadas das mais recentes para as mais antigas
+  return prisma.transaction.findMany({
+    where: whereClause,
     orderBy: { date: "desc" },
   });
-
-  return transactions.map(t => ({
-    id: t.id,
-    title: t.description,
-    price: t.amount,
-    type: t.type === 'entrada' ? 'income' : 'outcome',
-    category: t.category,
-    date: t.date.toISOString().split('T')[0]
-  }));
 }
 
 export async function getById(id, userId) {

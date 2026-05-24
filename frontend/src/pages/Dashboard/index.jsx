@@ -94,6 +94,14 @@ export default function Dashboard() {
     );
   }
 
+  function formatPhone(phone) {
+    if (!phone) return 'Sem telefone';
+    const p = phone.replace(/\D/g, ''); // Limpa tudo que não é número
+    if (p.length === 11) return p.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    if (p.length === 10) return p.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+    return phone;
+  }
+
   return (
     <Container>
       <Header>
@@ -116,9 +124,12 @@ export default function Dashboard() {
           </header>
           <strong>{formatCurrency(summary.saidas)}</strong>
         </Card>
-        <Card $highlight={summary.saldo >= 0}>
-          <header><span>Saldo Líquido</span><DollarSign size={24} color={summary.saldo >= 0 ? '#12a454' : '#e52e4d'} /></header>
-          <strong style={{ color: summary.saldo >= 0 ? '#12a454' : '#e52e4d' }}>
+<Card $highlight={true}>
+          <header>
+            <span>Saldo Líquido</span>
+            <DollarSign size={24} color="white" />
+          </header>
+          <strong>
             {formatCurrency(summary.saldo)}
           </strong>
         </Card>
@@ -198,7 +209,9 @@ export default function Dashboard() {
               {summary.inadimplentes.map((item, index) => (
                 <li key={index} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', background: '#fff5f5', padding: '12px', borderRadius: '8px' }}>
                   <strong style={{ color: '#2d3748', fontSize: 14 }}>{item.fullName}</strong>
-                  <span style={{ color: '#e53e3e', fontSize: 12, fontWeight: 600 }}>{item.phone || 'Sem telefone'}</span>
+                  <span style={{ color: '#e53e3e', fontSize: 12, fontWeight: 600 }}>
+    {formatPhone(item.phone)}
+  </span>
                 </li>
               ))}
             </ul>
