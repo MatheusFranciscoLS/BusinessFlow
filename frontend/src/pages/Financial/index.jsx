@@ -7,7 +7,7 @@ import { ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, Search,
 import {
     Container, Header, SummaryContainer, SummaryCard, TableContainer, Table,
     ModalOverlay, ModalContent, FormGroup, TransactionTypeContainer, RadioBox, ModalActions, ActionButton,
-    Toolbar, FilterGroup, SearchContainer, ButtonGroup
+    Toolbar, FilterGroup, SearchContainer, ButtonGroup, FilterPillsContainer, FilterPill
 } from './styles';
 
 export default function Financial() {
@@ -18,7 +18,7 @@ export default function Financial() {
 
     // --- FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterCategory, setFilterCategory] = useState('');
+    const [filterCategory, setFilterCategory] = useState('Todos'); // Mudamos o padrão para 'Todos'
     const [categories, setCategories] = useState([]);
 
     // --- FORMULÁRIO ---
@@ -51,7 +51,7 @@ export default function Financial() {
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
             const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = filterCategory === 'Todos' || !filterCategory || t.category === filterCategory;
+            const matchesCategory = filterCategory === 'Todos' || t.category === filterCategory;
             return matchesSearch && matchesCategory;
         });
     }, [transactions, searchTerm, filterCategory]);
@@ -169,11 +169,19 @@ export default function Financial() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </SearchContainer>
-                        <SearchContainer style={{ maxWidth: 200 }}>
-                            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                            </select>
-                        </SearchContainer>
+                        
+                        {/* O NOVO SISTEMA DE FILTRO */}
+                        <FilterPillsContainer>
+                            {categories.map(cat => (
+                                <FilterPill 
+                                    key={cat} 
+                                    $active={filterCategory === cat}
+                                    onClick={() => setFilterCategory(cat)}
+                                >
+                                    {cat}
+                                </FilterPill>
+                            ))}
+                        </FilterPillsContainer>
                     </FilterGroup>
 
                     <ButtonGroup>
