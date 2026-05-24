@@ -2,7 +2,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Arrays de dados fictícios para gerar combinações realistas
 const nomes = [
   "Ana",
   "Bruno",
@@ -42,6 +41,24 @@ const sobrenomes = [
   "Carvalho",
 ];
 const tags = ["NOVO", "RECORRENTE", "VIP", "INADIMPLENTE"];
+const ruas = [
+  "Av. Paulista",
+  "Rua das Flores",
+  "Av. Brigadeiro Faria Lima",
+  "Rua Augusta",
+  "Av. Rio Branco",
+  "Rua do Ouvidor",
+  "Av. Afonso Pena",
+  "Rua da Consolação",
+];
+const cidades = [
+  "São Paulo",
+  "Guarujá",
+  "Piracicaba",
+  "Limeira",
+  "Campinas",
+  "Rio de Janeiro",
+];
 
 const servicosIniciais = [
   {
@@ -79,41 +96,6 @@ const servicosIniciais = [
     description: "Teste de invasão e relatórios",
     stock: 999,
   },
-  {
-    name: "Desenvolvimento de App Mobile",
-    category: "Desenvolvimento",
-    price: 8000,
-    description: "App iOS e Android nativo",
-    stock: 999,
-  },
-  {
-    name: "Gestão de Tráfego Pago",
-    category: "Marketing",
-    price: 1500,
-    description: "Google Ads e Meta Ads",
-    stock: 999,
-  },
-  {
-    name: "Otimização de SEO",
-    category: "Marketing",
-    price: 900,
-    description: "SEO On-page e Off-page",
-    stock: 999,
-  },
-  {
-    name: "Design de Identidade Visual",
-    category: "Design",
-    price: 1800,
-    description: "Logo e manual da marca",
-    stock: 999,
-  },
-  {
-    name: "Instalação de Redes",
-    category: "Infraestrutura",
-    price: 750,
-    description: "Cabeamento estruturado",
-    stock: 999,
-  },
 ];
 
 function getRandom(arr) {
@@ -122,94 +104,136 @@ function getRandom(arr) {
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-function getRandomDate(daysBack) {
+
+// Gera uma data baseada em dias para trás (negativo) ou para a frente (positivo)
+function getShiftedDate(daysShift) {
   const date = new Date();
-  date.setDate(date.getDate() - getRandomInt(0, daysBack));
+  date.setDate(date.getDate() + daysShift);
+  date.setHours(getRandomInt(8, 18), 0, 0, 0); // Horário comercial
   return date;
 }
 
 async function main() {
-  console.log("🌱 A preparar o terreno para o Business Intelligence...");
+  console.log("🌱 A iniciar a Mega Semente Enterprise...");
 
-  // Identificar a conta do utilizador principal (para associar os dados corretamente)
   const user = await prisma.user.findFirst();
   if (!user) {
-    console.error(
-      "❌ Erro: Nenhum utilizador encontrado. Crie uma conta no Front-end primeiro!",
-    );
+    console.error("❌ Crie um usuário no sistema primeiro!");
     return;
   }
-  console.log(`👤 A injetar dados na conta de: ${user.name}`);
 
-  // 1. Injetar Clientes
-  console.log("👥 A semear 50 clientes premium...");
+  // 1. LIMPAR DADOS ANTIGOS (Para evitar duplicações de seed)
+  console.log("🧹 Limpando dados antigos...");
+  await prisma.appointment.deleteMany({ where: { userId: user.id } });
+  await prisma.transaction.deleteMany({ where: { userId: user.id } });
+  await prisma.product.deleteMany({ where: { userId: user.id } });
+  await prisma.client.deleteMany({ where: { userId: user.id } });
+
+  // 2. INJETAR CLIENTES COM ENDEREÇO
+  console.log("👥 A semear 30 clientes premium...");
   const clients = [];
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 30; i++) {
     const client = await prisma.client.create({
       data: {
         fullName: `${getRandom(nomes)} ${getRandom(sobrenomes)} ${getRandom(sobrenomes)}`,
         cpf: Math.floor(10000000000 + Math.random() * 90000000000).toString(),
-        email: `cliente${i}@exemplo.com`,
+        email: `contato${i}@exemplo.com`,
         phone: `119${getRandomInt(1000, 9999)}${getRandomInt(1000, 9999)}`,
+        cep: `0${getRandomInt(1000, 9999)}${getRandomInt(100, 999)}`,
+        address: `${getRandom(ruas)}, ${getRandomInt(10, 2000)} - ${getRandom(cidades)}`,
         tag: getRandom(tags),
+        notes: "Cliente importado via base de dados legada.",
         userId: user.id,
       },
     });
     clients.push(client);
   }
 
-  // 2. Injetar Catálogo de Serviços
-  console.log("💼 A configurar o catálogo de produtos e serviços...");
+  // 3. INJETAR SERVIÇOS
+  console.log("💼 A configurar o catálogo...");
   const products = [];
   for (const servico of servicosIniciais) {
-    const product = await prisma.product.create({
-      data: { ...servico, userId: user.id },
-    });
-    products.push(product);
+    products.push(
+      await prisma.product.create({ data: { ...servico, userId: user.id } }),
+    );
   }
 
-  // 3. Injetar Transações Financeiras Históricas
-  console.log(
-    "💸 A gerar o histórico financeiro dos últimos 365 dias (Isto pode demorar alguns segundos)...",
-  );
+  // 4. INJETAR TRANSAÇÕES (Com Descrição/Título)
+  console.log("💸 A gerar histórico financeiro com títulos...");
   const transactionsData = [];
-  for (let i = 0; i < 200; i++) {
-    const isIncome = Math.random() > 0.35; // 65% de taxa de conversão (entradas), 35% de saídas
-    const selectedProduct = getRandom(products);
-    const selectedClient = getRandom(clients);
+  for (let i = 0; i < 150; i++) {
+    const isIncome = Math.random() > 0.4;
+    const prod = getRandom(products);
+    const cli = getRandom(clients);
 
     transactionsData.push({
       type: isIncome ? "entrada" : "saida",
-      amount: isIncome ? selectedProduct.price : getRandomInt(100, 2500),
+      amount: isIncome ? prod.price : getRandomInt(100, 1500),
       description: isIncome
-        ? `Fatura: ${selectedProduct.name}`
+        ? `Venda: ${prod.name}`
         : getRandom([
-            "Pagamento de Impostos",
-            "Licenças de Software",
+            "Assinatura AWS",
+            "Conta de Internet",
+            "Licença Vercel Pro",
             "Material de Escritório",
-            "Anúncios Digitais",
-            "Manutenção de Servidores",
+            "Anúncios Google",
           ]),
       category: isIncome
-        ? selectedProduct.category
+        ? prod.category
         : getRandom(["Impostos", "Fixo", "Variavel", "Infraestrutura"]),
-      date: getRandomDate(365),
-      clientId: isIncome ? selectedClient.id : null,
+      date: getShiftedDate(-getRandomInt(0, 180)), // Últimos 6 meses
+      clientId: isIncome ? cli.id : null,
+      userId: user.id,
+    });
+  }
+  await prisma.transaction.createMany({ data: transactionsData });
+
+  // 5. INJETAR AGENDAMENTOS (Passados e Futuros)
+  console.log("📅 A popular a Agenda...");
+  const appointmentsData = [];
+
+  // Agendamentos passados (Concluídos/Cancelados)
+  for (let i = 0; i < 20; i++) {
+    appointmentsData.push({
+      clientId: getRandom(clients).id,
+      date: getShiftedDate(-getRandomInt(1, 30)),
+      status: Math.random() > 0.2 ? "concluido" : "cancelado",
+      notes: "Reunião de alinhamento.",
       userId: user.id,
     });
   }
 
-  // Grava todas as 200 transações na base de dados de uma só vez para máxima performance
-  await prisma.transaction.createMany({ data: transactionsData });
+  // Agendamentos HOJE (Pendentes)
+  for (let i = 0; i < getRandomInt(2, 5); i++) {
+    appointmentsData.push({
+      clientId: getRandom(clients).id,
+      date: getShiftedDate(0), // Hoje
+      status: "pendente",
+      notes: "Apresentação de resultados.",
+      userId: user.id,
+    });
+  }
+
+  // Agendamentos Futuros (Pendentes)
+  for (let i = 0; i < 15; i++) {
+    appointmentsData.push({
+      clientId: getRandom(clients).id,
+      date: getShiftedDate(getRandomInt(1, 20)),
+      status: "pendente",
+      notes: "Discussão de novo contrato.",
+      userId: user.id,
+    });
+  }
+  await prisma.appointment.createMany({ data: appointmentsData });
 
   console.log(
-    "✅ Concluído com sucesso! O seu SaaS agora tem o volume de dados de uma empresa real em pleno funcionamento.",
+    "✅ MEGA SEED CONCLUÍDA! O seu sistema agora é uma máquina viva.",
   );
 }
 
 main()
   .catch((e) => {
-    console.error("Ocorreu um erro catastrófico durante a semeadura:", e);
+    console.error("Erro na seed:", e);
     process.exit(1);
   })
   .finally(async () => {

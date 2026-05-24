@@ -105,6 +105,14 @@ export default function Appointments() {
     return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
+  function formatPhone(phone) {
+    if (!phone) return 'Sem contato';
+    const p = phone.replace(/\D/g, ''); 
+    if (p.length === 11) return p.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    if (p.length === 10) return p.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+    return phone;
+  }
+
   return (
     <Container>
       <Header>
@@ -146,7 +154,7 @@ export default function Appointments() {
                     </div>
                     <div className="details">
                       <h4>{app.client?.fullName || 'Cliente sem nome'}</h4>
-                      <p><User size={14} /> {app.client?.phone || 'Sem contato'}</p>
+                     <p><User size={14} /> {formatPhone(app.client?.phone)}</p>
                       {app.notes && <p className="note">"{app.notes}"</p>}
                     </div>
                   </div>

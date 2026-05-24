@@ -188,7 +188,7 @@ export default function Financial() {
     async function handleSave(e) {
         e.preventDefault();
         const apiType = type === 'income' ? 'entrada' : 'saida';
-        const payload = { title, amount: parseFloat(price), category, type: apiType, date: new Date(date).toISOString() };
+       const payload = { title, description: title, amount: parseFloat(price), category, type: apiType, date: new Date(date).toISOString() };
         const toastId = toast.loading('A guardar...');
 
         try {
@@ -306,7 +306,7 @@ export default function Financial() {
                                 const isIncome = t.type === 'income' || t.type === 'entrada';
                                 return (
                                     <tr key={t.id}>
-                                        <td>{t.title}</td>
+                                        <td>{t.description || t.title}</td>
                                         <td>
                                             <span style={{
                                                 color: isIncome ? '#12a454' : '#e52e4d',
