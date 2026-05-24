@@ -58,6 +58,13 @@ export const SidebarContainer = styled.aside`
   padding: 32px 24px;
   display: flex;
   flex-direction: column;
+
+  /* 🔥 A MÁGICA DO SCROLL TRAVADO AQUI 🔥 */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  /* ------------------------------------- */
+
   justify-content: space-between;
   color: white;
   transition: all 0.3s ease;
@@ -66,6 +73,7 @@ export const SidebarContainer = styled.aside`
     position: fixed;
     top: 60px;
     bottom: 0;
+    height: auto; /* No mobile ele precisa seguir o bottom livremente */
     z-index: 99;
     width: 260px;
     left: ${(props) => (props.$isOpen ? "0" : "-260px")};

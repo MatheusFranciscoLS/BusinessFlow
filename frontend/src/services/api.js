@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://businessflow-api.onrender.com/api",
+  // Lê a variável segura, ou usa o localhost se estiver a programar localmente
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
 });
 api.interceptors.request.use((config) => {
   // CORREÇÃO: Buscando a chave exata que o AuthContext salva
