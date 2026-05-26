@@ -8,6 +8,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip, Download
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext'; // 🔥 O Cérebro importado!
 import {
     Container, Header, SummaryContainer, SummaryCard, TableContainer, Table,
     ModalOverlay, ModalContent, FormGroup, TransactionTypeContainer, RadioBox, ModalActions, ActionButton,
@@ -30,6 +31,9 @@ const MONTHS_BR = [
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Financial() {
+    // 🔥 Puxamos os dados da Consultoria e do Cliente
+    const { user, selectedCompany } = useAuth(); 
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -45,8 +49,6 @@ export default function Financial() {
     const [category, setCategory] = useState('');
     const [type, setType] = useState('income');
     const [date, setDate] = useState('');
-    
-    // 🔥 NOVO ESTADO: O FICHEIRO DA NOTA FISCAL
     const [file, setFile] = useState(null);
 
     const queryString = showAllTime ? '' : `?month=${currentMonth}&year=${currentYear}`;
@@ -101,6 +103,89 @@ export default function Financial() {
         return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
     }
 
+    // 🔥 O NOVO GERADOR DE PDF DE NÍVEL ENTERPRISE 🔥
+    function handleExportPDF() {
+        if (!transactions) return;
+        const doc = new jsPDF();
+        
+        // Cores da Marca
+        const primaryColor = [49, 130, 206]; // Azul BusinessFlow
+        const darkColor = [26, 32, 44]; // Cinza Escuro
+
+        // 1. Cabeçalho Timbrado (Fundo Escuro)
+        doc.setFillColor(...darkColor);
+        doc.rect(0, 0, 210, 42, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text(user?.name || "Consultoria Financeira", 14, 20); // Nome da SUA agência
+        
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        const clientName = selectedCompany?.name || 'Cliente';
+        doc.text(`Relatório de Desempenho Financeiro: ${clientName}`, 14, 28);
+        
+        const reportPeriod = showAllTime ? "Todo o Histórico" : `${MONTHS_BR[currentMonth - 1]} de ${currentYear}`;
+        doc.text(`Período analisado: ${reportPeriod}`, 14, 34);
+
+        // 2. Resumo Executivo (Mini Cartões)
+        doc.setTextColor(...darkColor);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Resumo do Período", 14, 55);
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Entradas Totais: ${formatCurrency(filteredSummary.entradas)}`, 14, 63);
+        doc.text(`Saídas Totais: ${formatCurrency(filteredSummary.saidas)}`, 80, 63);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...(filteredSummary.total >= 0 ? [18, 164, 84] : [229, 46, 77])); // Verde ou Vermelho
+        doc.text(`Saldo Líquido: ${formatCurrency(filteredSummary.total)}`, 145, 63);
+
+        // Linha Divisória
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 68, 196, 68);
+
+        // 3. Tabela Profissional
+        const tableRows = filteredTransactions.map(t => {
+            const amount = t.amount || t.price || 0;
+            const isIncome = t.type === 'income' || t.type === 'entrada';
+            return [
+                formatDateDisplay(t.date), 
+                t.title || t.description, 
+                t.category || 'Geral', 
+                isIncome ? 'Entrada' : 'Saída', 
+                `${isIncome ? '+' : '-'} ${formatCurrency(amount)}`
+            ];
+        });
+
+        autoTable(doc, { 
+            head: [["Data", "Descrição", "Categoria", "Tipo", "Valor"]], 
+            body: tableRows, 
+            startY: 75, 
+            theme: 'grid', 
+            headStyles: { fillColor: primaryColor, fontSize: 10 },
+            styles: { fontSize: 9, textColor: [74, 85, 104] },
+            alternateRowStyles: { fillColor: [247, 250, 252] }
+        });
+
+        // 4. Rodapé Automático nas Páginas
+        const pageCount = doc.internal.getNumberOfPages();
+        for(let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(160, 174, 192);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Documento gerado por ${user?.name || 'Sistema'} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
+            doc.text(`Página ${i} de ${pageCount}`, 185, 290);
+        }
+
+        doc.save(`Relatorio_Financeiro_${clientName.replace(/\s/g, '_')}.pdf`); 
+        toast.success("PDF Timbrado exportado com sucesso!");
+    }
+
     function handleOpenNew() {
         setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null);
         setIsModalOpen(true);
@@ -110,7 +195,7 @@ export default function Financial() {
         setEditingId(t.id); setTitle(t.title || t.description); setPrice(t.amount || t.price || 0); setCategory(t.category || '');
         setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
         setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
-        setFile(null); // Limpa o anexo atual no ecrã para evitar confusão
+        setFile(null); 
         setIsModalOpen(true);
     }
 
@@ -129,8 +214,6 @@ export default function Financial() {
         const toastId = toast.loading('A guardar transação...');
         try {
             const apiType = type === 'income' ? 'entrada' : 'saida';
-            
-            // 🔥 FORM DATA: Necessário para enviar ficheiros (Imagens ou PDFs)
             const formData = new FormData();
             formData.append('title', title);
             formData.append('description', title);
@@ -138,16 +221,10 @@ export default function Financial() {
             formData.append('category', category);
             formData.append('type', apiType);
             formData.append('date', new Date(date).toISOString());
-            
-            if (file) {
-                formData.append('file', file);
-            }
+            if (file) formData.append('file', file);
 
-            if (editingId) {
-                await api.put(`/transactions/${editingId}`, formData);
-            } else {
-                await api.post('/transactions', formData);
-            }
+            if (editingId) await api.put(`/transactions/${editingId}`, formData);
+            else await api.post('/transactions', formData);
             
             setIsModalOpen(false);
             mutate(); 
@@ -155,7 +232,6 @@ export default function Financial() {
         } catch { toast.error("Erro ao salvar dados.", { id: toastId }); }
     }
 
-    // 🔥 FUNÇÃO PARA ABRIR O ANEXO
     function openAttachment(fileUrl) {
       const fullUrl = `${api.defaults.baseURL.replace('/api', '')}${fileUrl}`;
       window.open(fullUrl, '_blank');
@@ -169,6 +245,7 @@ export default function Financial() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
                     <ButtonGroup>
+                        <button className="secondary" onClick={handleExportPDF} disabled={!transactions}><FileText size={18} /> Relatório PDF</button>
                         <button className="primary" onClick={handleOpenNew} disabled={!transactions}><Plus size={20} /> Nova Transação</button>
                     </ButtonGroup>
                 </div>
@@ -248,7 +325,6 @@ export default function Financial() {
                                                 <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
                                                 <td>{formatDateDisplay(t.date)}</td>
                                                 
-                                                {/* 🔥 NOVA COLUNA: O CLIP DE ANEXO */}
                                                 <td style={{ textAlign: 'center' }}>
                                                   {t.fileUrl ? (
                                                     <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -273,7 +349,6 @@ export default function Financial() {
                 </>
             )}
 
-            {/* MODAL COM O CAMPO DE UPLOAD */}
             {isModalOpen && (
                 <ModalOverlay>
                     <ModalContent>
@@ -308,7 +383,6 @@ export default function Financial() {
                               <FormGroup><label>Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
                             </div>
 
-                            {/* 🔥 CAMPO DE ANEXAR NOTA FISCAL */}
                             <FormGroup style={{ marginTop: 16 }}>
                               <label>Comprovativo / Nota Fiscal</label>
                               <div style={{ border: '1px dashed #cbd5e0', padding: '16px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
