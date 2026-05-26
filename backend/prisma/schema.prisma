@@ -22,10 +22,11 @@ model User {
   createdAt     DateTime       @default(now())
 }
 
-// 🔥 A ESTRUTURA DO REFRESH TOKEN RECUPERADA
+// 🔥 A ESTRUTURA DO REFRESH TOKEN 100% ALINHADA COM O SEU BACK-END
 model RefreshToken {
   id        String   @id @default(uuid())
-  expiresIn Int
+  token     String   @unique
+  expiresAt DateTime
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
