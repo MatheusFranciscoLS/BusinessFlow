@@ -1,56 +1,47 @@
-import prisma from "../config/prisma.js";
-import { z } from "zod";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-const appointmentSchema = z.object({
-  clientId: z.string(),
-  date: z.string().datetime(),
-  status: z.enum(["pendente", "concluido", "cancelado"]).default("pendente"),
-  notes: z.string().optional(),
-});
-
-export async function create(data, userId) {
-  const validated = appointmentSchema.parse(data);
-
-  // Verifica se o cliente escolhido realmente pertence a essa empresa
-  const client = await prisma.client.findFirst({ where: { id: validated.clientId, userId }});
-  if (!client) throw new Error("Cliente inválido ou não pertence a você.");
-
+export async function createAppointment(companyId, data) {
   return prisma.appointment.create({
-    data: { ...validated, userId }, // Salva com o ID do dono
-    include: { client: true },
+    data: {
+      date: new Date(data.date),
+      notes: data.notes,
+      status: data.status || "pendente",
+      clientId: data.clientId,
+      companyId, // 🔥 Vinculado à empresa atual!
+    },
   });
 }
-
-export async function getAll(userId) {
+export async function getAllAppointments(companyId) {
   return prisma.appointment.findMany({
-    where: { userId }, // Filtra
-    include: { client: true },
+    where: { companyId },
+    include: { client: { select: { fullName: true, phone: true } } },
     orderBy: { date: "asc" },
   });
 }
-
-export async function getById(id, userId) {
-  const appointment = await prisma.appointment.findFirst({
-    where: { id, userId },
+export async function getAppointmentById(companyId, id) {
+  const appt = await prisma.appointment.findFirst({
+    where: { id, companyId },
     include: { client: true },
   });
-  if (!appointment) throw new Error("Agendamento não encontrado.");
-  return appointment;
+  if (!appt) throw new Error("Agendamento não encontrado.");
+  return appt;
 }
-
-export async function update(id, data, userId) {
-  await getById(id, userId); // Trava de segurança
-  const validated = appointmentSchema.partial().parse(data);
-
+export async function updateAppointment(companyId, id, data) {
+  const appt = await prisma.appointment.findFirst({ where: { id, companyId } });
+  if (!appt) throw new Error("Agendamento não encontrado.");
   return prisma.appointment.update({
     where: { id },
-    data: validated,
-    include: { client: true },
+    data: {
+      date: data.date ? new Date(data.date) : undefined,
+      notes: data.notes,
+      status: data.status,
+      clientId: data.clientId,
+    },
   });
 }
-
-export async function remove(id, userId) {
-  await getById(id, userId); // Trava de segurança
-  await prisma.appointment.delete({ where: { id } });
-  return { message: "Agendamento removido com sucesso." };
+export async function deleteAppointment(companyId, id) {
+  const appt = await prisma.appointment.findFirst({ where: { id, companyId } });
+  if (!appt) throw new Error("Agendamento não encontrado.");
+  return prisma.appointment.delete({ where: { id } });
 }

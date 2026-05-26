@@ -2,42 +2,59 @@ import * as productService from "../services/product.service.js";
 
 export async function create(req, res) {
   try {
-    const data = req.body;
-    const images = req.files?.map((file) => `/uploads/products/${file.filename}`) || [];
-    const product = await productService.create({
-      ...data,
-      price: parseFloat(data.price),
-      stock: parseInt(data.stock),
-    }, images, req.user.id);
-
-    return res.status(201).json(product);
-  } catch (err) { return res.status(400).json({ error: err.message }); }
+    const images = req.files
+      ? req.files.map((f) => `/uploads/products/${f.filename}`)
+      : [];
+    const data = await productService.createProduct(
+      req.companyId,
+      req.body,
+      images,
+    );
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 }
 export async function getAll(req, res) {
   try {
-    const products = await productService.getAll(req.user.id);
-    return res.json(products);
-  } catch (err) { return res.status(500).json({ error: err.message }); }
+    const data = await productService.getAllProducts(req.companyId);
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 }
 export async function getById(req, res) {
   try {
-    const product = await productService.getById(req.params.id, req.user.id);
-    return res.json(product);
-  } catch (err) { return res.status(404).json({ error: err.message }); }
+    const data = await productService.getProductById(
+      req.companyId,
+      req.params.id,
+    );
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 }
 export async function update(req, res) {
   try {
-    let imageUrls = undefined;
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map((file) => `/uploads/products/${file.filename}`);
-    }
-    const product = await productService.updateProduct(req.params.id, req.body, imageUrls, req.user.id);
-    return res.json(product);
-  } catch (error) { return res.status(400).json({ error: error.message }); }
+    const images = req.files
+      ? req.files.map((f) => `/uploads/products/${f.filename}`)
+      : [];
+    const data = await productService.updateProduct(
+      req.companyId,
+      req.params.id,
+      req.body,
+      images,
+    );
+    return res.status(200).json(data);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 }
 export async function remove(req, res) {
   try {
-    await productService.remove(req.params.id, req.user.id);
-    return res.json({ message: "Produto removido com sucesso" });
-  } catch (err) { return res.status(400).json({ error: err.message }); }
+    await productService.deleteProduct(req.companyId, req.params.id);
+    return res.status(204).send();
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
 }

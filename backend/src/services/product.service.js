@@ -1,62 +1,58 @@
-import prisma from "../config/prisma.js";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-export async function create(data, imageUrls = [], userId) {
-  const imagesData = imageUrls.map(url => ({ url }));
-
+export async function createProduct(companyId, data, imagePaths) {
   return prisma.product.create({
     data: {
       name: data.name,
-      description: data.description || data.category,
-      price: parseFloat(data.price),
       category: data.category,
+      price: parseFloat(data.price),
       stock: parseInt(data.stock || 0),
-      userId, // Salva com o ID do dono
-      images: { create: imagesData }
+      companyId, // 🔥 Vinculado à empresa atual!
+      images: { create: imagePaths.map((url) => ({ url })) },
     },
     include: { images: true },
   });
 }
-
-export async function getAll(userId) {
+export async function getAllProducts(companyId) {
   return prisma.product.findMany({
-    where: { userId }, // Filtra só os produtos dessa empresa
+    where: { companyId },
     include: { images: true },
     orderBy: { createdAt: "desc" },
   });
 }
-
-export async function getById(id, userId) {
-  const product = await prisma.product.findFirst({
-    where: { id, userId }, include: { images: true }
+export async function getProductById(companyId, id) {
+  const prod = await prisma.product.findFirst({
+    where: { id, companyId },
+    include: { images: true },
   });
-  if (!product) throw new Error("Produto não encontrado ou acesso negado.");
-  return product;
+  if (!prod) throw new Error("Produto não encontrado.");
+  return prod;
 }
-
-export async function updateProduct(id, data, imageUrls, userId) {
-  await getById(id, userId); // Trava de segurança
+export async function updateProduct(companyId, id, data, imagePaths) {
+  const prod = await prisma.product.findFirst({ where: { id, companyId } });
+  if (!prod) throw new Error("Produto não encontrado.");
 
   const updateData = {
     name: data.name,
-    description: data.description || data.category,
     category: data.category,
     price: data.price ? parseFloat(data.price) : undefined,
     stock: data.stock ? parseInt(data.stock) : undefined,
   };
 
-  if (imageUrls && imageUrls.length > 0) {
-    await prisma.productImage.deleteMany({ where: { productId: id } });
-    updateData.images = { create: imageUrls.map(url => ({ url })) };
+  if (imagePaths && imagePaths.length > 0) {
+    await prisma.image.deleteMany({ where: { productId: id } });
+    updateData.images = { create: imagePaths.map((url) => ({ url })) };
   }
 
-  return await prisma.product.update({
+  return prisma.product.update({
     where: { id },
     data: updateData,
     include: { images: true },
   });
 }
-
-export async function remove(id, userId) {
-  await getById(id, userId); // Trava de segurança
+export async function deleteProduct(companyId, id) {
+  const prod = await prisma.product.findFirst({ where: { id, companyId } });
+  if (!prod) throw new Error("Produto não encontrado.");
   return prisma.product.delete({ where: { id } });
 }
