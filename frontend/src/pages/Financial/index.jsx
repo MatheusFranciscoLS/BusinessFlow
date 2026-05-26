@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
-  Search, FileText, ChevronLeft, ChevronRight 
+  Search, FileText, ChevronLeft, ChevronRight, Paperclip, Download
 } from 'lucide-react';
 import {
     Container, Header, SummaryContainer, SummaryCard, TableContainer, Table,
@@ -15,7 +15,6 @@ import {
 } from './styles';
 import styled, { keyframes } from 'styled-components';
 
-// 🔥 Animação Shimmer para os Skeletons
 const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
 const SkeletonRow = styled.div`
   height: 60px; width: 100%; border-radius: 8px; margin-bottom: 12px;
@@ -28,34 +27,31 @@ const MONTHS_BR = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
-// 🔥 Tradutor do SWR
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Financial() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
-    // --- MÁQUINA DO TEMPO ---
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
     const [showAllTime, setShowAllTime] = useState(false); 
 
-    // --- OUTROS FILTROS ---
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('Todos');
 
-    // --- FORMULÁRIO ---
     const [title, setTitle] = useState('');
-    const [price, setPrice] = useState(0);
+    const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
     const [type, setType] = useState('income');
     const [date, setDate] = useState('');
+    
+    // 🔥 NOVO ESTADO: O FICHEIRO DA NOTA FISCAL
+    const [file, setFile] = useState(null);
 
-    // 🔥 SWR: A query muda dinamicamente quando você troca de mês ou clica em "Todo o Histórico"!
     const queryString = showAllTime ? '' : `?month=${currentMonth}&year=${currentYear}`;
     const { data: transactions, error, mutate } = useSWR(`/transactions${queryString}`, fetcher);
 
-    // Deriva as categorias dinamicamente a partir dos dados em cache
     const categories = useMemo(() => {
         if (!transactions) return ['Todos'];
         const uniqueCats = [...new Set(transactions.map(t => t.category).filter(Boolean))];
@@ -105,24 +101,8 @@ export default function Financial() {
         return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
     }
 
-    function handleExportPDF() {
-        if (!transactions) return;
-        const doc = new jsPDF();
-        doc.setFontSize(14);
-        const reportTitle = showAllTime ? "Relatório Financeiro - Todo o Histórico" : `Relatório Financeiro - ${MONTHS_BR[currentMonth - 1]} / ${currentYear}`;
-        doc.text(reportTitle, 14, 22); doc.setFontSize(10);
-        doc.text(`Balanço do Período: ${formatCurrency(filteredSummary.total)}`, 14, 28);
-        const tableRows = filteredTransactions.map(t => {
-            const amount = t.amount || t.price || 0;
-            const isIncome = t.type === 'income' || t.type === 'entrada';
-            return [formatDateDisplay(t.date), t.title || t.description, t.category || 'Geral', isIncome ? 'Entrada' : 'Saída', `${isIncome ? '+' : '-'} ${formatCurrency(amount)}`];
-        });
-        autoTable(doc, { head: [["Data", "Título", "Categoria", "Tipo", "Valor"]], body: tableRows, startY: 35, theme: 'grid', headStyles: { fillColor: [49, 130, 206] } });
-        doc.save(`financeiro.pdf`); toast.success("PDF gerado!");
-    }
-
     function handleOpenNew() {
-        setEditingId(null); setTitle(''); setPrice(0); setCategory(''); setType('income'); setDate('');
+        setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null);
         setIsModalOpen(true);
     }
 
@@ -130,6 +110,7 @@ export default function Financial() {
         setEditingId(t.id); setTitle(t.title || t.description); setPrice(t.amount || t.price || 0); setCategory(t.category || '');
         setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
         setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
+        setFile(null); // Limpa o anexo atual no ecrã para evitar confusão
         setIsModalOpen(true);
     }
 
@@ -137,7 +118,7 @@ export default function Financial() {
         if (window.confirm("Excluir esta transação?")) {
             try {
                 await api.delete(`/transactions/${id}`);
-                mutate(); // 🔥 SWR atualiza instantaneamente
+                mutate(); 
                 toast.success("Removido!");
             } catch { toast.error("Erro ao eliminar transação."); }
         }
@@ -145,17 +126,39 @@ export default function Financial() {
 
     async function handleSave(e) {
         e.preventDefault();
-        const apiType = type === 'income' ? 'entrada' : 'saida';
-        const payload = { title, description: title, amount: parseFloat(price), category, type: apiType, date: new Date(date).toISOString() };
-        const toastId = toast.loading('A guardar...');
+        const toastId = toast.loading('A guardar transação...');
         try {
-            if (editingId) await api.put(`/transactions/${editingId}`, payload);
-            else await api.post('/transactions', payload);
+            const apiType = type === 'income' ? 'entrada' : 'saida';
+            
+            // 🔥 FORM DATA: Necessário para enviar ficheiros (Imagens ou PDFs)
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', title);
+            formData.append('amount', price);
+            formData.append('category', category);
+            formData.append('type', apiType);
+            formData.append('date', new Date(date).toISOString());
+            
+            if (file) {
+                formData.append('file', file);
+            }
+
+            if (editingId) {
+                await api.put(`/transactions/${editingId}`, formData);
+            } else {
+                await api.post('/transactions', formData);
+            }
             
             setIsModalOpen(false);
-            mutate(); // 🔥 Puxa os dados novos na hora
+            mutate(); 
             toast.success("Sucesso!", { id: toastId });
         } catch { toast.error("Erro ao salvar dados.", { id: toastId }); }
+    }
+
+    // 🔥 FUNÇÃO PARA ABRIR O ANEXO
+    function openAttachment(fileUrl) {
+      const fullUrl = `${api.defaults.baseURL.replace('/api', '')}${fileUrl}`;
+      window.open(fullUrl, '_blank');
     }
 
     if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados financeiros.</div>;
@@ -166,7 +169,6 @@ export default function Financial() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
                     <ButtonGroup>
-                        <button className="secondary" onClick={handleExportPDF} disabled={!transactions}><FileText size={18} /> Exportar PDF</button>
                         <button className="primary" onClick={handleOpenNew} disabled={!transactions}><Plus size={20} /> Nova Transação</button>
                     </ButtonGroup>
                 </div>
@@ -199,12 +201,9 @@ export default function Financial() {
                 </FilterPillsContainer>
             </Header>
 
-            {/* 🔥 ESTADO DE CARREGAMENTO (SKELETONS) */}
             {!transactions ? (
                 <>
-                   <SummaryContainer>
-                       <SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} />
-                   </SummaryContainer>
+                   <SummaryContainer><SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} /></SummaryContainer>
                    <TableContainer style={{ padding: 24 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow /></TableContainer>
                 </>
             ) : (
@@ -231,7 +230,7 @@ export default function Financial() {
                             <Table>
                                 <thead>
                                     <tr>
-                                        <th>Título</th><th>Valor</th><th>Categoria</th><th>Data</th><th style={{ textAlign: 'right' }}>Ações</th>
+                                        <th>Título</th><th>Valor</th><th>Categoria</th><th>Data</th><th style={{ textAlign: 'center' }}>Anexo</th><th style={{ textAlign: 'right' }}>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -248,6 +247,18 @@ export default function Financial() {
                                                 </td>
                                                 <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
                                                 <td>{formatDateDisplay(t.date)}</td>
+                                                
+                                                {/* 🔥 NOVA COLUNA: O CLIP DE ANEXO */}
+                                                <td style={{ textAlign: 'center' }}>
+                                                  {t.fileUrl ? (
+                                                    <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                      <Paperclip size={18} />
+                                                    </button>
+                                                  ) : (
+                                                    <span style={{ color: '#cbd5e0', fontSize: 12 }}>-</span>
+                                                  )}
+                                                </td>
+
                                                 <td style={{ textAlign: 'right' }}>
                                                     <ActionButton onClick={() => handleEdit(t)} color="#3182ce"><Edit size={18} /></ActionButton>
                                                     <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
@@ -262,14 +273,14 @@ export default function Financial() {
                 </>
             )}
 
-            {/* MODAL */}
+            {/* MODAL COM O CAMPO DE UPLOAD */}
             {isModalOpen && (
                 <ModalOverlay>
                     <ModalContent>
                         <h2>{editingId ? 'Editar' : 'Nova'} Transação</h2>
                         <form onSubmit={handleSave}>
                             <FormGroup><label>Título</label><input value={title} onChange={e => setTitle(e.target.value)} required /></FormGroup>
-                            <FormGroup><label>Valor</label><input type="number" step="0.01" value={price} onChange={e => setPrice(Number(e.target.value))} required /></FormGroup>
+                            <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
 
                             <TransactionTypeContainer>
                                 <RadioBox type="button" onClick={() => setType('income')} $isActive={type === 'income' || type === 'entrada'} $activeColor="green">
@@ -279,24 +290,41 @@ export default function Financial() {
                                     <ArrowDownCircle size={24} color="#e52e4d" /> <span>Saída</span>
                                 </RadioBox>
                             </TransactionTypeContainer>
-                            <FormGroup>
-                                <label>Categoria</label>
-                                <select value={category} onChange={e => setCategory(e.target.value)} required>
-                                    <option value="">Selecione...</option>
-                                    <option value="Venda">Venda</option>
-                                    <option value="Serviço">Serviço</option>
-                                    <option value="Fixo">Despesas Fixas</option>
-                                    <option value="Variavel">Despesas Variáveis</option>
-                                    <option value="Infraestrutura">Infraestrutura</option>
-                                    <option value="Pessoal">Pessoal</option>
-                                    <option value="Impostos">Impostos</option>
-                                </select>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                              <FormGroup>
+                                  <label>Categoria</label>
+                                  <select value={category} onChange={e => setCategory(e.target.value)} required>
+                                      <option value="">Selecione...</option>
+                                      <option value="Serviço">Serviço Prestado</option>
+                                      <option value="Pró-labore">Pró-labore (Sócio)</option>
+                                      <option value="Folha">Folha de Pagamento</option>
+                                      <option value="Impostos">Impostos (FGTS/INSS/DAS)</option>
+                                      <option value="Fixo">Despesas Fixas</option>
+                                      <option value="Infraestrutura">Infraestrutura</option>
+                                      <option value="Outros">Outros</option>
+                                  </select>
+                              </FormGroup>
+                              <FormGroup><label>Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
+                            </div>
+
+                            {/* 🔥 CAMPO DE ANEXAR NOTA FISCAL */}
+                            <FormGroup style={{ marginTop: 16 }}>
+                              <label>Comprovativo / Nota Fiscal</label>
+                              <div style={{ border: '1px dashed #cbd5e0', padding: '16px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
+                                <input type="file" onChange={e => setFile(e.target.files[0])} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
+                                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}>
+                                  <Download size={20} style={{ marginBottom: 8, color: '#3182ce' }} />
+                                  <span style={{ fontSize: 13, fontWeight: 600 }}>
+                                    {file ? file.name : "Clique para anexar PDF ou Imagem"}
+                                  </span>
+                                </div>
+                              </div>
                             </FormGroup>
-                            <FormGroup><label>Data</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
 
                             <ModalActions>
                                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                                <button type="submit" className="save">Salvar</button>
+                                <button type="submit" className="save">Salvar Transação</button>
                             </ModalActions>
                         </form>
                     </ModalContent>

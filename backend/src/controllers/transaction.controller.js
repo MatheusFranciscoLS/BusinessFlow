@@ -2,9 +2,13 @@ import * as transactionService from "../services/transaction.service.js";
 
 export async function create(req, res) {
   try {
+    // Verifica se veio um ficheiro. Se sim, guarda o caminho dele.
+    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
     const data = await transactionService.createTransaction(
       req.companyId,
       req.body,
+      fileUrl,
     );
     return res.status(201).json(data);
   } catch (err) {
@@ -40,10 +44,12 @@ export async function getById(req, res) {
 
 export async function update(req, res) {
   try {
+    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
     const data = await transactionService.updateTransaction(
       req.companyId,
       req.params.id,
       req.body,
+      fileUrl,
     );
     return res.status(200).json(data);
   } catch (err) {
