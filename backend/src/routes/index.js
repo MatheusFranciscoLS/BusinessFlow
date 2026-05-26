@@ -7,7 +7,8 @@ import productRoutes from "./product.routes.js";
 import transactionRoutes from "./transaction.routes.js";
 import dashboardRoutes from "./dashboard.routes.js";
 import appointmentRoutes from "./appointment.routes.js";
-import profileRoutes from "./profile.routes.js"; // 🔥 O nosso novo ficheiro de Perfil
+import profileRoutes from "./profile.routes.js";
+import companyRoutes from "./company.routes.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.get("/", (req, res) => {
 
 // Definição das Rotas (Sem repetições)
 router.use("/auth", authRoutes);
+router.use("/companies", companyRoutes);
 router.use("/clients", clientRoutes);
 router.use("/products", productRoutes);
 router.use("/transactions", transactionRoutes);
