@@ -1,15 +1,17 @@
 import React, { useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom'; 
 import { useAuth } from '../../contexts/AuthContext'; 
-import api from '../../services/api'; // 🔥 IMPORTAÇÃO CORRIGIDA AQUI
-import { LayoutDashboard, Users, DollarSign, LogOut, Briefcase, Calendar, Menu, X, Settings, CircleUser } from 'lucide-react';
+import api from '../../services/api'; 
+import { LayoutDashboard, Users, DollarSign, LogOut, Briefcase, Calendar, Menu, X, Settings, CircleUser, Building2 } from 'lucide-react';
 import { 
   Container, SidebarContainer, MainContent, Logo, NavMenu, 
-  StyledNavLink, LogoutButton, MobileHeader, HamburgerButton, Overlay 
+  StyledNavLink, LogoutButton, MobileHeader, HamburgerButton, Overlay,
+  CompanySelector // 🔥 IMPORTAÇÃO NOVA
 } from './styles';
 
 export default function Layout() {
-  const { signOut, user } = useAuth(); 
+  // 🔥 Puxa os dados das empresas do Cérebro
+  const { signOut, user, companies, selectedCompany, changeCompany } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -17,7 +19,6 @@ export default function Layout() {
 
   return (
     <Container>
-      {/* Cabeçalho superior fixo - Visível apenas no Mobile */}
       <MobileHeader>
         <Logo style={{ fontSize: 20, margin: 0 }}>
           Business<span>Flow</span>
@@ -27,17 +28,31 @@ export default function Layout() {
         </HamburgerButton>
       </MobileHeader>
 
-      {/* Sombra de fundo ao abrir o menu no mobile */}
       {isOpen && <Overlay onClick={closeMenu} />}
 
-      {/* Sidebar ativa com propriedade de controle mobile */}
       <SidebarContainer $isOpen={isOpen}>
         <div>
           <Logo>
             Business<span>Flow</span>
           </Logo>
           
-          {/* 🔥 BLOCO DO AVATAR CORRIGIDO COM O FECHAMENTO DA DIV 🔥 */}
+          {/* 🔥 NOVO: SELETOR DE EMPRESAS DE NÍVEL ENTERPRISE 🔥 */}
+          {companies.length > 0 && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
+                <Building2 size={14} /> Empresa Ativa
+              </div>
+              <CompanySelector 
+                value={selectedCompany?.id || ''} 
+                onChange={(e) => changeCompany(e.target.value)}
+              >
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </CompanySelector>
+            </div>
+          )}
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
             <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#2d3748', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #3182ce' }}>
               {user?.avatarUrl ? (
@@ -51,29 +66,23 @@ export default function Layout() {
               <strong style={{ color: 'white', fontSize: 14 }}>{user?.name || 'Gestor'}</strong>
             </div>
           </div> 
-          {/* FIM DO BLOCO DO AVATAR */}
 
           <NavMenu>
             <StyledNavLink to="/app" end onClick={closeMenu}> 
               <LayoutDashboard size={20} /> Dashboard
             </StyledNavLink>
-
             <StyledNavLink to="/app/clientes" onClick={closeMenu}>
               <Users size={20} /> Clientes
             </StyledNavLink>
-
             <StyledNavLink to="/app/servicos" onClick={closeMenu}>
               <Briefcase size={20} /> Serviços
             </StyledNavLink>
-
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
               <Calendar size={20} /> Agenda
             </StyledNavLink>
-
             <StyledNavLink to="/app/financeiro" onClick={closeMenu}>
               <DollarSign size={20} /> Financeiro
             </StyledNavLink>
-
             <StyledNavLink to="/app/perfil" onClick={closeMenu}>
               <Settings size={20} /> Configurações
             </StyledNavLink>
@@ -85,27 +94,16 @@ export default function Layout() {
         </LogoutButton>
       </SidebarContainer>
 
-<MainContent>
-<Suspense 
+      <MainContent>
+        <Suspense 
           fallback={
             <div style={{ width: '100%', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Título da Página Animado */}
               <div style={{ width: '200px', height: '32px', background: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
               <div style={{ width: '350px', height: '16px', background: '#edf2f7', borderRadius: '4px', marginBottom: '20px', animation: 'pulse 1.5s infinite ease-in-out' }} />
-              
-              {/* Linhas simulando o conteúdo */}
               <div style={{ width: '100%', height: '120px', background: '#e2e8f0', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
               <div style={{ width: '100%', height: '80px', background: '#edf2f7', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
               <div style={{ width: '100%', height: '80px', background: '#edf2f7', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
-
-              {/* Regra CSS inline para a animação pulse funcionar sem pesar */}
-              <style>{`
-                @keyframes pulse {
-                  0% { opacity: 0.6; }
-                  50% { opacity: 1; }
-                  100% { opacity: 0.6; }
-                }
-              `}</style>
+              <style>{`@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }`}</style>
             </div>
           }
         >
