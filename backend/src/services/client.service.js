@@ -1,44 +1,41 @@
 import { PrismaClient } from "@prisma/client";
-
 const prisma = new PrismaClient();
 
-export async function create(data, userId) {
+export async function createClient(companyId, data) {
   return prisma.client.create({
-    data: { ...data, userId },
+    data: { ...data, companyId },
   });
 }
 
-export async function getAll(userId) {
+export async function getAllClients(companyId) {
   return prisma.client.findMany({
-    where: { userId },
+    where: { companyId },
     orderBy: { createdAt: "desc" },
   });
 }
 
-export async function getById(id, userId) {
+export async function getClientById(companyId, id) {
   const client = await prisma.client.findFirst({
-    where: { id, userId },
-    // AQUI ESTÁ A MAGIA: Pedimos ao banco para trazer as transações deste cliente!
-    include: {
-      transactions: {
-        orderBy: { date: "desc" },
-      },
-    },
+    where: { id, companyId },
+    include: { transactions: { orderBy: { date: "desc" } } }, // Mantém o Mini-CRM a funcionar!
   });
-
-  if (!client) throw new Error("Cliente não encontrado.");
+  if (!client) throw new Error("Cliente não encontrado ou acesso negado.");
   return client;
 }
 
-export async function update(id, data, userId) {
+export async function updateClient(companyId, id, data) {
+  const client = await prisma.client.findFirst({ where: { id, companyId } });
+  if (!client) throw new Error("Cliente não encontrado.");
+
   return prisma.client.update({
-    where: { id, userId },
+    where: { id },
     data,
   });
 }
 
-export async function remove(id, userId) {
-  return prisma.client.delete({
-    where: { id, userId },
-  });
+export async function deleteClient(companyId, id) {
+  const client = await prisma.client.findFirst({ where: { id, companyId } });
+  if (!client) throw new Error("Cliente não encontrado.");
+
+  return prisma.client.delete({ where: { id } });
 }

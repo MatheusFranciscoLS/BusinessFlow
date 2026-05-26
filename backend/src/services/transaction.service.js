@@ -1,74 +1,70 @@
-import prisma from "../config/prisma.js";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-export async function create(data, userId) {
-  const typeMap = { income: "entrada", outcome: "saida", entrada: "entrada", saida: "saida" };
-
+export async function createTransaction(companyId, data) {
   return prisma.transaction.create({
     data: {
-      description: data.title || data.description,
-      amount: parseFloat(data.price || data.amount),
+      title: data.title,
+      description: data.description,
+      amount: data.amount,
+      type: data.type,
       category: data.category,
-      type: typeMap[data.type],
       date: new Date(data.date),
-      userId: userId, 
+      clientId: data.clientId || null,
+      companyId, // 🔥 Vinculado à empresa do contabilista
     },
   });
 }
 
-export async function getAll(userId, month, year) {
-  let whereClause = { userId };
+export async function getAllTransactions(companyId, month, year) {
+  const where = { companyId };
 
-  // Se o Front-end enviar o mês e o ano, ativamos a "Máquina do Tempo"
+  // Filtros da Máquina do Tempo do Financeiro
   if (month && year) {
-    // No JavaScript, o mês começa em 0 (Janeiro = 0, Fevereiro = 1...)
-    const targetMonth = parseInt(month) - 1;
-    const targetYear = parseInt(year);
-
-    // Primeiro e último dia do mês às 23:59:59
-    const startDate = new Date(targetYear, targetMonth, 1);
-    const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
-
-    whereClause.date = {
-      gte: startDate,
-      lte: endDate,
-    };
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    where.date = { gte: startDate, lte: endDate };
   }
 
-  // Trazemos as transações filtradas e já ordenadas das mais recentes para as mais antigas
   return prisma.transaction.findMany({
-    where: whereClause,
+    where,
     orderBy: { date: "desc" },
   });
 }
 
-export async function getById(id, userId) {
+export async function getTransactionById(companyId, id) {
   const transaction = await prisma.transaction.findFirst({
-    where: { id, userId }
+    where: { id, companyId },
   });
-  if (!transaction) throw new Error("Transação não encontrada ou acesso negado.");
+  if (!transaction) throw new Error("Transação não encontrada.");
   return transaction;
 }
 
-export async function update(id, data, userId) {
-  await getById(id, userId); 
-
-  const typeMap = { income: "entrada", outcome: "saida", entrada: "entrada", saida: "saida" };
-
-  const updateData = {
-    amount: parseFloat(data.price || data.amount),
-    description: data.title || data.description,
-    category: data.category,
-    type: typeMap[data.type] || data.type,
-    date: new Date(data.date),
-  };
+export async function updateTransaction(companyId, id, data) {
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, companyId },
+  });
+  if (!transaction) throw new Error("Transação não encontrada.");
 
   return prisma.transaction.update({
     where: { id },
-    data: updateData,
+    data: {
+      title: data.title,
+      description: data.description,
+      amount: data.amount,
+      type: data.type,
+      category: data.category,
+      date: data.date ? new Date(data.date) : undefined,
+      clientId: data.clientId || null,
+    },
   });
 }
 
-export async function remove(id, userId) {
-  await getById(id, userId); 
+export async function deleteTransaction(companyId, id) {
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, companyId },
+  });
+  if (!transaction) throw new Error("Transação não encontrada.");
+
   return prisma.transaction.delete({ where: { id } });
 }
