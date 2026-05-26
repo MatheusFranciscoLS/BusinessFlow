@@ -9,15 +9,15 @@ import {
   SectionTitle, CompanyList, CompanyItem, AddButton, ModalOverlay, ModalContent, ModalActions
 } from './styles';
 
-// Tradutor do SWR para puxar as empresas na hora
 const fetcher = url => api.get(url).then(res => res.data);
 
 export default function Profile() {
   const { user, updateUserData } = useAuth(); 
   
-  // -- ESTADOS DO PERFIL PESSOAL --
+  // -- ESTADOS DO PERFIL --
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [agencyName, setAgencyName] = useState(''); // 🔥 NOVO ESTADO DA AGÊNCIA
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [avatar, setAvatar] = useState(null);
@@ -35,25 +35,21 @@ export default function Profile() {
     if (user) {
       setName(user.name || '');
       setEmail(user.email || '');
+      setAgencyName(user.agencyName || ''); // 🔥 Puxa o nome da Agência
       if (user.avatarUrl) {
         setPreview(`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`);
       }
     }
   }, [user]);
 
-  // --- FUNÇÕES DO PERFIL ---
   function handleAvatarChange(e) {
     const file = e.target.files[0];
     if (!file) return;
-    setAvatar(file);
-    setPreview(URL.createObjectURL(file));
-    setRemoveAvatar(false); 
+    setAvatar(file); setPreview(URL.createObjectURL(file)); setRemoveAvatar(false); 
   }
 
   function handleRemoveAvatar() {
-    setAvatar(null);
-    setPreview('');
-    setRemoveAvatar(true); 
+    setAvatar(null); setPreview(''); setRemoveAvatar(true); 
   }
 
   async function handleProfileSubmit(e) {
@@ -61,6 +57,8 @@ export default function Profile() {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('email', email);
+    formData.append('agencyName', agencyName); // 🔥 Envia o nome da Agência para o Back-end
+    
     if (oldPassword && newPassword) {
       formData.append('oldPassword', oldPassword);
       formData.append('newPassword', newPassword);
@@ -77,40 +75,18 @@ export default function Profile() {
       setOldPassword(''); setNewPassword(''); setRemoveAvatar(false);
       toast.success('Perfil atualizado com sucesso!', { id: tId });
       setTimeout(() => window.location.reload(), 1000);
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao atualizar dados.', { id: tId });
-    }
+    } catch (error) { toast.error(error.response?.data?.error || 'Erro ao atualizar dados.', { id: tId }); }
   }
 
-  // --- FUNÇÕES DO GESTOR DE EMPRESAS ---
-  function handleOpenNewCompany() {
-    setEditingCompanyId(null);
-    setCompanyName('');
-    setCompanyDocument('');
-    setIsCompanyModalOpen(true);
-  }
-
-  function handleEditCompany(company) {
-    setEditingCompanyId(company.id);
-    setCompanyName(company.name);
-    setCompanyDocument(company.document || '');
-    setIsCompanyModalOpen(true);
-  }
+  // --- FUNÇÕES DO GESTOR DE EMPRESAS (MANTIDAS INTACTAS) ---
+  function handleOpenNewCompany() { setEditingCompanyId(null); setCompanyName(''); setCompanyDocument(''); setIsCompanyModalOpen(true); }
+  function handleEditCompany(company) { setEditingCompanyId(company.id); setCompanyName(company.name); setCompanyDocument(company.document || ''); setIsCompanyModalOpen(true); }
 
   async function handleDeleteCompany(id) {
-    if (!window.confirm("CUIDADO: Excluir esta empresa apagará TODOS os clientes, finanças e agendamentos vinculados a ela. Continuar?")) return;
-    
+    if (!window.confirm("CUIDADO: Excluir esta empresa apagará TODOS os dados dela. Continuar?")) return;
     const tId = toast.loading('A excluir empresa...');
-    try {
-      await api.delete(`/companies/${id}`);
-      toast.success("Empresa excluída!", { id: tId });
-      mutateCompanies(); // Atualiza a lista da tela na hora
-      
-      // Pequeno recarregamento para atualizar a lista no Menu Lateral (Contexto)
-      setTimeout(() => window.location.reload(), 1500);
-    } catch(err) { 
-      toast.error("Erro ao excluir empresa.", { id: tId }); 
-    }
+    try { await api.delete(`/companies/${id}`); toast.success("Empresa excluída!", { id: tId }); mutateCompanies(); setTimeout(() => window.location.reload(), 1500); } 
+    catch(err) { toast.error("Erro ao excluir empresa.", { id: tId }); }
   }
 
   async function handleSaveCompany(e) {
@@ -118,49 +94,30 @@ export default function Profile() {
     const tId = toast.loading('A salvar empresa...');
     try {
       const payload = { name: companyName, document: companyDocument };
-      
-      if (editingCompanyId) {
-        await api.put(`/companies/${editingCompanyId}`, payload);
-      } else {
-        await api.post('/companies', payload);
-      }
-      
-      toast.success('Empresa salva com sucesso!', { id: tId });
-      setIsCompanyModalOpen(false);
-      mutateCompanies(); // Puxa os dados novos
-      
-      // Recarrega para que o novo nome/empresa apareça no Menu Lateral
-      setTimeout(() => window.location.reload(), 1500); 
-    } catch(err) { 
-      toast.error('Erro ao salvar.', { id: tId }); 
-    }
+      if (editingCompanyId) await api.put(`/companies/${editingCompanyId}`, payload);
+      else await api.post('/companies', payload);
+      toast.success('Empresa salva!', { id: tId }); setIsCompanyModalOpen(false); mutateCompanies(); setTimeout(() => window.location.reload(), 1500); 
+    } catch(err) { toast.error('Erro ao salvar.', { id: tId }); }
   }
 
   return (
     <Container>
       <Header>
         <h1>Minhas Configurações</h1>
-        <p>Gerencie suas credenciais de acesso, foto de perfil e os seus clientes (Empresas).</p>
+        <p>Gerencie o perfil do seu Escritório, credenciais de acesso e os seus clientes.</p>
       </Header>
 
-      {/* 1. CARTÃO DO PERFIL PESSOAL */}
       <ProfileCard>
         <form onSubmit={handleProfileSubmit}>
           <AvatarSection>
             <div className="avatar-container">
-              {preview ? (
-                <img src={preview} alt="Avatar" />
-              ) : (
-                <div className="placeholder"><CircleUser size={90} color="#cbd5e0" strokeWidth={1} /></div>
-              )}
+              {preview ? <img src={preview} alt="Avatar" /> : <div className="placeholder"><CircleUser size={90} color="#cbd5e0" strokeWidth={1} /></div>}
             </div>
-            
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <div className="upload-btn">
-                <Upload size={14} style={{ marginRight: 6 }} /> Alterar Foto
+                <Upload size={14} style={{ marginRight: 6 }} /> Alterar Logo/Foto
                 <input type="file" accept="image/*" onChange={handleAvatarChange} />
               </div>
-
               {(preview || user?.avatarUrl) && (
                 <button type="button" onClick={handleRemoveAvatar} style={{ background: '#fff5f5', color: '#e53e3e', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: '0.2s' }}>
                   <Trash2 size={14} /> Remover
@@ -170,32 +127,42 @@ export default function Profile() {
           </AvatarSection>
 
           <FormGrid>
-            <h3>Dados Pessoais (Gestor)</h3>
+            {/* 🔥 NOVA SEÇÃO: DADOS DO ESCRITÓRIO */}
+            <h3 style={{ color: '#3182ce', fontWeight: 800 }}>Dados do Escritório (Agência)</h3>
             <FormGroup>
-              <label>Nome Completo</label>
-              <input value={name} onChange={e => setName(e.target.value)} required />
-            </FormGroup>
-            <FormGroup>
-              <label>E-mail de Acesso</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+              <label>Nome do Escritório / Consultoria</label>
+              <input value={agencyName} onChange={e => setAgencyName(e.target.value)} placeholder="Ex: BusinessFlow Contabilidade" />
             </FormGroup>
 
-            <h3>Segurança</h3>
-            <FormGroup>
-              <label>Senha Atual</label>
-              <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="Digite sua senha antiga para alterar" />
-            </FormGroup>
-            <FormGroup>
-              <label>Nova Senha</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-            </FormGroup>
+            <h3 style={{ marginTop: 24 }}>Dados do Gestor (Login)</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>Nome do Responsável</label>
+                  <input value={name} onChange={e => setName(e.target.value)} required />
+                </FormGroup>
+                <FormGroup>
+                  <label>E-mail de Acesso</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+                </FormGroup>
+            </div>
+
+            <h3 style={{ marginTop: 24 }}>Segurança</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>Senha Atual</label>
+                  <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="Digite para alterar" />
+                </FormGroup>
+                <FormGroup>
+                  <label>Nova Senha</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                </FormGroup>
+            </div>
           </FormGrid>
 
-          <ActionButton type="submit">Atualizar Meu Perfil</ActionButton>
+          <ActionButton type="submit">Salvar Perfil do Escritório</ActionButton>
         </form>
       </ProfileCard>
 
-      {/* 2. GESTOR DE EMPRESAS (MULTI-TENANT) */}
       <SectionTitle>
         <Building2 size={24} color="#3182ce" /> Agência e Clientes
       </SectionTitle>
@@ -216,14 +183,12 @@ export default function Profile() {
                 </div>
              </CompanyItem>
           ))}
-          
           <AddButton type="button" onClick={handleOpenNewCompany}>
              <Plus size={20} /> Adicionar Nova Empresa (Cliente)
           </AddButton>
         </CompanyList>
       </ProfileCard>
 
-      {/* MODAL DE EMPRESA */}
       {isCompanyModalOpen && (
         <ModalOverlay>
           <ModalContent>
@@ -239,7 +204,6 @@ export default function Profile() {
                   <input value={companyDocument} onChange={e => setCompanyDocument(e.target.value)} placeholder="Opcional" />
                 </FormGroup>
               </FormGrid>
-              
               <ModalActions>
                 <button type="button" className="cancel" onClick={() => setIsCompanyModalOpen(false)}>Cancelar</button>
                 <button type="submit" className="save">Salvar Empresa</button>
@@ -248,7 +212,6 @@ export default function Profile() {
           </ModalContent>
         </ModalOverlay>
       )}
-
     </Container>
   );
 }

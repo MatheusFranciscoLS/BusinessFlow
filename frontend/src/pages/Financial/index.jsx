@@ -116,10 +116,12 @@ export default function Financial() {
         doc.setFillColor(...darkColor);
         doc.rect(0, 0, 210, 42, 'F');
         
+const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
+        
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
         doc.setFont("helvetica", "bold");
-        doc.text(user?.name || "Consultoria Financeira", 14, 20); // Nome da SUA agência
+        doc.text(brandingName, 14, 20);
         
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
@@ -178,7 +180,7 @@ export default function Financial() {
             doc.setFontSize(8);
             doc.setTextColor(160, 174, 192);
             doc.setFont("helvetica", "normal");
-            doc.text(`Documento gerado por ${user?.name || 'Sistema'} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
+            doc.text(`Documento gerado por ${brandingName || 'Sistema'} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
             doc.text(`Página ${i} de ${pageCount}`, 185, 290);
         }
 

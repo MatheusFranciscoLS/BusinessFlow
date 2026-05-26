@@ -11,18 +11,15 @@ datasource db {
 model User {
   id            String         @id @default(uuid())
   name          String
+  agencyName    String?       
   email         String         @unique
   password      String
   avatarUrl     String?
   companies     Company[]      // Um contador gerencia várias empresas
-  
-  // 🔥 A TABELA QUE TINHA SIDO APAGADA ACIDENTALMENTE
   refreshTokens RefreshToken[] 
-  
   createdAt     DateTime       @default(now())
 }
 
-// 🔥 A ESTRUTURA DO REFRESH TOKEN 100% ALINHADA COM O SEU BACK-END
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique

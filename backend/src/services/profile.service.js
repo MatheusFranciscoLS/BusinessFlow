@@ -6,7 +6,14 @@ const prisma = new PrismaClient();
 export async function getProfile(userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, avatarUrl: true },
+    // 🔥 Agora devolvemos também o agencyName
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+      agencyName: true,
+    },
   });
   if (!user) throw new Error("Utilizador não encontrado.");
   return user;
@@ -19,6 +26,9 @@ export async function updateProfile(userId, data, avatarPath) {
   const updateData = {
     name: data.name || user.name,
     email: data.email || user.email,
+    // 🔥 Se o Front-end enviar o nome da agência, gravamos!
+    agencyName:
+      data.agencyName !== undefined ? data.agencyName : user.agencyName,
   };
 
   // Se veio um arquivo novo, salva. Se veio a ordem de apagar, anula a foto!
@@ -40,6 +50,13 @@ export async function updateProfile(userId, data, avatarPath) {
   return prisma.user.update({
     where: { id: userId },
     data: updateData,
-    select: { id: true, name: true, email: true, avatarUrl: true },
+    // 🔥 Devolvemos a agência atualizada para o Front-end atualizar o PDF na hora
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+      agencyName: true,
+    },
   });
 }
