@@ -3,23 +3,29 @@ const prisma = new PrismaClient();
 
 export async function createClient(companyId, data) {
   return prisma.client.create({
-    data: { ...data, companyId },
+    data: {
+      fullName: data.fullName,
+      document: data.document || null,
+      taxRegime: data.taxRegime || null,
+      monthlyFee: data.monthlyFee ? parseFloat(data.monthlyFee) : 0,
+      status: data.status || "ATIVO",
+      email: data.email || null,
+      phone: data.phone || null,
+      companyId,
+    },
   });
 }
 
 export async function getAllClients(companyId) {
-  return prisma.client.findMany({
-    where: { companyId },
-    orderBy: { createdAt: "desc" },
+  return prisma.client.findMany({ 
+    where: { companyId }, 
+    orderBy: { fullName: "asc" } 
   });
 }
 
 export async function getClientById(companyId, id) {
-  const client = await prisma.client.findFirst({
-    where: { id, companyId },
-    include: { transactions: { orderBy: { date: "desc" } } }, // Mantém o Mini-CRM a funcionar!
-  });
-  if (!client) throw new Error("Cliente não encontrado ou acesso negado.");
+  const client = await prisma.client.findFirst({ where: { id, companyId } });
+  if (!client) throw new Error("Cliente não encontrado.");
   return client;
 }
 
@@ -29,13 +35,20 @@ export async function updateClient(companyId, id, data) {
 
   return prisma.client.update({
     where: { id },
-    data,
+    data: {
+      fullName: data.fullName,
+      document: data.document,
+      taxRegime: data.taxRegime,
+      monthlyFee: data.monthlyFee ? parseFloat(data.monthlyFee) : 0,
+      status: data.status,
+      email: data.email,
+      phone: data.phone,
+    },
   });
 }
 
 export async function deleteClient(companyId, id) {
   const client = await prisma.client.findFirst({ where: { id, companyId } });
   if (!client) throw new Error("Cliente não encontrado.");
-
   return prisma.client.delete({ where: { id } });
 }

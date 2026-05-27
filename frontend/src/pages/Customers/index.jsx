@@ -1,341 +1,241 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import axios from 'axios';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { Plus, Edit, Trash2, Search, FileText, Ghost, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
-  Container, Header, Toolbar, SearchContainer, ButtonGroup, TableContainer, Table, 
-  StatusBadge, ActionButton, ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState,
-  PaginationContainer, ProfileHeader, ProfileStats, HistoryList
-} from './styles';
+  Users, Building, DollarSign, Search, Plus, Edit, Trash2, 
+  ShieldCheck, AlertCircle, FileText, Phone 
+} from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import styled, { keyframes } from 'styled-components';
 
-// 🔥 Animação Shimmer para o Skeleton de Carregamento
-const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
-const SkeletonRow = styled.div`
-  height: 60px; width: 100%; border-radius: 8px; margin-bottom: 12px;
-  background: #f0f0f0; background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
-  background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;
-`;
+// --- ESTILOS ---
+const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
+const Container = styled.div`width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;`;
+const Header = styled.header`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; h1 { font-size: 26px; color: #1a202c; font-weight: 800; }`;
+const ActionButton = styled.button`display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: 0.2s; background: #3182ce; color: white; box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2); &:hover { background: #2c5282; transform: translateY(-2px); }`;
+const SearchContainer = styled.div`display: flex; align-items: center; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 16px; flex: 1; min-width: 300px; height: 48px; input { border: none; outline: none; padding: 12px; width: 100%; font-size: 15px; background: transparent; }`;
 
-// 🔥 Tradutor do SWR
-const fetcher = (url) => api.get(url).then(res => res.data);
+const CardsGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px;`;
+const StatCard = styled.div`background: white; border-radius: 12px; padding: 24px; border: 1px solid #edf2f7; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); .title { display: flex; align-items: center; justify-content: space-between; color: #718096; font-size: 14px; font-weight: 600; } .value { font-size: 28px; font-weight: 800; color: ${props => props.$color || '#2d3748'}; }`;
 
-export default function Customers() {
-  // 🔥 A MÁGICA DO SWR: Substitui o useState(customers) e o loadCustomers
-  const { data: customers, error, mutate } = useSWR('/clients', fetcher);
+const ClientsGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;`;
+const ClientCard = styled.div`background: white; border-radius: 12px; border: 1px solid #edf2f7; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s; border-top: 4px solid ${props => props.$statusColor || '#3182ce'}; &:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.06); transform: translateY(-2px); }`;
+const ClientHeader = styled.div`display: flex; justify-content: space-between; align-items: flex-start; h3 { margin: 0; font-size: 18px; color: #2d3748; font-weight: 800; line-height: 1.3; } .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: ${props => props.$badgeBg}; color: ${props => props.$badgeColor}; }`;
+const ClientInfo = styled.div`display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #4a5568; div { display: flex; align-items: center; gap: 8px; } strong { color: #2d3748; }`;
+const ClientFooter = styled.div`display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #edf2f7; margin-top: auto; .fee { font-size: 18px; font-weight: 800; color: #38a169; } .actions { display: flex; gap: 8px; button { background: #f7fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; color: #718096; cursor: pointer; transition: 0.2s; &:hover { background: #edf2f7; color: #2d3748; } &.delete:hover { background: #fff5f5; color: #e53e3e; border-color: #feb2b2; } } }`;
 
-  const [searchTerm, setSearchTerm] = useState(''); 
+const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
+const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 600px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;`;
+const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; } input, select { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; transition: 0.2s; &:focus { border-color: #3182ce; } }`;
+const ModalActions = styled.div`display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; button { padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; } .cancel { background: #edf2f7; color: #4a5568; &:hover { background: #e2e8f0; } } .save { background: #3182ce; color: white; &:hover { background: #2c5282; } }`;
+
+const fetcher = (url) => api.get(url).then((res) => res.data);
+
+export default function Clients() {
+  const { user } = useAuth();
+  const { data: clients, mutate } = useSWR('/clients', fetcher);
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // Controles de Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [viewingClient, setViewingClient] = useState(null);
-  
   const [editingId, setEditingId] = useState(null);
-  const [cepLoading, setCepLoading] = useState(false);
-  const numberInputRef = useRef(null);
+  const [form, setForm] = useState({ fullName: '', document: '', taxRegime: '', monthlyFee: '', email: '', phone: '', status: 'ATIVO' });
 
-  // Paginação
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 7;
+  const isClientAccess = user?.role === 'CLIENT';
 
-  const [form, setForm] = useState({
-    name: '', email: '', phone: '', cpf: '',
-    cep: '', street: '', number: '', neighborhood: '', city: '', state: '', tag: 'NOVO'
-  });
+  const filteredClients = useMemo(() => {
+    if (!clients) return [];
+    return clients.filter(c => c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || (c.document && c.document.includes(searchTerm)));
+  }, [clients, searchTerm]);
 
-  // Reseta a página para 1 sempre que o utilizador faz uma busca
-  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  // Inteligência do Dashboard
+  const summary = useMemo(() => {
+    if (!clients) return { total: 0, mrr: 0, inadimplentes: 0 };
+    return clients.reduce((acc, c) => {
+      acc.total += 1;
+      if (c.status === 'ATIVO') acc.mrr += (c.monthlyFee || 0);
+      if (c.status === 'INADIMPLENTE') acc.inadimplentes += 1;
+      return acc;
+    }, { total: 0, mrr: 0, inadimplentes: 0 });
+  }, [clients]);
 
-  const filteredCustomers = useMemo(() => {
-    if (!customers) return [];
-    return customers.filter(customer => 
-      customer.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.cpf?.includes(searchTerm)
-    );
-  }, [customers, searchTerm]);
-
-  // Fatiar a lista para a Paginação
-  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
-  const paginatedCustomers = filteredCustomers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE, 
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-  }
-
-  function handleExportPDF() {
-    const doc = new jsPDF();
-    doc.setFontSize(18); doc.text("Relatório de Clientes", 14, 22);
-    doc.setFontSize(10); doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 28);
-    const tableColumn = ["Nome", "CPF/CNPJ", "E-mail", "Telefone", "Status"];
-    const tableRows = filteredCustomers.map(c => [
-      c.fullName, maskCPF_CNPJ(c.cpf), c.email || 'N/A', maskPhone(c.phone || ''), c.tag
-    ]);
-    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 35, styles: { fontSize: 8 }, headStyles: { fillColor: [49, 130, 206] } });
-    doc.save("clientes.pdf"); toast.success("PDF baixado!");
-  }
-
-  const maskCPF_CNPJ = (v) => { v=v.replace(/\D/g,""); if(v.length<=11){return v.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2")}else{return v.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2").slice(0,18)} };
-  const maskPhone = (v) => { v=v.replace(/\D/g,""); v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); v=v.replace(/(\d)(\d{4})$/,"$1-$2"); return v.slice(0,15); };
-  const maskCEP = (v) => { return v.replace(/\D/g,"").replace(/^(\d{5})(\d)/,"$1-$2").slice(0,9); };
-
-  function handleChange(e) {
-    const { name, value } = e.target;
-    let finalValue = value;
-    if (name === 'cpf') finalValue = maskCPF_CNPJ(value);
-    if (name === 'phone') finalValue = maskPhone(value);
-    if (name === 'cep') finalValue = maskCEP(value);
-    setForm({ ...form, [name]: finalValue });
-  }
-
-  async function handleBlurCep(e) {
-    const cep = e.target.value.replace(/\D/g, '');
-    if (cep.length !== 8) return;
-    setCepLoading(true); const tId = toast.loading('A procurar...');
-    try {
-      const { data } = await axios.get(`https://brasilapi.com.br/api/cep/v1/${cep}`);
-      setForm(prev => ({ ...prev, street: data.street, neighborhood: data.neighborhood, city: data.city, state: data.state }));
-      toast.success('Encontrado!', { id: tId }); setTimeout(() => numberInputRef.current?.focus(), 100);
-    } catch { toast.error('CEP inválido', { id: tId }); } finally { setCepLoading(false); }
-  }
-
-  async function openProfile(id) {
-    const toastId = toast.loading('A carregar perfil...');
-    try {
-      const res = await api.get(`/clients/${id}`);
-      setViewingClient(res.data);
-      toast.dismiss(toastId);
-    } catch {
-      toast.error('Erro ao carregar o perfil.', { id: toastId });
-    }
-  }
+  const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
   function handleOpenNew() {
     setEditingId(null);
-    setForm({ name: '', email: '', phone: '', cpf: '', cep: '', street: '', number: '', neighborhood: '', city: '', state: '', tag: 'NOVO' });
+    setForm({ fullName: '', document: '', taxRegime: '', monthlyFee: '', email: '', phone: '', status: 'ATIVO' });
     setIsModalOpen(true);
   }
 
-  function handleEdit(customer) {
-    setEditingId(customer.id);
-    const parts = customer.address ? customer.address.split(',') : [];
-    setForm({
-      ...customer, name: customer.fullName || customer.name, cpf: maskCPF_CNPJ(customer.cpf), phone: customer.phone ? maskPhone(customer.phone) : '',
-      cep: customer.cep ? maskCEP(customer.cep) : '', street: parts[0] || '', number: '', neighborhood: '', city: '', state: '', tag: customer.tag || 'NOVO'
-    });
+  function handleEdit(c) {
+    setEditingId(c.id);
+    setForm({ fullName: c.fullName, document: c.document || '', taxRegime: c.taxRegime || '', monthlyFee: c.monthlyFee || '', email: c.email || '', phone: c.phone || '', status: c.status || 'ATIVO' });
     setIsModalOpen(true);
   }
 
   async function handleDelete(id) {
-    if (window.confirm('Excluir cliente permanentemente? O histórico também será apagado!')) {
-      try { 
-        await api.delete(`/clients/${id}`); 
-        mutate(); // 🔥 Atualiza o cache do SWR instantaneamente
-        toast.success('Removido com sucesso!'); 
-      } 
-      catch { toast.error('Erro ao excluir.'); }
-    }
+    if (!window.confirm('Certeza que deseja excluir este cliente do CRM?')) return;
+    const tId = toast.loading('A excluir...');
+    try {
+      await api.delete(`/clients/${id}`);
+      toast.success('Cliente removido!', { id: tId });
+      mutate();
+    } catch (err) { toast.error('Erro ao remover.', { id: tId }); }
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.name) return toast.error('Nome obrigatório');
-    const cleanCpf = form.cpf.replace(/\D/g, '');
-    if (cleanCpf.length < 11) return toast.error('CPF/CNPJ inválido');
-
-    const tId = toast.loading('A guardar...');
+    if (!form.fullName) return toast.error('O nome da empresa é obrigatório.');
+    const tId = toast.loading('A guardar cliente...');
     try {
-      const payload = { fullName: form.name, cpf: cleanCpf, email: form.email, phone: form.phone, cep: form.cep.replace(/\D/g, ''), address: `${form.street}, ${form.number}`, tag: form.tag };
-      if (editingId) {
-        await api.put(`/clients/${editingId}`, payload);
-        toast.success('Atualizado!', { id: tId });
-      } else {
-        await api.post('/clients', payload);
-        toast.success('Cadastrado!', { id: tId });
-      }
-      mutate(); // 🔥 Pede ao SWR para buscar os novos dados
+      if (editingId) await api.put(`/clients/${editingId}`, form);
+      else await api.post('/clients', form);
+      
+      toast.success('Cliente guardado com sucesso!', { id: tId });
       setIsModalOpen(false);
-    } catch (error) { toast.error(error.response?.data?.error || 'Erro ao salvar.', { id: tId }); }
+      mutate();
+    } catch (err) { toast.error('Erro ao guardar.', { id: tId }); }
   }
 
-  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar clientes.</div>;
+  if (isClientAccess) {
+    return <div style={{ padding: 40, textAlign: 'center' }}>Acesso Restrito ao Escritório.</div>;
+  }
 
   return (
     <Container>
       <Header>
-        <h1>Meus Clientes</h1>
-        <Toolbar>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0 }}>CRM Contábil</h1>
           <SearchContainer>
-            <Search size={20} color="#a0aec0" />
-            <input placeholder="Buscar por nome, email ou CPF..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search size={18} color="#a0aec0" style={{ marginRight: 8 }} />
+            <input placeholder="Procurar empresa ou CNPJ..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </SearchContainer>
-          <ButtonGroup>
-            <button className="secondary" onClick={handleExportPDF} disabled={!customers}><FileText size={18} /> Relatório PDF</button>
-            <button className="primary" onClick={handleOpenNew} disabled={!customers}><Plus size={20} /> Novo Cliente</button>
-          </ButtonGroup>
-        </Toolbar>
+        </div>
+        <ActionButton onClick={handleOpenNew}><Plus size={18} /> Novo Cliente</ActionButton>
       </Header>
 
-      {/* 🔥 EXIBE O SKELETON SE OS DADOS AINDA NÃO CHEGARAM */}
-      {!customers ? (
-        <TableContainer>
-          <div style={{ padding: 24 }}>
-            <SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow />
-          </div>
-        </TableContainer>
-      ) : customers.length === 0 ? ( 
-        <EmptyState><Ghost size={48} /><p>Nenhum cliente cadastrado.</p></EmptyState> 
-      ) : filteredCustomers.length === 0 ? ( 
-        <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p></EmptyState> 
+      <CardsGrid>
+        <StatCard>
+          <div className="title">Empresas Atendidas <Building size={18} color="#3182ce" /></div>
+          <div className="value" style={{ color: '#3182ce' }}>{summary.total}</div>
+        </StatCard>
+        <StatCard>
+          <div className="title">Receita Mensal (Honorários) <DollarSign size={18} color="#38a169" /></div>
+          <div className="value" style={{ color: '#38a169' }}>{formatCurrency(summary.mrr)}</div>
+        </StatCard>
+        <StatCard>
+          <div className="title">Inadimplentes <AlertCircle size={18} color="#e53e3e" /></div>
+          <div className="value" style={{ color: '#e53e3e' }}>{summary.inadimplentes} empresas</div>
+        </StatCard>
+      </CardsGrid>
+
+      {!clients ? (
+        <p style={{ color: '#a0aec0', textAlign: 'center', marginTop: 40 }}>A carregar base de clientes...</p>
+      ) : filteredClients.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 12, border: '1px dashed #cbd5e0' }}>
+          <Users size={48} color="#cbd5e0" style={{ marginBottom: 16 }} />
+          <h3 style={{ color: '#4a5568', margin: '0 0 8px 0' }}>Nenhum cliente cadastrado</h3>
+          <p style={{ color: '#a0aec0', margin: 0 }}>Clique no botão azul acima para cadastrar a sua primeira empresa.</p>
+        </div>
       ) : (
-        <TableContainer>
-          <Table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Contato</th>
-                <th>Endereço</th>
-                <th>Categoria</th>
-                <th style={{ textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedCustomers.map(customer => (
-                <tr key={customer.id}>
-                  <td>
-                    <strong>{customer.fullName || customer.name}</strong><br/>
-                    <small style={{ color: '#a0aec0' }}>{maskCPF_CNPJ(customer.cpf)}</small>
-                  </td>
-                  <td>{customer.email || 'N/A'}<br/><small>{customer.phone ? maskPhone(customer.phone) : ''}</small></td>
-                  <td>{customer.address || 'N/A'}</td>
-                  <td><StatusBadge $tag={customer.tag}>{customer.tag}</StatusBadge></td>
-                  <td style={{ textAlign: 'right' }}>
-                    <ActionButton onClick={() => openProfile(customer.id)} color="#38b2ac" title="Ver Perfil CRM"><Eye size={18} /></ActionButton>
-                    <ActionButton onClick={() => handleEdit(customer)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
-                    <ActionButton onClick={() => handleDelete(customer.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          
-          <PaginationContainer>
-            <span>Mostrando {paginatedCustomers.length} de {filteredCustomers.length} clientes</span>
-            <div>
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}><ChevronLeft size={16} /> Anterior</button>
-              <button disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => p + 1)}>Próxima <ChevronRight size={16} /></button>
-            </div>
-          </PaginationContainer>
-        </TableContainer>
+        <ClientsGrid>
+          {filteredClients.map(c => {
+            const isAtivo = c.status === 'ATIVO';
+            const isAlert = c.status === 'INADIMPLENTE';
+            
+            let statusColor = '#3182ce'; let badgeBg = '#ebf8ff'; let badgeColor = '#2b6cb0';
+            if (isAlert) { statusColor = '#e53e3e'; badgeBg = '#fff5f5'; badgeColor = '#c53030'; }
+            if (c.status === 'INATIVO') { statusColor = '#a0aec0'; badgeBg = '#edf2f7'; badgeColor = '#4a5568'; }
+
+            return (
+              <ClientCard key={c.id} $statusColor={statusColor}>
+                <ClientHeader $badgeBg={badgeBg} $badgeColor={badgeColor}>
+                  <h3>{c.fullName}</h3>
+                  <span className="badge">{c.status}</span>
+                </ClientHeader>
+                
+                <ClientInfo>
+                  <div><FileText size={16} /> <strong>CNPJ:</strong> {c.document || 'Não informado'}</div>
+                  <div><ShieldCheck size={16} /> <strong>Regime:</strong> {c.taxRegime || 'Não informado'}</div>
+                  {c.email && <div><Phone size={16} /> <strong>Contato:</strong> {c.email}</div>}
+                </ClientInfo>
+
+                <ClientFooter>
+                  <div className="fee">{formatCurrency(c.monthlyFee)} <span style={{ fontSize: 11, color: '#a0aec0', fontWeight: 600 }}>/MÊS</span></div>
+                  <div className="actions">
+                    <button onClick={() => handleEdit(c)}><Edit size={16} /></button>
+                    <button className="delete" onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
+                  </div>
+                </ClientFooter>
+              </ClientCard>
+            );
+          })}
+        </ClientsGrid>
       )}
 
-      {/* MODAL DE PERFIL DO CLIENTE (MINI-CRM) */}
-      {viewingClient && (
-        <ModalOverlay>
-          <ModalContent>
-            <ProfileHeader>
-              <div className="avatar">{viewingClient.fullName?.charAt(0)}</div>
-              <div className="info">
-                <h2>{viewingClient.fullName}</h2>
-                <p>{viewingClient.email || 'Sem e-mail'} | {maskPhone(viewingClient.phone || '')}</p>
-                <p style={{marginTop: 4}}>{viewingClient.address}</p>
-              </div>
-              <StatusBadge $tag={viewingClient.tag}>{viewingClient.tag}</StatusBadge>
-            </ProfileHeader>
-
-            <ProfileStats>
-              <div>
-                <span>LTV (Total Gasto)</span>
-                <strong className="green">
-                  {formatCurrency(viewingClient.transactions?.filter(t => t.type === 'entrada' || t.type === 'income').reduce((a,b) => a + (b.amount || 0), 0))}
-                </strong>
-              </div>
-              <div>
-                <span>Total de Interações</span>
-                <strong>{viewingClient.transactions?.length || 0}</strong>
-              </div>
-            </ProfileStats>
-
-            <HistoryList>
-              <h3>Últimas Movimentações</h3>
-              {(!viewingClient.transactions || viewingClient.transactions.length === 0) ? (
-                <p style={{ color: '#a0aec0', fontSize: 14 }}>Nenhum histórico financeiro registado.</p>
-              ) : (
-                <ul>
-                  {viewingClient.transactions.slice(0, 5).map(t => {
-                    const isIncome = t.type === 'entrada' || t.type === 'income';
-                    return (
-                      <li key={t.id}>
-                        <div>
-                          <div className="desc">{t.title || t.description || 'Serviço Prestado'}</div>
-                          <div className="date">{new Date(t.date).toLocaleDateString('pt-BR')}</div>
-                        </div>
-                        <div className="val" style={{ color: isIncome ? '#12a454' : '#e53e3e' }}>
-                          {isIncome ? '+ ' : '- '}{formatCurrency(t.amount)}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </HistoryList>
-
-            <ModalActions>
-              <button type="button" className="cancel" onClick={() => setViewingClient(null)}>Fechar Perfil</button>
-              <button type="button" className="save" onClick={() => { setViewingClient(null); handleEdit(viewingClient); }}>Editar Dados</button>
-            </ModalActions>
-          </ModalContent>
-        </ModalOverlay>
-      )}
-
-      {/* MODAL DE EDIÇÃO/CRIAÇÃO */}
+      {/* MODAL DE CADASTRO DO CRM */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
-            <h2>{editingId ? 'Editar' : 'Novo'} Cliente</h2>
+            <h2 style={{ marginBottom: 24 }}>{editingId ? 'Editar Cliente' : 'Cadastrar Empresa'}</h2>
             <form onSubmit={handleSave}>
-              <FormGroup><label>Nome Completo</label><input name="name" value={form.name} onChange={handleChange} autoFocus required/></FormGroup>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <FormGroup><label>CPF / CNPJ</label><input name="cpf" value={form.cpf} onChange={handleChange} maxLength={18} required/></FormGroup>
-                <FormGroup><label>Categoria</label>
-                  <select name="tag" value={form.tag} onChange={handleChange}>
-                    <option value="NOVO">Novo</option>
-                    <option value="RECORRENTE">Recorrente</option>
-                    <option value="VIP">VIP</option>
-                    <option value="INADIMPLENTE">Inadimplente</option>
+              <FormGroup>
+                <label>Razão Social / Nome Fantasia *</label>
+                <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: Padaria do João Ltda" />
+              </FormGroup>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>CNPJ / Documento</label>
+                  <input value={form.document} onChange={e => setForm({...form, document: e.target.value})} placeholder="00.000.000/0001-00" />
+                </FormGroup>
+                <FormGroup>
+                  <label>Regime Tributário</label>
+                  <select value={form.taxRegime} onChange={e => setForm({...form, taxRegime: e.target.value})}>
+                    <option value="">Selecione...</option>
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                    <option value="MEI">MEI / Pessoa Física</option>
                   </select>
                 </FormGroup>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <FormGroup><label>E-mail</label><input name="email" value={form.email} onChange={handleChange} /></FormGroup>
-                <FormGroup><label>Telefone</label><input name="phone" value={form.phone} onChange={handleChange} maxLength={15}/></FormGroup>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>Honorários Mensais (R$)</label>
+                  <input type="number" step="0.01" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} placeholder="Valor do contrato" />
+                </FormGroup>
+                <FormGroup>
+                  <label>Status Contratual</label>
+                  <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                    <option value="ATIVO">✅ Ativo (Em dia)</option>
+                    <option value="INADIMPLENTE">⚠️ Inadimplente</option>
+                    <option value="INATIVO">❌ Inativo / Rescindido</option>
+                  </select>
+                </FormGroup>
               </div>
-              <h3 style={{ fontSize: '14px', color: '#718096', margin: '20px 0 10px', borderBottom: '1px solid #eee' }}>Endereço</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px' }}>
-                <FormGroup><label>CEP {cepLoading && '...'}</label><input name="cep" value={form.cep} onChange={handleChange} onBlur={handleBlurCep} maxLength={9} /></FormGroup>
-                <FormGroup><label>Rua</label><input name="street" value={form.street} onChange={handleChange} readOnly style={{background:'#f7fafc'}}/></FormGroup>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>E-mail de Contato</label>
+                  <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="contato@empresa.com" />
+                </FormGroup>
+                <FormGroup>
+                  <label>Telefone / WhatsApp</label>
+                  <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 90000-0000" />
+                </FormGroup>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 1fr 60px', gap: '16px' }}>
-                <FormGroup><label>Nº</label><input ref={numberInputRef} name="number" value={form.number} onChange={handleChange} required /></FormGroup>
-                <FormGroup><label>Bairro</label><input name="neighborhood" value={form.neighborhood} readOnly style={{background:'#f7fafc'}} /></FormGroup>
-                <FormGroup><label>Cidade</label><input name="city" value={form.city} readOnly style={{background:'#f7fafc'}} /></FormGroup>
-                <FormGroup><label>UF</label><input name="state" value={form.state} readOnly style={{background:'#f7fafc'}} /></FormGroup>
-              </div>
+
               <ModalActions>
                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Salvar</button>
+                <button type="submit" className="save">Salvar no CRM</button>
               </ModalActions>
             </form>
           </ModalContent>
         </ModalOverlay>
       )}
+
     </Container>
   );
 }

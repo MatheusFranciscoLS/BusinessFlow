@@ -48,21 +48,22 @@ model Company {
 }
 
 model Client {
-  id           String        @id @default(uuid())
-  fullName     String
-  cpf          String?
-  email        String?
-  phone        String?
-  address      String?
-  cep          String?
-  tag          String?       @default("NOVO")
-  
-  companyId    String        
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  transactions Transaction[]
+  id          String   @id @default(uuid())
+  fullName    String   // Nome da Empresa / Razão Social
+  document    String?  // CNPJ ou CPF
+  taxRegime   String?  // Simples Nacional, Lucro Presumido, etc.
+  monthlyFee  Float?   // Valor dos Honorários Mensais
+  status      String   @default("ATIVO") // ATIVO, INATIVO, INADIMPLENTE
+  email       String?
+  phone       String?
+
   appointments Appointment[]
-  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
 }
 
 model Transaction {
