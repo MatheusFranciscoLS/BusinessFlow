@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { 
   UploadCloud, FileText, Clock, CheckCircle, 
   ArrowUpCircle, ArrowDownCircle, DollarSign, Building2,
-  AlertTriangle, Activity, ArrowRight, Filter
+  AlertTriangle, Activity, ArrowRight, Filter, ChevronDown // 🔥 ChevronDown importado!
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -42,12 +42,11 @@ export default function Dashboard() {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
   
-  // 🔥 NOVO: Estado para filtrar o cliente nos gráficos
   const [clientFilter, setClientFilter] = useState('');
 
   const { data: transactions, mutate } = useSWR(selectedCompany ? `/transactions?month=${currentMonth}&year=${currentYear}` : null, fetcher);
   const { data: agencySummary } = useSWR(!isClient && !selectedCompany ? '/dashboard/summary' : null, fetcher);
-  const { data: clients } = useSWR(!isClient && selectedCompany ? '/clients' : null, fetcher); // Busca clientes para o filtro
+  const { data: clients } = useSWR(!isClient && selectedCompany ? '/clients' : null, fetcher);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ title: '', amount: '', date: '', file: null });
@@ -57,7 +56,6 @@ export default function Dashboard() {
   const { summary, barChartData, pieChartData, recentPending } = useMemo(() => {
     if (!transactions) return { summary: { entradas: 0, saidas: 0, pendentes: 0 }, barChartData: [], pieChartData: [], recentPending: [] };
     
-    // 🔥 MOTOR DE FILTRAGEM: Redesenha os gráficos apenas com dados do cliente escolhido
     let filteredTransactions = transactions;
     if (clientFilter) {
       filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
@@ -113,7 +111,7 @@ export default function Dashboard() {
   }
 
   // =======================================================================
-  // 🏢 VISÃO 1: SUPER PAINEL DA AGÊNCIA (Nenhuma empresa selecionada)
+  // 🏢 VISÃO 1: SUPER PAINEL DA AGÊNCIA
   // =======================================================================
   if (!isClient && !selectedCompany) {
     return (
@@ -145,7 +143,6 @@ export default function Dashboard() {
               </StatCard>
             </CardsGrid>
 
-            {/* TABELA INTELIGENTE DAS EMPRESAS */}
             <div style={{ background: 'white', borderRadius: 12, border: '1px solid #edf2f7', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #edf2f7', background: '#f7fafc' }}>
                 <h3 style={{ margin: 0, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}><Activity size={20} color="#3182ce" /> Status de Clientes</h3>
@@ -182,7 +179,7 @@ export default function Dashboard() {
   }
 
   // =======================================================================
-  // 👔 VISÃO 2: GRÁFICOS (Empresa Selecionada com Filtro)
+  // 👔 VISÃO 2: GRÁFICOS (Empresa Selecionada com Filtro Premium)
   // =======================================================================
   if (!isClient && selectedCompany) {
     return (
@@ -193,15 +190,20 @@ export default function Dashboard() {
             <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Análise financeira consolidada.</p>
           </div>
           
-          {/* 🔥 NOVO: FILTRO DE CLIENTE NO DASHBOARD */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.2)', padding: '10px 16px', borderRadius: 8, backdropFilter: 'blur(10px)', minWidth: 250 }}>
-            <Filter size={18} color="white" />
-            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: 'white', fontWeight: 600, fontSize: 14 }}>
-              <option value="" style={{ color: 'black' }}>Visão Geral (Todos os Dados)</option>
+          {/* 🔥 DESIGN PREMIUM: Filtro translúcido sem bordas feias do navegador */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255, 255, 255, 0.15)', padding: '12px 20px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.2)', backdropFilter: 'blur(10px)', minWidth: 280 }}>
+            <Filter size={20} color="white" />
+            <select 
+              value={clientFilter} 
+              onChange={e => setClientFilter(e.target.value)} 
+              style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: 'white', fontWeight: 600, fontSize: 15, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+            >
+              <option value="" style={{ color: '#2d3748' }}>Visão Geral (Todos os Dados)</option>
               {clients?.map(c => (
-                <option key={c.id} value={c.id} style={{ color: 'black' }}>Analisar: {c.fullName}</option>
+                <option key={c.id} value={c.id} style={{ color: '#2d3748' }}>Analisar: {c.fullName}</option>
               ))}
             </select>
+            <ChevronDown size={20} color="white" style={{ pointerEvents: 'none', opacity: 0.8 }} />
           </div>
         </WelcomeBox>
 
@@ -252,7 +254,6 @@ export default function Dashboard() {
   // =======================================================================
   return (
     <Container>
-      {/* ... (O código do Portal do Cliente mantém-se inalterado) ... */}
       <WelcomeBox style={{ background: 'linear-gradient(135deg, #805ad5 0%, #553c9a 100%)' }}>
         <div><h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Portal do Cliente</h1><p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Bem-vindo de volta, <strong>{user?.name}</strong>. Acompanhe a sua empresa e envie documentos.</p></div><FileText size={60} opacity={0.2} />
       </WelcomeBox>

@@ -4,7 +4,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronLeft, ChevronRight, FileText, PieChart, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, PieChart, Filter, ChevronDown } from 'lucide-react'; // 🔥 ChevronDown importado
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, DREContainer, DRERow, MonthNavigator } from './styles';
 
@@ -16,11 +16,9 @@ export default function DRE() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
-  // 🔥 NOVO: Estado para armazenar o cliente selecionado no filtro
   const [clientFilter, setClientFilter] = useState('');
 
   const { data: transactions, error } = useSWR(`/transactions?month=${currentMonth}&year=${currentYear}`, fetcher);
-  // 🔥 NOVO: Busca a lista de clientes para o Dropdown
   const { data: clients } = useSWR('/clients', fetcher);
 
   function handlePrev() { if(currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
@@ -31,7 +29,6 @@ export default function DRE() {
   const dre = useMemo(() => {
     if (!transactions) return null;
     
-    // 🔥 O MOTOR DE FILTRAGEM: Separa as transações do cliente específico se houver filtro
     let filteredTransactions = transactions;
     if (clientFilter) {
       filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
@@ -71,7 +68,6 @@ export default function DRE() {
     const doc = new jsPDF();
     const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
     
-    // Descobre o nome do cliente filtrado para colocar no PDF
     let reportSubject = selectedCompany?.name || 'Visão Geral (Agência)';
     if (clientFilter && clients) {
         const c = clients.find(c => c.id === clientFilter);
@@ -123,15 +119,20 @@ export default function DRE() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         
-        {/* 🔥 NOVO: FILTRO DE CLIENTE COM DESIGN PREMIUM */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', padding: '6px 16px', borderRadius: 8, border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400 }}>
-          <Filter size={18} color="#718096" />
-          <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#4a5568', fontWeight: 600, fontSize: 14 }}>
+        {/* 🔥 DESIGN PREMIUM: Filtro sem bordas do navegador */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400, transition: 'all 0.2s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+          <Filter size={20} color="#718096" />
+          <select 
+            value={clientFilter} 
+            onChange={e => setClientFilter(e.target.value)} 
+            style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#2d3748', fontWeight: 700, fontSize: 15, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+          >
             <option value="">Visão Geral (Todos os Dados)</option>
             {clients?.map(c => (
               <option key={c.id} value={c.id}>Filtrar: {c.fullName}</option>
             ))}
           </select>
+          <ChevronDown size={20} color="#a0aec0" style={{ pointerEvents: 'none' }} />
         </div>
 
         <MonthNavigator>
