@@ -4,13 +4,12 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
   Calendar, Clock, CheckCircle, Plus, Trash2, Check, X, User, 
-  DollarSign, ArrowUpCircle, ArrowDownCircle, Receipt 
+  DollarSign, ArrowUpCircle, ArrowDownCircle, Receipt,
+  AlertTriangle, CalendarClock // 🔥 Novos ícones importados
 } from 'lucide-react';
 import styled, { keyframes } from 'styled-components';
 
-// ----------------------------------------------------------------------
-// 🎨 ESTILOS LOCAIS & SKELETONS
-// ----------------------------------------------------------------------
+// --- ESTILOS ---
 const Container = styled.div`width: 100%; padding-bottom: 40px;`;
 const Header = styled.header`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; h1 { font-size: 26px; color: #1a202c; font-weight: 800; }`;
 const ActionButton = styled.button`display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: 0.2s; background: #3182ce; color: white; &:hover { background: #2c5282; }`;
@@ -21,12 +20,11 @@ const StatCard = styled.div`background: white; border-radius: 12px; padding: 24p
 const ApptGroup = styled.div`margin-bottom: 32px;`;
 const DateHeader = styled.h3`font-size: 13px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #edf2f7; padding-bottom: 8px;`;
 
-// 🔥 O Cartão foi adaptado para receber as cores do Financeiro
 const ApptCard = styled.div`display: flex; background: white; border-radius: 12px; border: 1px solid #edf2f7; margin-bottom: 16px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s; border-left: 4px solid ${props => props.$customColor || (props.$status === 'concluido' ? '#48bb78' : props.$status === 'cancelado' ? '#f56565' : '#ecc94b')}; @media (max-width: 600px) { flex-direction: column; }`;
-const TimeSection = styled.div`padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f7fafc; border-right: 1px solid #edf2f7; min-width: 100px; strong { font-size: 18px; color: #2d3748; } span { font-size: 11px; color: #718096; text-transform: uppercase; font-weight: 600; margin-top: 4px; } @media (max-width: 600px) { border-right: none; border-bottom: 1px solid #edf2f7; flex-direction: row; gap: 8px; padding: 12px; }`;
+const TimeSection = styled.div`padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: ${props => props.$bgColor || '#f7fafc'}; border-right: 1px solid #edf2f7; min-width: 100px; strong { font-size: 18px; color: ${props => props.$color || '#2d3748'}; } span { font-size: 11px; color: ${props => props.$color || '#718096'}; text-transform: uppercase; font-weight: 700; margin-top: 4px; text-align: center; line-height: 1.2; } @media (max-width: 600px) { border-right: none; border-bottom: 1px solid #edf2f7; flex-direction: row; gap: 8px; padding: 12px; }`;
 const InfoSection = styled.div`padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; .name { font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 4px; } .phone { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #718096; margin-bottom: 12px; } .notes { background: #f7fafc; padding: 10px; border-radius: 8px; font-size: 13px; color: #4a5568; font-style: italic; border: 1px solid #edf2f7; }`;
 const ActionSection = styled.div`padding: 20px; display: flex; align-items: flex-end; justify-content: space-between; flex-direction: column; min-width: 140px; border-left: 1px solid #edf2f7; @media (max-width: 600px) { flex-direction: row; border-left: none; border-top: 1px solid #edf2f7; padding: 12px 20px; }`;
-const StatusBadge = styled.span`padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${props => props.$status === 'concluido' ? '#e6fffa' : props.$status === 'cancelado' ? '#fff5f5' : '#fffff0'}; color: ${props => props.$status === 'concluido' ? '#319795' : props.$status === 'cancelado' ? '#e53e3e' : '#d69e2e'};`;
+const StatusBadge = styled.span`padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${props => props.$status === 'concluido' ? '#e6fffa' : props.$status === 'cancelado' ? '#fff5f5' : '#fffff0'}; color: ${props => props.$status === 'concluido' ? '#319795' : props.$status === 'cancelado' ? '#e53e3e' : '#d69e2e'}; display: inline-flex; align-items: center; gap: 4px;`;
 
 const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
 const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);`;
@@ -43,10 +41,9 @@ export default function Appointments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ clientId: '', date: '', time: '', notes: '' });
 
-  // 🔥 SWR: Busca a Agenda, os Clientes e o FINANCEIRO ao mesmo tempo!
   const { data: appointments, error: errorAppts, mutate: mutateAppts } = useSWR('/appointments', fetcher);
   const { data: clients } = useSWR('/clients', fetcher);
-  const { data: transactions, mutate: mutateTrans } = useSWR('/transactions', fetcher); // O Histórico Completo
+  const { data: transactions, mutate: mutateTrans } = useSWR('/transactions', fetcher);
 
   function formatPhone(phone) {
     if (!phone) return 'Sem contato';
@@ -56,38 +53,37 @@ export default function Appointments() {
     return phone;
   }
 
-  // --- AÇÕES DA AGENDA ---
   async function handleStatusChange(id, newStatus) {
     const tId = toast.loading('A atualizar...');
     try {
       await api.put(`/appointments/${id}`, { status: newStatus });
       toast.success('Status atualizado!', { id: tId });
       mutateAppts(); 
-    } catch (err) { toast.error('Erro ao atualizar status.', { id: tId }); }
+    } catch (err) { toast.error('Erro ao atualizar.', { id: tId }); }
   }
 
   async function handleDelete(id) {
     if (!window.confirm('Excluir este agendamento?')) return;
-    try { await api.delete(`/appointments/${id}`); toast.success('Agendamento removido!'); mutateAppts(); } 
+    try { await api.delete(`/appointments/${id}`); toast.success('Removido!'); mutateAppts(); } 
     catch (err) { toast.error('Erro ao remover.'); }
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.clientId || !form.date || !form.time) return toast.error('Preencha os campos obrigatórios!');
+    if (!form.clientId || !form.date || !form.time) return toast.error('Preencha tudo!');
     const tId = toast.loading('A agendar...');
     try {
       const dateTime = new Date(`${form.date}T${form.time}:00`).toISOString();
       await api.post('/appointments', { clientId: form.clientId, date: dateTime, notes: form.notes, status: 'pendente' });
       toast.success('Agendamento criado!', { id: tId });
       setIsModalOpen(false); setForm({ clientId: '', date: '', time: '', notes: '' }); mutateAppts();
-    } catch (err) { toast.error('Erro ao criar agendamento.', { id: tId }); }
+    } catch (err) { toast.error('Erro.', { id: tId }); }
   }
 
-  // --- AÇÕES DO FINANCEIRO (DAR BAIXA) ---
+  // --- BAIXA FINANCEIRA PELA AGENDA ---
   async function handlePayBoleto(t) {
-    if (!window.confirm(`Confirmar o recebimento/pagamento de: ${t.title}? O valor irá para o Caixa Principal.`)) return;
-    const tId = toast.loading('A processar baixa financeira...');
+    if (!window.confirm(`Dar baixa em: ${t.title}? O valor entrará no caixa como PAGO.`)) return;
+    const tId = toast.loading('A processar baixa...');
     try {
       const formData = new FormData();
       formData.append('title', t.title);
@@ -95,46 +91,40 @@ export default function Appointments() {
       formData.append('amount', t.amount || t.price);
       formData.append('category', t.category);
       formData.append('type', t.type);
-      formData.append('date', t.date); // Mantém a data original
-      formData.append('status', 'PAGO'); // 🔥 Transforma o Boleto em Dinheiro Vivo!
+      formData.append('date', t.date); 
+      formData.append('status', 'PAGO'); 
 
       await api.put(`/transactions/${t.id}`, formData);
       toast.success('Baixa realizada com sucesso!', { id: tId });
-      mutateTrans(); // Atualiza a lista na hora, o boleto some da agenda!
+      mutateTrans(); 
     } catch (err) { toast.error('Erro ao processar baixa.', { id: tId }); }
   }
 
-  // --- LOADING ---
   if (errorAppts) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar a agenda.</div>;
   if (!appointments) {
     return (
       <Container>
-        <Header><h1>Agenda & Boletos</h1></Header>
+        <Header><h1>Agenda & Finanças</h1></Header>
         <CardsGrid><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></CardsGrid>
         <div style={{ marginTop: 40 }}><SkeletonRow /><SkeletonRow /></div>
       </Container>
     );
   }
 
-  // ----------------------------------------------------------------------
-  // 🧠 O MOTOR DE FUSÃO (Junta Consultas e Boletos na mesma Timeline)
-  // ----------------------------------------------------------------------
   const allItems = [];
   let pendingBoletosCount = 0;
 
-  // 1. Injeta a Agenda
   if (appointments) {
     allItems.push(...appointments.map(a => ({ ...a, itemType: 'appointment' })));
   }
   
-  // 2. Injeta os Boletos Pendentes do Financeiro
   if (transactions) {
-    const pendingBoletos = transactions.filter(t => t.status === 'PENDENTE');
+    // 🔥 CORREÇÃO: Agora puxamos TUDO o que NÃO ESTÁ PAGO!
+    const pendingBoletos = transactions.filter(t => t.status !== 'PAGO');
     pendingBoletosCount = pendingBoletos.length;
     allItems.push(...pendingBoletos.map(t => ({ ...t, itemType: 'boleto' })));
   }
 
-  // 3. Agrupa TUDO por Data
   const groupedByDate = allItems.reduce((acc, item) => {
     const dateStr = item.date.split('T')[0];
     if (!acc[dateStr]) acc[dateStr] = [];
@@ -142,10 +132,8 @@ export default function Appointments() {
     return acc;
   }, {});
 
-  // 4. Ordena Cronologicamente
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a) - new Date(b));
 
-  // Contadores
   const todayISO = new Date().toISOString().split('T')[0];
   const todayCount = appointments.filter(a => a.date.startsWith(todayISO)).length;
   const pendingCount = appointments.filter(a => a.status === 'pendente').length;
@@ -166,21 +154,21 @@ export default function Appointments() {
           <div className="value">{todayCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Boletos a Vencer <DollarSign size={18} color="#e53e3e" /></div>
+          <div className="title">Contas Não Pagas <DollarSign size={18} color="#e53e3e" /></div>
           <div className="value" style={{ color: '#e53e3e' }}>{pendingBoletosCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Compromissos Pendentes <Clock size={18} color="#d69e2e" /></div>
+          <div className="title">Reuniões Pendentes <Clock size={18} color="#d69e2e" /></div>
           <div className="value" style={{ color: '#d69e2e' }}>{pendingCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Atendimentos Concluídos <CheckCircle size={18} color="#48bb78" /></div>
+          <div className="title">Atendimentos <CheckCircle size={18} color="#48bb78" /></div>
           <div className="value" style={{ color: '#48bb78' }}>{completedCount}</div>
         </StatCard>
       </CardsGrid>
 
       {sortedDates.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#a0aec0', marginTop: 40, fontSize: 16 }}>Nenhum agendamento ou boleto pendente.</p>
+        <p style={{ textAlign: 'center', color: '#a0aec0', marginTop: 40, fontSize: 16 }}>Sua agenda está livre.</p>
       ) : (
         sortedDates.map(dateKey => {
           const dateObj = new Date(dateKey + 'T12:00:00'); 
@@ -192,9 +180,6 @@ export default function Appointments() {
               
               {groupedByDate[dateKey].map(item => {
                 
-                // ---------------------------------------------------------
-                // RENDERIZAÇÃO 1: SE FOR UM AGENDAMENTO NORMAL
-                // ---------------------------------------------------------
                 if (item.itemType === 'appointment') {
                   const timeStr = new Date(item.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                   return (
@@ -222,31 +207,49 @@ export default function Appointments() {
                     </ApptCard>
                   );
                 } 
-                
-                // ---------------------------------------------------------
-                // RENDERIZAÇÃO 2: SE FOR UM BOLETO DO FINANCEIRO
-                // ---------------------------------------------------------
                 else {
+                  // LÓGICA DE CORES DO FINANCEIRO
                   const isIncome = item.type === 'entrada' || item.type === 'income';
+                  
+                  // Define as cores com base no STATUS financeiro
+                  let cardColor = '#ecc94b'; // Amarelo (Pendente padrão)
+                  let bgColor = '#fffff0';
+                  let icon = <Clock size={24} color={cardColor} />;
+                  let label = 'VENCE HOJE';
+                  
+                  if (item.status === 'ATRASADO') {
+                     cardColor = '#e53e3e'; // Vermelho
+                     bgColor = '#fff5f5';
+                     icon = <AlertTriangle size={24} color={cardColor} />;
+                     label = 'CONTA ATRASADA';
+                  } else if (item.status === 'AGENDADO') {
+                     cardColor = '#3182ce'; // Azul
+                     bgColor = '#ebf8ff';
+                     icon = <CalendarClock size={24} color={cardColor} />;
+                     label = 'AGENDADO NO BANCO';
+                  }
+
                   return (
-                    <ApptCard key={`bol-${item.id}`} $customColor={isIncome ? '#12a454' : '#e52e4d'}>
-                      <TimeSection style={{ background: isIncome ? '#f0fff4' : '#fff5f5' }}>
-                        {isIncome ? <ArrowUpCircle size={24} color="#12a454" /> : <ArrowDownCircle size={24} color="#e52e4d" />}
-                        <span style={{ color: isIncome ? '#12a454' : '#e52e4d' }}>VENCE HOJE</span>
+                    <ApptCard key={`bol-${item.id}`} $customColor={cardColor}>
+                      <TimeSection $bgColor={bgColor} $color={cardColor}>
+                        {icon}
+                        <span>{label}</span>
                       </TimeSection>
                       
                       <InfoSection>
                         <div className="name">{item.title || item.description}</div>
                         <div className="phone"><Receipt size={14} /> Categoria: {item.category || 'Geral'}</div>
                         <div className="notes" style={{ fontSize: 18, fontWeight: 800, color: isIncome ? '#12a454' : '#e52e4d', background: 'transparent', border: 'none', padding: 0 }}>
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount || item.price || 0)}
+                          {isIncome ? '+' : '-'} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount || item.price || 0)}
                         </div>
                       </InfoSection>
                       
                       <ActionSection>
-                        <StatusBadge $status="pendente" style={{ background: '#FEFCBF', color: '#B7791F' }}>
-                           {isIncome ? 'RECEBIMENTO PENDENTE' : 'PAGAMENTO PENDENTE'}
+                        {/* A Badge superior mostra a situação real */}
+                        <StatusBadge style={{ background: bgColor, color: cardColor }}>
+                           {item.status}
                         </StatusBadge>
+
                         <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                           <button onClick={() => handlePayBoleto(item)} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
                             <CheckCircle size={16} /> Dar Baixa (Pagar)
@@ -285,7 +288,7 @@ export default function Appointments() {
 
               <FormGroup>
                 <label>Observações</label>
-                <textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Ex: Reunião de alinhamento..." />
+                <textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Ex: Reunião..." />
               </FormGroup>
 
               <ModalActions>
