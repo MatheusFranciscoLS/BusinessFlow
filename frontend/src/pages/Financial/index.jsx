@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { 
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip, Download,
-  CheckCircle, Clock, CalendarClock, AlertTriangle, CreditCard
+  CheckCircle, Clock, CalendarClock, AlertTriangle, CreditCard, Repeat
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -30,6 +30,7 @@ const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Financial() {
     const { user, selectedCompany } = useAuth(); 
+    const isClient = user?.role === 'CLIENT';
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -49,6 +50,10 @@ export default function Financial() {
     const [file, setFile] = useState(null);
     const [status, setStatus] = useState('PAGO');
     const [paymentMethod, setPaymentMethod] = useState(''); 
+    
+    // 🔥 ESTADOS DE RECORRÊNCIA
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [installments, setInstallments] = useState(1);
 
     const queryString = showAllTime ? '' : `?month=${currentMonth}&year=${currentYear}`;
     const { data: transactions, error, mutate } = useSWR(`/transactions${queryString}`, fetcher);
@@ -110,10 +115,8 @@ export default function Financial() {
         const darkColor = [26, 32, 44];
         const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
 
-        doc.setFillColor(...darkColor);
-        doc.rect(0, 0, 210, 42, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22); doc.setFont("helvetica", "bold");
+        doc.setFillColor(...darkColor); doc.rect(0, 0, 210, 42, 'F');
+        doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
         doc.text(brandingName, 14, 20); 
         
         doc.setFontSize(11); doc.setFont("helvetica", "normal");
@@ -163,14 +166,13 @@ export default function Financial() {
             doc.text(`Documento gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
             doc.text(`Página ${i} de ${pageCount}`, 185, 290);
         }
-
         doc.save(`Relatorio_Financeiro_${clientName.replace(/\s/g, '_')}.pdf`); 
         toast.success("PDF Timbrado exportado com sucesso!");
     }
 
     function handleOpenNew() {
         setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null); 
-        setStatus('PAGO'); setPaymentMethod(''); 
+        setStatus('PAGO'); setPaymentMethod(''); setIsRecurring(false); setInstallments(1);
         setIsModalOpen(true);
     }
 
@@ -178,8 +180,8 @@ export default function Financial() {
         setEditingId(t.id); setTitle(t.title || t.description); setPrice(t.amount || t.price || 0); setCategory(t.category || '');
         setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
         setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
-        setStatus(t.status || 'PAGO'); setPaymentMethod(t.paymentMethod || ''); 
-        setFile(null); 
+        setStatus(t.status || 'PAGO'); setPaymentMethod(t.paymentMethod || ''); setFile(null); 
+        setIsRecurring(false); setInstallments(1); // Não se permite recriar recorrência numa edição
         setIsModalOpen(true);
     }
 
@@ -223,6 +225,11 @@ export default function Financial() {
             formData.append('date', new Date(date).toISOString());
             formData.append('status', status); 
             formData.append('paymentMethod', paymentMethod); 
+            
+            // 🔥 Envia a quantidade de vezes a repetir (apenas na criação)
+            if (!editingId && isRecurring) {
+              formData.append('installments', installments);
+            }
             if (file) formData.append('file', file);
 
             if (editingId) await api.put(`/transactions/${editingId}`, formData);
@@ -255,7 +262,7 @@ export default function Financial() {
                     <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
                     <ButtonGroup>
                         <button className="secondary" onClick={handleExportPDF} disabled={!transactions}><FileText size={18} /> Relatório PDF</button>
-                        <button className="primary" onClick={handleOpenNew} disabled={!transactions}><Plus size={20} /> Nova Transação</button>
+                        <button className="primary" onClick={handleOpenNew} disabled={!transactions || isClient} style={{ display: isClient ? 'none' : 'flex' }}><Plus size={20} /> Nova Transação</button>
                     </ButtonGroup>
                 </div>
 
@@ -321,11 +328,9 @@ export default function Financial() {
                                     {filteredTransactions.map(t => {
                                         const amount = t.amount || t.price || 0;
                                         const isIncome = t.type === 'income' || t.type === 'entrada';
-                                        const isNotPaid = t.status !== 'PAGO';
-                                        const isClient = user?.role === 'CLIENT'; 
+                                        const isNotPaid = t.status !== 'PAGO'; 
                                         return (
                                             <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : 'transparent' }}>
-                                                {/* 🔥 AQUI ESTÁ A CORREÇÃO DOS ÍCONES NA TABELA */}
                                                 <td>
                                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     {isIncome 
@@ -353,35 +358,17 @@ export default function Financial() {
                                                   )}
                                                 </td>
 
-<td style={{ textAlign: 'right' }}>
-    {/* 🔥 LÓGICA DE SEGURANÇA: Só mostra o botão se não estiver pago E se NÃO for cliente */}
-    {isNotPaid && !isClient && (
-        <ActionButton 
-            onClick={() => handleMarkAsPaid(t)} 
-            color="#12a454" 
-            title="Dar Baixa (Pagar/Receber)" 
-            style={{ marginRight: 8 }}
-        >
-            <CheckCircle size={18} />
-        </ActionButton>
-    )}
-    
-    <ActionButton 
-        onClick={() => handleEdit(t)} 
-        color="#3182ce" 
-        title="Editar"
-    >
-        <Edit size={18} />
-    </ActionButton>
-    
-    <ActionButton 
-        onClick={() => handleDelete(t.id)} 
-        color="#e53e3e" 
-        title="Excluir"
-    >
-        <Trash2 size={18} />
-    </ActionButton>
-</td>
+                                                <td style={{ textAlign: 'right' }}>
+                                                    {isNotPaid && !isClient && (
+                                                      <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa (Pagar/Receber)" style={{ marginRight: 8 }}><CheckCircle size={18} /></ActionButton>
+                                                    )}
+                                                    {!isClient && (
+                                                      <>
+                                                        <ActionButton onClick={() => handleEdit(t)} color="#3182ce" style={{ marginRight: 8 }}><Edit size={18} /></ActionButton>
+                                                        <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
+                                                      </>
+                                                    )}
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -392,7 +379,7 @@ export default function Financial() {
                 </>
             )}
 
-            {isModalOpen && (
+            {isModalOpen && !isClient && (
                 <ModalOverlay>
                     <ModalContent style={{ maxWidth: 650 }}>
                         <h2 style={{ marginBottom: 20 }}>{editingId ? 'Editar' : 'Novo Lançamento'} Financeiro</h2>
@@ -408,80 +395,73 @@ export default function Financial() {
                             </TransactionTypeContainer>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
-                              <FormGroup><label>Descrição do Lançamento</label><input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: Mensalidade Cliente X" /></FormGroup>
+                              <FormGroup><label>Descrição do Lançamento</label><input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: Honorários Mensais" /></FormGroup>
                               <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
                             </div>
                             
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
-                                  <label>Categoria (Plano de Contas)</label>
+                                  <label>Categoria</label>
                                   <select value={category} onChange={e => setCategory(e.target.value)} required style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                       <option value="">Selecione a conta...</option>
                                       {(type === 'income' || type === 'entrada') ? (
-                                        <optgroup label="RECEITAS (Entradas)">
-                                          <option value="Prestação de Serviços">Prestação de Serviços</option>
-                                          <option value="Venda de Produtos">Venda de Produtos</option>
-                                          <option value="Rendimentos">Rendimentos / Juros</option>
-                                          <option value="Aporte de Sócio">Aporte de Capital (Sócio)</option>
-                                          <option value="Outras Receitas">Outras Receitas</option>
+                                        <optgroup label="RECEITAS">
+                                          <option value="Honorários Contábeis">Honorários Mensais</option>
+                                          <option value="Serviços Extras">Serviços Extras (IRPF, Alterações)</option>
+                                          <option value="Aporte de Sócio">Aporte de Sócio</option>
                                         </optgroup>
                                       ) : (
-                                        <>
-                                          <optgroup label="CUSTOS COM PESSOAL">
-                                            <option value="Folha de Pagamento">Folha de Pagamento</option>
-                                            <option value="Pró-labore">Pró-labore (Sócios)</option>
-                                            <option value="Encargos (INSS/FGTS)">Encargos Trabalhistas</option>
-                                            <option value="Benefícios">Benefícios (VR/VT)</option>
-                                          </optgroup>
-                                          <optgroup label="IMPOSTOS E TAXAS">
-                                            <option value="Simples Nacional">Simples Nacional (DAS)</option>
-                                            <option value="Impostos Federais">Impostos Federais</option>
-                                            <option value="Impostos Municipais">Impostos Municipais</option>
-                                            <option value="Taxas Bancárias">Taxas Bancárias</option>
-                                          </optgroup>
-                                          <optgroup label="DESPESAS OPERACIONAIS">
-                                            <option value="Honorários Contábeis">Honorários Contábeis</option>
-                                            <option value="Aluguel e Condomínio">Aluguel e Condomínio</option>
-                                            <option value="Infraestrutura">Infraestrutura (Água/Luz/Internet)</option>
-                                            <option value="Software">Softwares e Assinaturas</option>
-                                          </optgroup>
-                                          <optgroup label="OUTROS">
-                                            <option value="Distribuição de Lucros">Distribuição de Lucros</option>
-                                            <option value="Outras Despesas">Outras Despesas</option>
-                                          </optgroup>
-                                        </>
+                                        <optgroup label="CUSTOS">
+                                          <option value="Folha de Pagamento">Folha de Pagamento</option>
+                                          <option value="Impostos">Impostos (Simples, DARF)</option>
+                                          <option value="Despesas Fixas">Despesas Fixas (Software, Aluguel)</option>
+                                          <option value="Distribuição de Lucros">Distribuição de Lucros</option>
+                                        </optgroup>
                                       )}
                                   </select>
                               </FormGroup>
-                              <FormGroup><label>Data de Competência/Vencimento</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
+                              <FormGroup><label>Data de Vencimento</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
                             </div>
+
+                            {/* 🔥 MOTOR DE RECORRÊNCIA NA INTERFACE (Só aparece na criação) */}
+                            {!editingId && (
+                              <div style={{ background: '#f7fafc', border: '1px solid #edf2f7', padding: '16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: '#2d3748' }}>
+                                  <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                                  <Repeat size={18} color="#3182ce" />
+                                  Lançamento Recorrente (Mensalidade)
+                                </label>
+                                
+                                {isRecurring && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '26px' }}>
+                                    <span style={{ fontSize: '13px', color: '#4a5568' }}>Repetir por</span>
+                                    <input type="number" min="2" max="60" value={installments} onChange={(e) => setInstallments(e.target.value)} style={{ width: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
+                                    <span style={{ fontSize: '13px', color: '#4a5568' }}>meses</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
-                                  <label>Situação do Pagamento</label>
+                                  <label>Situação da Primeira Parcela</label>
                                   <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                      <option value="PAGO">✅ Realizado (Já na conta)</option>
-                                      <option value="PENDENTE">⏳ Pendente (A vencer)</option>
-                                      <option value="AGENDADO">📅 Agendado no Banco</option>
-                                      <option value="ATRASADO">⚠️ Atrasado (Inadimplente)</option>
+                                      <option value="PAGO">✅ Pago (Dinheiro em Caixa)</option>
+                                      <option value="PENDENTE">⏳ Pendente a Receber</option>
                                   </select>
                               </FormGroup>
-
                               <FormGroup>
                                   <label>Meio de Pagamento</label>
                                   <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                       <option value="">Não informado</option>
                                       <option value="PIX">PIX</option>
                                       <option value="Boleto Bancário">Boleto Bancário</option>
-                                      <option value="TED/DOC">Transferência (TED/DOC)</option>
-                                      <option value="Cartão de Crédito">Cartão de Crédito</option>
-                                      <option value="Dinheiro Físico">Dinheiro Físico</option>
                                   </select>
                               </FormGroup>
                             </div>
 
                             <FormGroup style={{ marginTop: 8 }}>
-                              <label>Comprovativo / Nota Fiscal</label>
+                              <label>Comprovativo (Anexa apenas no 1º mês)</label>
                               <div style={{ border: '1px dashed #cbd5e0', padding: '16px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
                                 <input type="file" onChange={e => setFile(e.target.files[0])} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
                                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}>
@@ -493,7 +473,7 @@ export default function Financial() {
 
                             <ModalActions>
                                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                                <button type="submit" className="save">Confirmar Lançamento</button>
+                                <button type="submit" className="save">Confirmar {isRecurring ? 'Recorrência' : 'Lançamento'}</button>
                             </ModalActions>
                         </form>
                     </ModalContent>
