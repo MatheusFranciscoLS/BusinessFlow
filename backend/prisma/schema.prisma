@@ -9,15 +9,18 @@ datasource db {
 
 // O Contador / Consultor (Dono do Sistema)
 model User {
-  id            String         @id @default(uuid())
-  name          String
-  agencyName    String?       
-  email         String         @unique
-  password      String
-  avatarUrl     String?
-  companies     Company[]      // Um contador gerencia várias empresas
-  refreshTokens RefreshToken[] 
-  createdAt     DateTime       @default(now())
+  id              String         @id @default(uuid())
+  name            String
+  agencyName      String?        
+  email           String         @unique
+  password        String
+  avatarUrl       String?
+  role            String         @default("ADMIN") 
+  companyAccessId String?        
+  
+  companies       Company[]      
+  refreshTokens   RefreshToken[] 
+  createdAt       DateTime       @default(now())
 }
 
 model RefreshToken {
