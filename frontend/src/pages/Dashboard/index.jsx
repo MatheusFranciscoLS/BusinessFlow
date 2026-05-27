@@ -1,265 +1,212 @@
-import useSWR from 'swr'; 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import useSWR from 'swr';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, 
-  PieChart, Pie, Cell 
-} from 'recharts';
-import { 
-  DollarSign, ArrowUpCircle, ArrowDownCircle, Trophy, TrendingUp, TrendingDown, AlertTriangle 
+  UploadCloud, FileText, Clock, CheckCircle, 
+  ArrowUpCircle, ArrowDownCircle, DollarSign, Building2
 } from 'lucide-react';
-import { Container, Header, CardsContainer, Card, ChartContainer, ChartsRow, BottomRow } from './styles';
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes } from 'styled-components';
 
-// Animação Skeleton
-const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
-const SkeletonCard = styled.div`
-  height: ${(props) => props.height || "140px"}; width: 100%; border-radius: 8px; background: #f0f0f0;
-  background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
-  background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;
-`;
-const SkeletonContainer = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; width: 100%; padding: 20px;`;
+// --- ESTILOS ---
+const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
+const Container = styled.div`width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;`;
+const WelcomeBox = styled.div`background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%); padding: 32px; border-radius: 16px; color: white; margin-bottom: 32px; box-shadow: 0 10px 25px rgba(49, 130, 206, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;`;
+const CardsGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px;`;
+const StatCard = styled.div`background: white; border-radius: 12px; padding: 24px; border: 1px solid #edf2f7; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); .title { display: flex; align-items: center; justify-content: space-between; color: #718096; font-size: 14px; font-weight: 600; } .value { font-size: 28px; font-weight: 800; color: ${props => props.$color || '#2d3748'}; }`;
 
-// 🔥 NOVO: Estilo para os Filtros de Período
-const FilterContainer = styled.div`
-  display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 4px;
-  button {
-    padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; white-space: nowrap;
-    border: 1px solid #e2e8f0; background: white; color: #4a5568;
-    &.active { background: #3182ce; color: white; border-color: #3182ce; }
-    &:hover:not(.active) { background: #f7fafc; }
-  }
-  /* Esconde a barra de scroll no Windows/Mac mas permite deslizar no celular */
-  &::-webkit-scrollbar { display: none; }
-`;
+const ActionGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;`;
+const ActionCard = styled.button`background: white; border: 1px dashed #cbd5e0; border-radius: 12px; padding: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; cursor: pointer; transition: 0.2s; color: #4a5568; &:hover { border-color: #3182ce; background: #ebf8ff; color: #3182ce; transform: translateY(-2px); } strong { font-size: 16px; } span { font-size: 13px; text-align: center; }`;
 
-// Paleta de Cores Premium para o Gráfico de Tarte
-const PIE_COLORS = ['#3182ce', '#38b2ac', '#ecc94b', '#ed8936', '#9f7aea', '#e53e3e'];
+const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
+const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);`;
+const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 14px; font-weight: 600; color: #4a5568; } input, select, textarea { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; transition: 0.2s; &:focus { border-color: #3182ce; } }`;
+const ModalActions = styled.div`display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; button { padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; } .cancel { background: #edf2f7; color: #4a5568; &:hover { background: #e2e8f0; } } .save { background: #3182ce; color: white; &:hover { background: #2c5282; } }`;
 
 const fetcher = (url) => api.get(url).then((res) => res.data);
 
 export default function Dashboard() {
-  // 🔥 NOVO: O Estado que controla a "Máquina do Tempo" do Dashboard
-  const [period, setPeriod] = useState('mes'); 
+  const { user, selectedCompany } = useAuth();
+  
+  // Puxar transações do mês atual para os cards de resumo
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+  const { data: transactions, mutate } = useSWR(`/transactions?month=${currentMonth}&year=${currentYear}`, fetcher);
 
-  // 🔥 O SWR agora escuta a variável "period". Se ela mudar, ele refaz a busca e faz cache na hora!
-  const { data: summary, error: errorSummary } = useSWR(`/dashboard/summary?period=${period}`, fetcher);
-  const { data: rawMonthlyData, error: errorMonthly } = useSWR(`/dashboard/monthly?period=${period}`, fetcher);
-  const { data: topClients, error: errorTop } = useSWR(`/dashboard/top-clients?period=${period}`, fetcher);
-  const { data: recentTransactions, error: errorRecent } = useSWR(`/dashboard/recent?period=${period}`, fetcher);
+  // Estados do Modal do Cliente
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form, setForm] = useState({ title: '', amount: '', date: '', file: null });
 
-  const isLoading = !summary || !rawMonthlyData || !topClients || !recentTransactions;
-  const hasError = errorSummary || errorMonthly || errorTop || errorRecent;
+  const isClient = user?.role === 'CLIENT';
 
-  if (hasError) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados.</div>;
+  // Cálculos rápidos para o Resumo
+  const summary = useMemo(() => {
+    if (!transactions) return { entradas: 0, saidas: 0, pendentes: 0 };
+    return transactions.reduce((acc, t) => {
+      const val = t.amount || t.price || 0;
+      if (t.status === 'PAGO') {
+        if (t.type === 'entrada' || t.type === 'income') acc.entradas += val;
+        else acc.saidas += val;
+      } else {
+        if (t.type === 'saida' || t.type === 'outcome') acc.pendentes += 1;
+      }
+      return acc;
+    }, { entradas: 0, saidas: 0, pendentes: 0 });
+  }, [transactions]);
 
-  if (isLoading) {
+  const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  // 🔥 FUNÇÃO DO CLIENTE: Enviar um documento/conta
+  async function handleSendDocument(e) {
+    e.preventDefault();
+    if (!form.file) return toast.error("Por favor, anexe o PDF ou a imagem da nota/conta.");
+    
+    const tId = toast.loading("A enviar documento para o seu contador...");
+    try {
+      const formData = new FormData();
+      formData.append('title', form.title);
+      formData.append('description', 'Enviado pelo Portal do Cliente');
+      formData.append('amount', form.amount);
+      formData.append('type', 'saida'); // Forçamos como uma "Despesa" a pagar
+      formData.append('category', 'A Classificar'); // 🔥 O contador organiza depois!
+      formData.append('date', new Date(form.date).toISOString());
+      formData.append('status', 'PENDENTE');
+      formData.append('file', form.file);
+
+      await api.post('/transactions', formData);
+      toast.success("Documento enviado com sucesso!", { id: tId });
+      setIsModalOpen(false);
+      setForm({ title: '', amount: '', date: '', file: null });
+      mutate(); // Atualiza a contagem no ecrã
+    } catch (error) {
+      toast.error("Erro ao enviar o documento.", { id: tId });
+    }
+  }
+
+  // =======================================================================
+  // 👔 VISÃO DO ADMINISTRADOR (ESCRITÓRIO)
+  // =======================================================================
+  if (!isClient) {
     return (
       <Container>
-        <Header>
-          <h1>Business Intelligence</h1>
-        </Header>
-        <FilterContainer>
-          <button className="active">A carregar filtros...</button>
-        </FilterContainer>
-        <SkeletonContainer>
-          <SkeletonCard height="140px" /><SkeletonCard height="140px" /><SkeletonCard height="140px" />
-          <div style={{ gridColumn: "1 / -1" }}><SkeletonCard height="350px" /></div>
-        </SkeletonContainer>
+        <WelcomeBox>
+          <div>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Painel do Escritório</h1>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Visão geral do negócio: <strong>{selectedCompany?.name || 'Nenhuma empresa selecionada'}</strong></p>
+          </div>
+          <Building2 size={60} opacity={0.2} />
+        </WelcomeBox>
+
+        {!selectedCompany ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#a0aec0', background: 'white', borderRadius: 12, border: '1px solid #edf2f7' }}>
+            <h2>Selecione uma Empresa</h2>
+            <p>Utilize o menu lateral para escolher um cliente e aceder aos seus dados.</p>
+          </div>
+        ) : (
+          <>
+            <CardsGrid>
+              <StatCard>
+                <div className="title">Entradas do Mês <ArrowUpCircle size={18} color="#12a454" /></div>
+                <div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div>
+              </StatCard>
+              <StatCard>
+                <div className="title">Saídas do Mês <ArrowDownCircle size={18} color="#e52e4d" /></div>
+                <div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div>
+              </StatCard>
+              <StatCard>
+                <div className="title">Contas Pendentes / Atrasadas <Clock size={18} color="#d69e2e" /></div>
+                <div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} avisos</div>
+              </StatCard>
+            </CardsGrid>
+            <div style={{ background: 'white', padding: 24, borderRadius: 12, border: '1px solid #edf2f7' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#2d3748' }}>Dica do Sistema</h3>
+              <p style={{ color: '#718096', lineHeight: 1.6 }}>Verifique a aba <strong>Financeiro</strong> para aprovar as Notas Fiscais enviadas pelos seus clientes. Elas aparecerão com a etiqueta amarela de <strong>PENDENTE</strong> e categoria <strong>A Classificar</strong>.</p>
+            </div>
+          </>
+        )}
       </Container>
     );
   }
 
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  const monthlyData = rawMonthlyData.map((item, index) => ({
-    name: months[index],
-    Entradas: item.entradas,
-    Saídas: item.saidas
-  }));
-
-  function formatCurrency(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-  }
-  
-  const GrowthBadge = ({ value }) => {
-    const isPositive = value >= 0;
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, 
-                    color: isPositive ? '#12a454' : '#e52e4d', background: isPositive ? '#e6fffa' : '#fff5f5', 
-                    padding: '4px 10px', borderRadius: 20 }}>
-        {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-        {value}%
-      </div>
-    );
-  };
-
-  function formatPhone(phone) {
-    if (!phone) return 'Sem telefone';
-    const p = phone.replace(/\D/g, ''); 
-    if (p.length === 11) return p.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-    if (p.length === 10) return p.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-    return phone;
-  }
-
+  // =======================================================================
+  // 🧑‍💼 VISÃO DO CLIENTE (PORTAL SELF-SERVICE)
+  // =======================================================================
   return (
     <Container>
-      <Header>
-        <h1>Business Intelligence</h1>
-        <p>Análise avançada de crescimento e fluxo de caixa</p>
-      </Header>
+      <WelcomeBox style={{ background: 'linear-gradient(135deg, #805ad5 0%, #553c9a 100%)' }}>
+        <div>
+          <h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Portal do Cliente</h1>
+          <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Bem-vindo de volta, <strong>{user?.name}</strong>. Aqui você acompanha a sua empresa e envia os seus documentos de forma segura.</p>
+        </div>
+        <FileText size={60} opacity={0.2} />
+      </WelcomeBox>
 
-      {/* 🔥 OS BOTÕES DE FILTRO */}
-      <FilterContainer>
-        <button className={period === 'hoje' ? 'active' : ''} onClick={() => setPeriod('hoje')}>Hoje</button>
-        <button className={period === '7dias' ? 'active' : ''} onClick={() => setPeriod('7dias')}>Últimos 7 Dias</button>
-        <button className={period === 'mes' ? 'active' : ''} onClick={() => setPeriod('mes')}>Este Mês</button>
-        <button className={period === 'ano' ? 'active' : ''} onClick={() => setPeriod('ano')}>Este Ano</button>
-        <button className={period === 'tudo' ? 'active' : ''} onClick={() => setPeriod('tudo')}>Todo o Histórico</button>
-      </FilterContainer>
+      <CardsGrid>
+        <StatCard>
+          <div className="title">Receitas Computadas <CheckCircle size={18} color="#12a454" /></div>
+          <div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div>
+        </StatCard>
+        <StatCard>
+          <div className="title">Despesas Pagas <DollarSign size={18} color="#e52e4d" /></div>
+          <div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div>
+        </StatCard>
+        <StatCard>
+          <div className="title">Contas Aguardando o Contador <Clock size={18} color="#d69e2e" /></div>
+          <div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} documentos</div>
+        </StatCard>
+      </CardsGrid>
 
-      <CardsContainer>
-        <Card>
-          <header>
-            <span style={{display: 'flex', alignItems: 'center', gap: 8}}>Entradas <GrowthBadge value={summary.growthEntradas} /></span>
-            <ArrowUpCircle size={24} color="#12a454" />
-          </header>
-          <strong>{formatCurrency(summary.entradas)}</strong>
-        </Card>
-        <Card>
-          <header>
-            <span style={{display: 'flex', alignItems: 'center', gap: 8}}>Saídas <GrowthBadge value={summary.growthSaidas} /></span>
-            <ArrowDownCircle size={24} color="#e52e4d" />
-          </header>
-          <strong>{formatCurrency(summary.saidas)}</strong>
-        </Card>
-        <Card $highlight={true}>
-          <header>
-            <span>Saldo Líquido</span>
-            <DollarSign size={24} color="white" />
-          </header>
-          <strong>{formatCurrency(summary.saldo)}</strong>
-        </Card>
-      </CardsContainer>
+      <h3 style={{ color: '#2d3748', marginBottom: 16 }}>Ações Rápidas</h3>
+      <ActionGrid>
+        <ActionCard onClick={() => setIsModalOpen(true)}>
+          <UploadCloud size={40} color="#3182ce" />
+          <strong>Enviar Conta para Pagamento</strong>
+          <span>Anexe aqui um boleto ou Nota Fiscal. O nosso escritório irá processar e agendar o pagamento por si.</span>
+        </ActionCard>
+      </ActionGrid>
 
-      <ChartsRow>
-        <ChartContainer>
-          <h3>Fluxo de Caixa Anual</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyData} barSize={40}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} />
-              <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `R$${val}`} />
-              <Tooltip formatter={(value) => formatCurrency(value)} cursor={{fill: 'transparent'}} />
-              <Legend />
-              <Bar dataKey="Entradas" fill="#12a454" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Saídas" fill="#e52e4d" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+      {/* MODAL DE ENVIO DO CLIENTE */}
+      {isModalOpen && (
+        <ModalOverlay>
+          <ModalContent>
+            <h2 style={{ marginBottom: 20 }}>Enviar Documento</h2>
+            <form onSubmit={handleSendDocument}>
+              <FormGroup>
+                <label>Do que se trata esta conta?</label>
+                <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} required placeholder="Ex: Fatura Internet VODAFONE" />
+              </FormGroup>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <FormGroup>
+                  <label>Valor (R$)</label>
+                  <input type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} required />
+                </FormGroup>
+                <FormGroup>
+                  <label>Data de Vencimento</label>
+                  <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required />
+                </FormGroup>
+              </div>
 
-        <ChartContainer>
-          <h3>Origem de Receita</h3>
-          {summary.distribuicao?.length === 0 ? (
-            <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma entrada registada no período.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={summary.distribuicao} innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value">
-                  {summary.distribuicao.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value)} />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </ChartContainer>
-      </ChartsRow>
+              <FormGroup style={{ marginTop: 8 }}>
+                <label>Anexar o PDF ou Foto (Obrigatório)</label>
+                <div style={{ border: '2px dashed #cbd5e0', padding: '24px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
+                  <input type="file" onChange={e => setForm({...form, file: e.target.files[0]})} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} required />
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}>
+                    <UploadCloud size={28} style={{ marginBottom: 8, color: '#3182ce' }} />
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{form.file ? form.file.name : "Clique para anexar o seu arquivo aqui"}</span>
+                  </div>
+                </div>
+              </FormGroup>
 
-      <BottomRow>
-        <ChartContainer>
-          <h3>Top Clientes (Receita)</h3>
-          {topClients.length === 0 ? (
-            <p style={{ color: '#718096', marginTop: 10 }}>Nenhum dado no período.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', marginTop: '16px' }}>
-              {topClients.map((item, index) => (
-                <li key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #f7fafc', paddingBottom: '8px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#2d3748', fontSize: 14, fontWeight: 600 }}>
-                    <div style={{ background: '#ffedd5', padding: '6px', borderRadius: '50%' }}>
-                      <Trophy size={16} color="#ed8936" /> 
-                    </div>
-                    {item.clientName && item.clientName.length > 20 ? item.clientName.substring(0,20)+'...' : item.clientName || 'Cliente'}
-                  </span>
-                  <strong style={{ color: '#12a454', fontSize: 15 }}>{formatCurrency(item.total)}</strong>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ChartContainer>
-
-        <ChartContainer style={{ borderLeft: '4px solid #e53e3e' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e53e3e' }}>
-            <AlertTriangle size={20} /> Radar de Inadimplência
-          </h3>
-          {summary.inadimplentes?.length === 0 ? (
-            <p style={{ color: '#48bb78', marginTop: 10, fontWeight: 600 }}>Zero clientes em atraso!</p>
-          ) : (
-            <ul style={{ listStyle: 'none', marginTop: '16px' }}>
-              {summary.inadimplentes.map((item, index) => (
-                <li key={index} style={{ display: 'flex', flexDirection: 'column', marginBottom: '12px', background: '#fff5f5', padding: '12px', borderRadius: '8px' }}>
-                  <strong style={{ color: '#2d3748', fontSize: 14 }}>{item.fullName}</strong>
-                  <span style={{ color: '#e53e3e', fontSize: 12, fontWeight: 600 }}>
-                    {formatPhone(item.phone)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ChartContainer>
-      </BottomRow>
-
-      <ChartContainer>
-        <h3>Últimas Movimentações</h3>
-        {recentTransactions?.length === 0 ? (
-          <p style={{ color: '#718096', marginTop: 10 }}>Nenhuma transação no período.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Descrição</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Categoria</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Data</th>
-                  <th style={{ textAlign: 'right', padding: '12px 16px', color: '#a0aec0', fontSize: 12, textTransform: 'uppercase', borderBottom: '1px solid #edf2f7' }}>Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.map((t, index) => {
-                  const isIncome = t.type === 'entrada' || t.type === 'income';
-                  return (
-                    <tr key={index} style={{ borderBottom: index !== recentTransactions.length - 1 ? '1px solid #f7fafc' : 'none' }}>
-                      <td style={{ padding: '12px 16px', color: '#2d3748', fontSize: 14, fontWeight: 500 }}>{t.description || t.title}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ background: '#edf2f7', color: '#4a5568', padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
-                          {t.category}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#718096', fontSize: 14 }}>
-                        {new Date(t.date).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: isIncome ? '#12a454' : '#e53e3e' }}>
-                        {isIncome ? '+ ' : '- '}{formatCurrency(t.amount)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </ChartContainer>
+              <ModalActions>
+                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
+                <button type="submit" className="save">Enviar ao Contador</button>
+              </ModalActions>
+            </form>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </Container>
   );
 }
