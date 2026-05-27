@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { 
   Calendar, Clock, CheckCircle, Plus, Trash2, Check, X, User, 
   DollarSign, ArrowUpCircle, ArrowDownCircle, Receipt,
-  AlertTriangle, CalendarClock // 🔥 Novos ícones importados
+  AlertTriangle, CalendarClock
 } from 'lucide-react';
 import styled, { keyframes } from 'styled-components';
 
@@ -80,7 +80,6 @@ export default function Appointments() {
     } catch (err) { toast.error('Erro.', { id: tId }); }
   }
 
-  // --- BAIXA FINANCEIRA PELA AGENDA ---
   async function handlePayBoleto(t) {
     if (!window.confirm(`Dar baixa em: ${t.title}? O valor entrará no caixa como PAGO.`)) return;
     const tId = toast.loading('A processar baixa...');
@@ -119,7 +118,6 @@ export default function Appointments() {
   }
   
   if (transactions) {
-    // 🔥 CORREÇÃO: Agora puxamos TUDO o que NÃO ESTÁ PAGO!
     const pendingBoletos = transactions.filter(t => t.status !== 'PAGO');
     pendingBoletosCount = pendingBoletos.length;
     allItems.push(...pendingBoletos.map(t => ({ ...t, itemType: 'boleto' })));
@@ -208,22 +206,21 @@ export default function Appointments() {
                   );
                 } 
                 else {
-                  // LÓGICA DE CORES DO FINANCEIRO
                   const isIncome = item.type === 'entrada' || item.type === 'income';
                   
-                  // Define as cores com base no STATUS financeiro
-                  let cardColor = '#ecc94b'; // Amarelo (Pendente padrão)
+                  let cardColor = '#ecc94b'; 
                   let bgColor = '#fffff0';
-                  let icon = <Clock size={24} color={cardColor} />;
+                  // 🔥 AQUI ESTÁ A CORREÇÃO: Setas para Cima ou para Baixo nos Boletos Pendentes!
+                  let icon = isIncome ? <ArrowUpCircle size={24} color={cardColor} /> : <ArrowDownCircle size={24} color={cardColor} />;
                   let label = 'VENCE HOJE';
                   
                   if (item.status === 'ATRASADO') {
-                     cardColor = '#e53e3e'; // Vermelho
+                     cardColor = '#e53e3e'; 
                      bgColor = '#fff5f5';
                      icon = <AlertTriangle size={24} color={cardColor} />;
                      label = 'CONTA ATRASADA';
                   } else if (item.status === 'AGENDADO') {
-                     cardColor = '#3182ce'; // Azul
+                     cardColor = '#3182ce'; 
                      bgColor = '#ebf8ff';
                      icon = <CalendarClock size={24} color={cardColor} />;
                      label = 'AGENDADO NO BANCO';
@@ -245,7 +242,6 @@ export default function Appointments() {
                       </InfoSection>
                       
                       <ActionSection>
-                        {/* A Badge superior mostra a situação real */}
                         <StatusBadge style={{ background: bgColor, color: cardColor }}>
                            {item.status}
                         </StatusBadge>
@@ -265,7 +261,6 @@ export default function Appointments() {
         })
       )}
 
-      {/* MODAL DE NOVO AGENDAMENTO */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>

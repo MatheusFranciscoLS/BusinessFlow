@@ -48,7 +48,7 @@ export default function Financial() {
     const [date, setDate] = useState('');
     const [file, setFile] = useState(null);
     const [status, setStatus] = useState('PAGO');
-    const [paymentMethod, setPaymentMethod] = useState(''); // 🔥 NOVO: Estado do Meio de Pagamento
+    const [paymentMethod, setPaymentMethod] = useState(''); 
 
     const queryString = showAllTime ? '' : `?month=${currentMonth}&year=${currentYear}`;
     const { data: transactions, error, mutate } = useSWR(`/transactions${queryString}`, fetcher);
@@ -82,7 +82,6 @@ export default function Financial() {
     const filteredSummary = useMemo(() => {
         return filteredTransactions.reduce((acc, transaction) => {
             const amount = transaction.amount || transaction.price || 0;
-            // Apenas soma o que já caiu na conta de verdade
             if (transaction.status === 'PAGO') {
                 if (transaction.type === 'income' || transaction.type === 'entrada') {
                     acc.entradas += amount; acc.total += amount;
@@ -143,7 +142,7 @@ export default function Financial() {
                 formatDateDisplay(t.date), 
                 t.title || t.description, 
                 t.category || 'Geral', 
-                t.paymentMethod || '-', // 🔥 Mostra a forma no PDF
+                t.paymentMethod || '-', 
                 `${isIncome ? '+' : '-'} ${formatCurrency(amount)}`,
                 t.status || 'PAGO' 
             ];
@@ -171,7 +170,7 @@ export default function Financial() {
 
     function handleOpenNew() {
         setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null); 
-        setStatus('PAGO'); setPaymentMethod(''); // 🔥 Limpa o campo
+        setStatus('PAGO'); setPaymentMethod(''); 
         setIsModalOpen(true);
     }
 
@@ -179,7 +178,7 @@ export default function Financial() {
         setEditingId(t.id); setTitle(t.title || t.description); setPrice(t.amount || t.price || 0); setCategory(t.category || '');
         setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
         setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
-        setStatus(t.status || 'PAGO'); setPaymentMethod(t.paymentMethod || ''); // 🔥 Carrega o campo
+        setStatus(t.status || 'PAGO'); setPaymentMethod(t.paymentMethod || ''); 
         setFile(null); 
         setIsModalOpen(true);
     }
@@ -203,7 +202,7 @@ export default function Financial() {
             formData.append('type', t.type);
             formData.append('date', new Date(t.date).toISOString());
             formData.append('status', 'PAGO'); 
-            if(t.paymentMethod) formData.append('paymentMethod', t.paymentMethod); // Mantém o método
+            if(t.paymentMethod) formData.append('paymentMethod', t.paymentMethod); 
 
             await api.put(`/transactions/${t.id}`, formData);
             mutate(); toast.success("Baixa realizada com sucesso!", { id: toastId });
@@ -223,7 +222,7 @@ export default function Financial() {
             formData.append('type', apiType);
             formData.append('date', new Date(date).toISOString());
             formData.append('status', status); 
-            formData.append('paymentMethod', paymentMethod); // 🔥 Envia o Meio de Pagamento
+            formData.append('paymentMethod', paymentMethod); 
             if (file) formData.append('file', file);
 
             if (editingId) await api.put(`/transactions/${editingId}`, formData);
@@ -239,7 +238,6 @@ export default function Financial() {
 
     if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados financeiros.</div>;
 
-    // 🔥 RENDERIZADOR DE ETIQUETAS DE STATUS
     const renderStatusBadge = (statusValue) => {
       switch(statusValue) {
         case 'PAGO': return <span style={{ background: '#C6F6D5', color: '#22543D', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} /> PAGO</span>;
@@ -326,9 +324,14 @@ export default function Financial() {
                                         const isNotPaid = t.status !== 'PAGO'; 
                                         return (
                                             <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : 'transparent' }}>
+                                                {/* 🔥 AQUI ESTÁ A CORREÇÃO DOS ÍCONES NA TABELA */}
                                                 <td>
-                                                  <div style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</div>
-                                                  {/* 🔥 Exibe a forma de pagamento debaixo do nome */}
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    {isIncome 
+                                                      ? <ArrowUpCircle size={20} color="#12a454" /> 
+                                                      : <ArrowDownCircle size={20} color="#e52e4d" />}
+                                                    <div style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</div>
+                                                  </div>
                                                   {t.paymentMethod && <div style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}><CreditCard size={12}/> {t.paymentMethod}</div>}
                                                 </td>
                                                 <td>
@@ -386,7 +389,6 @@ export default function Financial() {
                               <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
                             </div>
                             
-                            {/* 🔥 O NOVO PLANO DE CONTAS (CATEGORIAS DINÂMICAS) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
                                   <label>Categoria (Plano de Contas)</label>
@@ -432,7 +434,6 @@ export default function Financial() {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                              {/* 🔥 NOVO: STATUS DA CONCILIAÇÃO BANCÁRIA */}
                               <FormGroup>
                                   <label>Situação do Pagamento</label>
                                   <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -443,7 +444,6 @@ export default function Financial() {
                                   </select>
                               </FormGroup>
 
-                              {/* 🔥 NOVO: FORMA DE PAGAMENTO */}
                               <FormGroup>
                                   <label>Meio de Pagamento</label>
                                   <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>

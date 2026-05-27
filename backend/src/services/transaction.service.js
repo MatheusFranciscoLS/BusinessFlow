@@ -70,3 +70,18 @@ export async function deleteTransaction(companyId, id) {
   if (!transaction) throw new Error("Transação não encontrada.");
   return prisma.transaction.delete({ where: { id } });
 }
+
+export async function updateOverdueTransactions() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Busca tudo que está PENDENTE e venceu antes de hoje
+  const overdue = await prisma.transaction.updateMany({
+    where: {
+      status: "PENDENTE",
+      date: { lt: today },
+    },
+    data: { status: "ATRASADO" },
+  });
+  return overdue;
+}
