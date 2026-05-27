@@ -2,180 +2,183 @@ import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit, Trash2, Image as ImageIcon, Package, Ghost } from 'lucide-react';
-import { 
-  Container, Header, Toolbar, SearchContainer, ButtonGroup, GridContainer, 
-  ServiceCard, ImageContainer, CardContent, CardFooter, Actions, ActionButton,
-  ModalOverlay, ModalContent, FormGroup, ModalActions, EmptyState 
-} from './styles';
-import styled, { keyframes } from 'styled-components';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { ChevronLeft, ChevronRight, FileText, PieChart } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Container, Header, DREContainer, DRERow, MonthNavigator } from './styles';
 
-// 🔥 Animação Shimmer em Cartões
-const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; }`;
-const SkeletonCard = styled.div`
-  height: 280px; width: 100%; border-radius: 16px; border: 1px solid #edf2f7;
-  background: #f0f0f0; background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px);
-  background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;
-`;
-
+const MONTHS_BR = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const fetcher = (url) => api.get(url).then(res => res.data);
 
-export default function Services() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  
-  // 🔥 SWR: Otimização de Performance
-  const { data: services, error, mutate } = useSWR('/products', fetcher);
+export default function DRE() {
+  const { user, selectedCompany } = useAuth();
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
-  // Form Data
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
-  const [price, setPrice] = useState('');
-  const [image, setImage] = useState(null);
+  // 🔥 Busca os dados do mês atual no Financeiro
+  const { data: transactions, error } = useSWR(`/transactions?month=${currentMonth}&year=${currentYear}`, fetcher);
 
-  const filteredServices = useMemo(() => {
-    if (!services) return [];
-    return services.filter(s => 
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [services, searchTerm]);
+  function handlePrev() { if(currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
+  function handleNext() { if(currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
 
-  function formatPrice(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  }
+  const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
-  function handleOpenNew() {
-    setEditingId(null); setName(''); setCategory(''); setPrice(''); setImage(null);
-    setIsModalOpen(true);
-  }
+  // 🧠 MOTOR DE BUSINESS INTELLIGENCE: Calcula o DRE em tempo real
+  const dre = useMemo(() => {
+    if (!transactions) return null;
+    
+    // O DRE de Caixa só considera o que foi REALMENTE pago ou recebido
+    const paid = transactions.filter(t => t.status === 'PAGO');
 
-  function handleEdit(service) {
-    setEditingId(service.id); setName(service.name); setCategory(service.category || ''); setPrice(service.price); setImage(null); 
-    setIsModalOpen(true);
-  }
+    let receitas = 0;
+    let impostos = 0;
+    let pessoal = 0;
+    let operacionais = 0;
+    let distribuicao = 0;
 
-  async function handleDelete(id) {
-    if (window.confirm("Excluir este item?")) {
-      try {
-        await api.delete(`/products/${id}`);
-        mutate(); // 🔥 Recarrega instantaneamente na interface
-        toast.success("Item removido.");
-      } catch { toast.error("Erro ao excluir o serviço."); }
+    paid.forEach(t => {
+      const val = t.amount || t.price || 0;
+      if (t.type === 'entrada' || t.type === 'income') {
+        receitas += val;
+      } else {
+        const cat = t.category || '';
+        // Distribui os custos consoante o Plano de Contas que configurámos
+        if (cat.includes('Simples') || cat.includes('Impostos') || cat.includes('Taxas Bancárias')) {
+          impostos += val;
+        } else if (cat.includes('Folha') || cat.includes('Pró-labore') || cat.includes('Encargos') || cat.includes('Benefícios')) {
+          pessoal += val;
+        } else if (cat.includes('Distribuição de Lucros')) {
+          distribuicao += val;
+        } else {
+          // Tudo o que sobrar (Honorários, Aluguel, Software, etc) vira Custo Operacional
+          operacionais += val; 
+        }
+      }
+    });
+
+    const receitaLiquida = receitas - impostos;
+    const lucroOperacional = receitaLiquida - pessoal - operacionais;
+    const lucroLiquido = lucroOperacional - distribuicao;
+
+    return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido };
+  }, [transactions]);
+
+  // 📄 EXPORTAÇÃO DO DRE EM PDF TIMBRADO
+  function exportDRE() {
+    if (!dre) return;
+    const doc = new jsPDF();
+    const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
+    const clientName = selectedCompany?.name || 'Cliente';
+
+    // Cabeçalho Premium
+    doc.setFillColor(26, 32, 44); doc.rect(0, 0, 210, 42, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
+    doc.text(brandingName, 14, 20); 
+    doc.setFontSize(11); doc.setFont("helvetica", "normal");
+    doc.text(`Demonstrativo de Resultados (DRE): ${clientName}`, 14, 28);
+    doc.text(`Período: ${MONTHS_BR[currentMonth - 1]} de ${currentYear}`, 14, 34);
+
+    // Tabela Contábil
+    autoTable(doc, {
+      startY: 50,
+      theme: 'grid',
+      head: [['Estrutura do DRE', 'Valor Computado (R$)']],
+      body: [
+        ['(+) RECEITA BRUTA DE VENDAS / SERVIÇOS', formatCurrency(dre.receitas)],
+        ['(-) Impostos, Taxas e Deduções', formatCurrency(dre.impostos)],
+        ['(=) RECEITA LÍQUIDA', formatCurrency(dre.receitaLiquida)],
+        ['(-) Custos com Pessoal e Encargos', formatCurrency(dre.pessoal)],
+        ['(-) Despesas Operacionais e Administrativas', formatCurrency(dre.operacionais)],
+        ['(=) RESULTADO OPERACIONAL (EBITDA)', formatCurrency(dre.lucroOperacional)],
+        ['(-) Distribuição de Lucros aos Sócios', formatCurrency(dre.distribuicao)],
+        ['(=) LUCRO / PREJUÍZO LÍQUIDO DO EXERCÍCIO', formatCurrency(dre.lucroLiquido)],
+      ],
+      headStyles: { fillColor: [49, 130, 206], fontSize: 11 },
+      styles: { fontSize: 10, textColor: [45, 55, 72] },
+      willDrawCell: function(data) {
+        // Coloca os "Totais" em Negrito no PDF
+        if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) {
+          doc.setFont("helvetica", "bold");
+        }
+      }
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.setFont("helvetica", "normal");
+        doc.text(`Documento gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
     }
+
+    doc.save(`DRE_${clientName}_${MONTHS_BR[currentMonth-1]}.pdf`);
+    toast.success("DRE exportado com sucesso!");
   }
 
-  async function handleSave(e) {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append('name', name); formData.append('category', category); formData.append('price', price); formData.append('stock', 100); 
-    if (image) formData.append('images', image);
-
-    const loadingToast = toast.loading('Salvando...');
-    try {
-      if (editingId) await api.put(`/products/${editingId}`, formData);
-      else await api.post('/products', formData);
-      
-      setIsModalOpen(false);
-      mutate(); // 🔥 Puxa o produto novo na hora!
-      toast.success("Salvo com sucesso!", { id: loadingToast });
-    } catch (err) { toast.error("Erro ao salvar.", { id: loadingToast }); }
-  }
-
-  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar serviços.</div>;
+  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados do DRE.</div>;
 
   return (
     <Container>
       <Header>
-        <h1>Meus Serviços / Produtos</h1>
-        <Toolbar>
-          <SearchContainer>
-            <Search size={20} color="#a0aec0" />
-            <input placeholder="Buscar produto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={!services} />
-          </SearchContainer>
-          <ButtonGroup>
-            <button className="primary" onClick={handleOpenNew} disabled={!services}><Plus size={20} /> Novo Item</button>
-          </ButtonGroup>
-        </Toolbar>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+           <PieChart size={32} color="#3182ce" />
+           <h1 style={{ margin: 0 }}>Análise de Dados e DRE</h1>
+        </div>
+        <button onClick={exportDRE} disabled={!dre} style={{ height: 48, padding: '0 20px', borderRadius: 8, background: '#3182ce', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 6px rgba(49,130,206,0.2)' }}>
+          <FileText size={18} /> Baixar Relatório (PDF)
+        </button>
       </Header>
 
-      {/* 🔥 ESTADO DE CARREGAMENTO (SKELETONS) */}
-      {!services ? (
-        <GridContainer>
-          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
-        </GridContainer>
-      ) : services.length === 0 ? (
-        <EmptyState><Ghost size={48} /><p>Nenhum serviço ou produto cadastrado.</p><small>Clique no botão "Novo Item" para começar.</small></EmptyState>
-      ) : filteredServices.length === 0 ? (
-        <EmptyState><Search size={48} /><p>Nenhum resultado para "{searchTerm}"</p><small>Tente buscar por outro termo.</small></EmptyState>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+        <h3 style={{ color: '#4a5568', fontSize: 18, fontWeight: 700 }}>Demonstrativo de Resultados do Exercício</h3>
+        <MonthNavigator>
+          <button onClick={handlePrev}><ChevronLeft size={20} /></button>
+          <span style={{ minWidth: 140, textAlign: 'center' }}>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
+          <button onClick={handleNext}><ChevronRight size={20} /></button>
+        </MonthNavigator>
+      </div>
+
+      {!dre ? (
+        <p style={{ color: '#a0aec0' }}>A calcular métricas...</p>
       ) : (
-        <GridContainer>
-          {filteredServices.map(service => (
-            <ServiceCard key={service.id}>
-              <ImageContainer>
-                {service.images && service.images.length > 0 ? (
-                  <img src={service.images[0].url} alt={service.name} />
-                ) : (
-                  <Package size={64} strokeWidth={1} color="#a0aec0" />
-                )}
-              </ImageContainer>
+        <DREContainer>
+          <DRERow $isTotal>
+            <span>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</span>
+            <span style={{ color: '#12a454' }}>{formatCurrency(dre.receitas)}</span>
+          </DRERow>
+          <DRERow $indent>
+            <span>(-) Impostos, Taxas e Deduções sobre Vendas</span>
+            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.impostos)}</span>
+          </DRERow>
+          <DRERow $isTotal style={{ background: '#ebf8ff', borderTop: '2px solid #3182ce', borderBottom: '2px solid #3182ce' }}>
+            <span>(=) RECEITA LÍQUIDA</span>
+            <span style={{ color: '#2b6cb0' }}>{formatCurrency(dre.receitaLiquida)}</span>
+          </DRERow>
+          
+          <DRERow $indent>
+            <span>(-) Custos com Pessoal e Encargos (Folha / Pró-labore)</span>
+            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.pessoal)}</span>
+          </DRERow>
+          <DRERow $indent>
+            <span>(-) Despesas Operacionais e Administrativas</span>
+            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.operacionais)}</span>
+          </DRERow>
+          
+          <DRERow $isTotal style={{ background: '#edf2f7' }}>
+            <span>(=) RESULTADO OPERACIONAL (EBITDA / LAIR)</span>
+            <span>{formatCurrency(dre.lucroOperacional)}</span>
+          </DRERow>
 
-              <CardContent>
-                <span className="category">{service.category || 'Geral'}</span>
-                <h3 title={service.name}>{service.name}</h3>
+          <DRERow $indent>
+            <span>(-) Distribuição de Lucros aos Sócios</span>
+            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.distribuicao)}</span>
+          </DRERow>
 
-                <CardFooter>
-                  <span className="price">{formatPrice(service.price)}</span>
-                  <Actions>
-                    <ActionButton onClick={() => handleEdit(service)} color="#718096" $bgHover="#ebf8ff" $hoverColor="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
-                    <ActionButton onClick={() => handleDelete(service.id)} color="#718096" $bgHover="#fff5f5" $hoverColor="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
-                  </Actions>
-                </CardFooter>
-              </CardContent>
-            </ServiceCard>
-          ))}
-        </GridContainer>
-      )}
-
-      {/* MODAL */}
-      {isModalOpen && (
-        <ModalOverlay>
-          <ModalContent>
-            <h2>{editingId ? 'Editar' : 'Novo'} Item</h2>
-            <form onSubmit={handleSave}>
-              <FormGroup><label>Nome</label><input value={name} onChange={e => setName(e.target.value)} required /></FormGroup>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup>
-                  <label>Categoria</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} required>
-                    <option value="">Selecione...</option>
-                    <option value="Desenvolvimento">Desenvolvimento</option>
-                    <option value="Suporte">Suporte / Manutenção</option>
-                    <option value="Infraestrutura">Infraestrutura / Redes</option>
-                    <option value="Assinatura">Assinatura / SaaS</option>
-                    <option value="Consultoria">Consultoria</option>
-                  </select>
-                </FormGroup>
-                <FormGroup><label>Preço (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
-              </div>
-              <FormGroup>
-                <label>Imagem (Opcional)</label>
-                <div style={{ border: '1px dashed #cbd5e0', padding: 20, borderRadius: 6, textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                  <input type="file" onChange={e => setImage(e.target.files[0])} style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#718096' }}>
-                    <ImageIcon size={24} />
-                    <span style={{ fontSize: 12, marginTop: 8 }}>{image ? image.name : "Clique para upload"}</span>
-                  </div>
-                </div>
-              </FormGroup>
-              <ModalActions>
-                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Salvar</button>
-              </ModalActions>
-            </form>
-          </ModalContent>
-        </ModalOverlay>
+          {/* O Lucro Líquido muda de cor automaticamente se der prejuízo! */}
+          <DRERow $isTotal style={{ background: dre.lucroLiquido >= 0 ? '#f0fff4' : '#fff5f5', borderTop: dre.lucroLiquido >= 0 ? '2px solid #48bb78' : '2px solid #f56565' }}>
+            <span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#22543d' : '#742a2a' }}>(=) LUCRO LÍQUIDO DO EXERCÍCIO</span>
+            <span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#38a169' : '#e53e3e' }}>{formatCurrency(dre.lucroLiquido)}</span>
+          </DRERow>
+        </DREContainer>
       )}
     </Container>
   );
