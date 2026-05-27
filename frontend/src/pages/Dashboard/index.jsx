@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { 
   UploadCloud, FileText, Clock, CheckCircle, 
   ArrowUpCircle, ArrowDownCircle, DollarSign, Building2,
-  AlertTriangle, Activity, ArrowRight
+  AlertTriangle, Activity, ArrowRight, Filter
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -36,17 +36,18 @@ const fetcher = (url) => api.get(url).then((res) => res.data);
 const PIE_COLORS = ['#3182ce', '#e53e3e', '#d69e2e', '#38a169', '#805ad5', '#dd6b20', '#319795', '#718096'];
 
 export default function Dashboard() {
-  const { user, selectedCompany, changeCompany } = useAuth(); // 🔥 Importamos o changeCompany
+  const { user, selectedCompany, changeCompany } = useAuth(); 
   const isClient = user?.role === 'CLIENT';
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
   
-  // 1. Busca os dados de UMA empresa (Se selecionada)
+  // 🔥 NOVO: Estado para filtrar o cliente nos gráficos
+  const [clientFilter, setClientFilter] = useState('');
+
   const { data: transactions, mutate } = useSWR(selectedCompany ? `/transactions?month=${currentMonth}&year=${currentYear}` : null, fetcher);
-  
-  // 2. Busca o Super Painel (Se NENHUMA empresa selecionada)
   const { data: agencySummary } = useSWR(!isClient && !selectedCompany ? '/dashboard/summary' : null, fetcher);
+  const { data: clients } = useSWR(!isClient && selectedCompany ? '/clients' : null, fetcher); // Busca clientes para o filtro
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ title: '', amount: '', date: '', file: null });
@@ -56,10 +57,16 @@ export default function Dashboard() {
   const { summary, barChartData, pieChartData, recentPending } = useMemo(() => {
     if (!transactions) return { summary: { entradas: 0, saidas: 0, pendentes: 0 }, barChartData: [], pieChartData: [], recentPending: [] };
     
+    // 🔥 MOTOR DE FILTRAGEM: Redesenha os gráficos apenas com dados do cliente escolhido
+    let filteredTransactions = transactions;
+    if (clientFilter) {
+      filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
+    }
+
     let entradas = 0; let saidas = 0; let pendentes = 0;
     const daysMap = {}; const categoriesMap = {}; const pendingList = [];
 
-    transactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       const val = t.amount || t.price || 0;
       const isIncome = t.type === 'entrada' || t.type === 'income';
       const isPaid = t.status === 'PAGO';
@@ -86,8 +93,7 @@ export default function Dashboard() {
       pieChartData: Object.entries(categoriesMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       recentPending: pendingList.slice(0, 4)
     };
-  }, [transactions]);
-
+  }, [transactions, clientFilter]);
 
   async function handleSendDocument(e) {
     e.preventDefault();
@@ -139,7 +145,7 @@ export default function Dashboard() {
               </StatCard>
             </CardsGrid>
 
-            {/* 🔥 TABELA INTELIGENTE DAS EMPRESAS */}
+            {/* TABELA INTELIGENTE DAS EMPRESAS */}
             <div style={{ background: 'white', borderRadius: 12, border: '1px solid #edf2f7', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #edf2f7', background: '#f7fafc' }}>
                 <h3 style={{ margin: 0, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}><Activity size={20} color="#3182ce" /> Status de Clientes</h3>
@@ -148,11 +154,7 @@ export default function Dashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ background: 'white', borderBottom: '1px solid #e2e8f0', color: '#718096', fontSize: 12, textTransform: 'uppercase' }}>
-                      <th style={{ padding: '16px 24px' }}>Empresa</th>
-                      <th style={{ padding: '16px 24px' }}>Honorários</th>
-                      <th style={{ padding: '16px 24px' }}>Pendências (Documentos)</th>
-                      <th style={{ padding: '16px 24px' }}>Atrasos</th>
-                      <th style={{ padding: '16px 24px', textAlign: 'right' }}>Ação</th>
+                      <th style={{ padding: '16px 24px' }}>Empresa</th><th style={{ padding: '16px 24px' }}>Honorários</th><th style={{ padding: '16px 24px' }}>Pendências</th><th style={{ padding: '16px 24px' }}>Atrasos</th><th style={{ padding: '16px 24px', textAlign: 'right' }}>Ação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -163,24 +165,9 @@ export default function Dashboard() {
                         <tr key={comp.id} style={{ borderBottom: '1px solid #edf2f7', transition: '0.2s' }}>
                           <td style={{ padding: '16px 24px', fontWeight: 700, color: '#2d3748' }}>{comp.name}</td>
                           <td style={{ padding: '16px 24px', color: '#38a169', fontWeight: 600 }}>{formatCurrency(comp.mrr)}</td>
-                          <td style={{ padding: '16px 24px' }}>
-                            {comp.pending > 0 ? (
-                              <span style={{ background: '#fefcbf', color: '#b7791f', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{comp.pending} Docs</span>
-                            ) : (<span style={{ color: '#a0aec0', fontSize: 12 }}>Limpo</span>)}
-                          </td>
-                          <td style={{ padding: '16px 24px' }}>
-                            {comp.overdue > 0 ? (
-                              <span style={{ background: '#fed7d7', color: '#c53030', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{comp.overdue} Atrasadas</span>
-                            ) : (<span style={{ color: '#a0aec0', fontSize: 12 }}>Limpo</span>)}
-                          </td>
-                          <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                            <button 
-                              onClick={() => changeCompany(comp.id)}
-                              style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', transition: '0.2s' }}
-                            >
-                              Acessar <ArrowRight size={14} />
-                            </button>
-                          </td>
+                          <td style={{ padding: '16px 24px' }}>{comp.pending > 0 ? (<span style={{ background: '#fefcbf', color: '#b7791f', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{comp.pending} Docs</span>) : (<span style={{ color: '#a0aec0', fontSize: 12 }}>Limpo</span>)}</td>
+                          <td style={{ padding: '16px 24px' }}>{comp.overdue > 0 ? (<span style={{ background: '#fed7d7', color: '#c53030', padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>{comp.overdue} Atrasadas</span>) : (<span style={{ color: '#a0aec0', fontSize: 12 }}>Limpo</span>)}</td>
+                          <td style={{ padding: '16px 24px', textAlign: 'right' }}><button onClick={() => changeCompany(comp.id)} style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>Acessar <ArrowRight size={14} /></button></td>
                         </tr>
                       ))
                     )}
@@ -195,70 +182,49 @@ export default function Dashboard() {
   }
 
   // =======================================================================
-  // 👔 VISÃO 2: GRÁFICOS (Empresa Selecionada)
+  // 👔 VISÃO 2: GRÁFICOS (Empresa Selecionada com Filtro)
   // =======================================================================
   if (!isClient && selectedCompany) {
     return (
       <Container>
         <WelcomeBox>
-          <div>
+          <div style={{ flex: 1 }}>
             <h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Painel Gerencial</h1>
-            <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Análise financeira de: <strong>{selectedCompany.name}</strong></p>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Análise financeira consolidada.</p>
           </div>
-          <Building2 size={60} opacity={0.2} />
+          
+          {/* 🔥 NOVO: FILTRO DE CLIENTE NO DASHBOARD */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.2)', padding: '10px 16px', borderRadius: 8, backdropFilter: 'blur(10px)', minWidth: 250 }}>
+            <Filter size={18} color="white" />
+            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: 'white', fontWeight: 600, fontSize: 14 }}>
+              <option value="" style={{ color: 'black' }}>Visão Geral (Todos os Dados)</option>
+              {clients?.map(c => (
+                <option key={c.id} value={c.id} style={{ color: 'black' }}>Analisar: {c.fullName}</option>
+              ))}
+            </select>
+          </div>
         </WelcomeBox>
 
         <CardsGrid>
-          <StatCard>
-            <div className="title">Entradas do Mês <ArrowUpCircle size={18} color="#12a454" /></div>
-            <div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div>
-          </StatCard>
-          <StatCard>
-            <div className="title">Saídas do Mês <ArrowDownCircle size={18} color="#e52e4d" /></div>
-            <div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div>
-          </StatCard>
-          <StatCard>
-            <div className="title">Documentos / Pendências <Clock size={18} color="#d69e2e" /></div>
-            <div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} avisos</div>
-          </StatCard>
+          <StatCard><div className="title">Entradas do Mês <ArrowUpCircle size={18} color="#12a454" /></div><div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div></StatCard>
+          <StatCard><div className="title">Saídas do Mês <ArrowDownCircle size={18} color="#e52e4d" /></div><div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div></StatCard>
+          <StatCard><div className="title">Documentos / Pendências <Clock size={18} color="#d69e2e" /></div><div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} avisos</div></StatCard>
         </CardsGrid>
 
         <ChartsGrid>
           <ChartBox>
             <h3><ArrowUpCircle size={18} color="#3182ce"/> Fluxo de Caixa Diário</h3>
             <div style={{ width: '100%', height: 300 }}>
-              {barChartData.length === 0 ? (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>Sem dados suficientes neste mês.</div>
-              ) : (
-                <ResponsiveContainer>
-                  <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#718096' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#718096' }} tickFormatter={(val) => `R$ ${val}`} />
-                    <RechartsTooltip cursor={{ fill: '#f7fafc' }} formatter={(value) => formatCurrency(value)} />
-                    <Legend wrapperStyle={{ paddingTop: 20 }} />
-                    <Bar dataKey="Entradas" fill="#48bb78" radius={[4, 4, 0, 0]} barSize={20} />
-                    <Bar dataKey="Saidas" name="Saídas" fill="#f56565" radius={[4, 4, 0, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
+              {barChartData.length === 0 ? (<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>Sem dados suficientes neste mês.</div>) : (
+                <ResponsiveContainer><BarChart data={barChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#718096' }} dy={10} /><YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#718096' }} tickFormatter={(val) => `R$ ${val}`} /><RechartsTooltip cursor={{ fill: '#f7fafc' }} formatter={(value) => formatCurrency(value)} /><Legend wrapperStyle={{ paddingTop: 20 }} /><Bar dataKey="Entradas" fill="#48bb78" radius={[4, 4, 0, 0]} barSize={20} /><Bar dataKey="Saidas" name="Saídas" fill="#f56565" radius={[4, 4, 0, 0]} barSize={20} /></BarChart></ResponsiveContainer>
               )}
             </div>
           </ChartBox>
           <ChartBox>
             <h3><ArrowDownCircle size={18} color="#e53e3e"/> Despesas por Categoria</h3>
             <div style={{ width: '100%', height: 300 }}>
-              {pieChartData.length === 0 ? (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>Nenhuma despesa registada.</div>
-              ) : (
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie data={pieChartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={2} dataKey="value">
-                      {pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />))}
-                    </Pie>
-                    <RechartsTooltip formatter={(value) => formatCurrency(value)} />
-                    <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+              {pieChartData.length === 0 ? (<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>Nenhuma despesa registada.</div>) : (
+                <ResponsiveContainer><PieChart><Pie data={pieChartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={2} dataKey="value">{pieChartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />))}</Pie><RechartsTooltip formatter={(value) => formatCurrency(value)} /><Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} /></PieChart></ResponsiveContainer>
               )}
             </div>
           </ChartBox>
@@ -270,10 +236,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gap: 12 }}>
               {recentPending.map(t => (
                 <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fffaf0', borderRadius: 8, border: '1px solid #feebc8' }}>
-                  <div>
-                    <strong style={{ display: 'block', color: '#975a16', fontSize: 14 }}>{t.title || t.description}</strong>
-                    <span style={{ fontSize: 12, color: '#b7791f' }}>Vencimento: {new Date(t.date).toLocaleDateString('pt-BR')}</span>
-                  </div>
+                  <div><strong style={{ display: 'block', color: '#975a16', fontSize: 14 }}>{t.title || t.description}</strong><span style={{ fontSize: 12, color: '#b7791f' }}>Vencimento: {new Date(t.date).toLocaleDateString('pt-BR')}</span></div>
                   <strong style={{ color: '#e53e3e' }}>{formatCurrency(t.amount || t.price)}</strong>
                 </div>
               ))}
@@ -289,45 +252,22 @@ export default function Dashboard() {
   // =======================================================================
   return (
     <Container>
+      {/* ... (O código do Portal do Cliente mantém-se inalterado) ... */}
       <WelcomeBox style={{ background: 'linear-gradient(135deg, #805ad5 0%, #553c9a 100%)' }}>
-        <div>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Portal do Cliente</h1>
-          <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Bem-vindo de volta, <strong>{user?.name}</strong>. Acompanhe a sua empresa e envie documentos.</p>
-        </div>
-        <FileText size={60} opacity={0.2} />
+        <div><h1 style={{ margin: '0 0 8px 0', fontSize: 28 }}>Portal do Cliente</h1><p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Bem-vindo de volta, <strong>{user?.name}</strong>. Acompanhe a sua empresa e envie documentos.</p></div><FileText size={60} opacity={0.2} />
       </WelcomeBox>
-      <CardsGrid>
-        <StatCard><div className="title">Receitas Computadas <CheckCircle size={18} color="#12a454" /></div><div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div></StatCard>
-        <StatCard><div className="title">Despesas Pagas <DollarSign size={18} color="#e52e4d" /></div><div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div></StatCard>
-        <StatCard><div className="title">Aguardando o Contador <Clock size={18} color="#d69e2e" /></div><div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} documentos</div></StatCard>
-      </CardsGrid>
+      <CardsGrid><StatCard><div className="title">Receitas Computadas <CheckCircle size={18} color="#12a454" /></div><div className="value" style={{ color: '#12a454' }}>{formatCurrency(summary.entradas)}</div></StatCard><StatCard><div className="title">Despesas Pagas <DollarSign size={18} color="#e52e4d" /></div><div className="value" style={{ color: '#e52e4d' }}>{formatCurrency(summary.saidas)}</div></StatCard><StatCard><div className="title">Aguardando o Contador <Clock size={18} color="#d69e2e" /></div><div className="value" style={{ color: '#d69e2e' }}>{summary.pendentes} documentos</div></StatCard></CardsGrid>
       <h3 style={{ color: '#2d3748', marginBottom: 16 }}>Ações Rápidas</h3>
-      <ActionGrid>
-        <ActionCard onClick={() => setIsModalOpen(true)}>
-          <UploadCloud size={40} color="#3182ce" /><strong>Enviar Conta para Pagamento</strong><span>Anexe aqui um boleto ou Nota Fiscal.</span>
-        </ActionCard>
-      </ActionGrid>
+      <ActionGrid><ActionCard onClick={() => setIsModalOpen(true)}><UploadCloud size={40} color="#3182ce" /><strong>Enviar Conta para Pagamento</strong><span>Anexe aqui um boleto ou Nota Fiscal.</span></ActionCard></ActionGrid>
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
             <h2 style={{ marginBottom: 20 }}>Enviar Documento</h2>
             <form onSubmit={handleSendDocument}>
               <FormGroup><label>Do que se trata esta conta?</label><input value={form.title} onChange={e => setForm({...form, title: e.target.value})} required placeholder="Ex: Fatura Internet" /></FormGroup>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} required /></FormGroup>
-                <FormGroup><label>Data de Vencimento</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required /></FormGroup>
-              </div>
-              <FormGroup style={{ marginTop: 8 }}>
-                <label>Anexar o PDF ou Foto (Obrigatório)</label>
-                <div style={{ border: '2px dashed #cbd5e0', padding: '24px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
-                  <input type="file" onChange={e => setForm({...form, file: e.target.files[0]})} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} required />
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}><UploadCloud size={28} style={{ marginBottom: 8, color: '#3182ce' }} /><span style={{ fontSize: 14, fontWeight: 600 }}>{form.file ? form.file.name : "Clique para anexar o seu arquivo aqui"}</span></div>
-                </div>
-              </FormGroup>
-              <ModalActions>
-                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Enviar ao Contador</button>
-              </ModalActions>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}><FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} required /></FormGroup><FormGroup><label>Data de Vencimento</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required /></FormGroup></div>
+              <FormGroup style={{ marginTop: 8 }}><label>Anexar o PDF ou Foto (Obrigatório)</label><div style={{ border: '2px dashed #cbd5e0', padding: '24px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}><input type="file" onChange={e => setForm({...form, file: e.target.files[0]})} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} required /><div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}><UploadCloud size={28} style={{ marginBottom: 8, color: '#3182ce' }} /><span style={{ fontSize: 14, fontWeight: 600 }}>{form.file ? form.file.name : "Clique para anexar o seu arquivo aqui"}</span></div></div></FormGroup>
+              <ModalActions><button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button><button type="submit" className="save">Enviar ao Contador</button></ModalActions>
             </form>
           </ModalContent>
         </ModalOverlay>

@@ -4,7 +4,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronLeft, ChevronRight, FileText, PieChart } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, PieChart, Filter } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, DREContainer, DRERow, MonthNavigator } from './styles';
 
@@ -15,27 +15,31 @@ export default function DRE() {
   const { user, selectedCompany } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  
+  // 🔥 NOVO: Estado para armazenar o cliente selecionado no filtro
+  const [clientFilter, setClientFilter] = useState('');
 
-  // 🔥 Busca os dados do mês atual no Financeiro
   const { data: transactions, error } = useSWR(`/transactions?month=${currentMonth}&year=${currentYear}`, fetcher);
+  // 🔥 NOVO: Busca a lista de clientes para o Dropdown
+  const { data: clients } = useSWR('/clients', fetcher);
 
   function handlePrev() { if(currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
   function handleNext() { if(currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
 
   const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
-  // 🧠 MOTOR DE BUSINESS INTELLIGENCE: Calcula o DRE em tempo real
   const dre = useMemo(() => {
     if (!transactions) return null;
     
-    // O DRE de Caixa só considera o que foi REALMENTE pago ou recebido
-    const paid = transactions.filter(t => t.status === 'PAGO');
+    // 🔥 O MOTOR DE FILTRAGEM: Separa as transações do cliente específico se houver filtro
+    let filteredTransactions = transactions;
+    if (clientFilter) {
+      filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
+    }
+    
+    const paid = filteredTransactions.filter(t => t.status === 'PAGO');
 
-    let receitas = 0;
-    let impostos = 0;
-    let pessoal = 0;
-    let operacionais = 0;
-    let distribuicao = 0;
+    let receitas = 0; let impostos = 0; let pessoal = 0; let operacionais = 0; let distribuicao = 0;
 
     paid.forEach(t => {
       const val = t.amount || t.price || 0;
@@ -43,7 +47,6 @@ export default function DRE() {
         receitas += val;
       } else {
         const cat = t.category || '';
-        // Distribui os custos consoante o Plano de Contas que configurámos
         if (cat.includes('Simples') || cat.includes('Impostos') || cat.includes('Taxas Bancárias')) {
           impostos += val;
         } else if (cat.includes('Folha') || cat.includes('Pró-labore') || cat.includes('Encargos') || cat.includes('Benefícios')) {
@@ -51,7 +54,6 @@ export default function DRE() {
         } else if (cat.includes('Distribuição de Lucros')) {
           distribuicao += val;
         } else {
-          // Tudo o que sobrar (Honorários, Aluguel, Software, etc) vira Custo Operacional
           operacionais += val; 
         }
       }
@@ -62,28 +64,29 @@ export default function DRE() {
     const lucroLiquido = lucroOperacional - distribuicao;
 
     return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido };
-  }, [transactions]);
+  }, [transactions, clientFilter]);
 
-  // 📄 EXPORTAÇÃO DO DRE EM PDF TIMBRADO
   function exportDRE() {
     if (!dre) return;
     const doc = new jsPDF();
     const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
-    const clientName = selectedCompany?.name || 'Cliente';
+    
+    // Descobre o nome do cliente filtrado para colocar no PDF
+    let reportSubject = selectedCompany?.name || 'Visão Geral (Agência)';
+    if (clientFilter && clients) {
+        const c = clients.find(c => c.id === clientFilter);
+        if (c) reportSubject = c.fullName;
+    }
 
-    // Cabeçalho Premium
     doc.setFillColor(26, 32, 44); doc.rect(0, 0, 210, 42, 'F');
     doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
     doc.text(brandingName, 14, 20); 
     doc.setFontSize(11); doc.setFont("helvetica", "normal");
-    doc.text(`Demonstrativo de Resultados (DRE): ${clientName}`, 14, 28);
+    doc.text(`Demonstrativo de Resultados (DRE): ${reportSubject}`, 14, 28);
     doc.text(`Período: ${MONTHS_BR[currentMonth - 1]} de ${currentYear}`, 14, 34);
 
-    // Tabela Contábil
     autoTable(doc, {
-      startY: 50,
-      theme: 'grid',
-      head: [['Estrutura do DRE', 'Valor Computado (R$)']],
+      startY: 50, theme: 'grid', head: [['Estrutura do DRE', 'Valor Computado (R$)']],
       body: [
         ['(+) RECEITA BRUTA DE VENDAS / SERVIÇOS', formatCurrency(dre.receitas)],
         ['(-) Impostos, Taxas e Deduções', formatCurrency(dre.impostos)],
@@ -94,23 +97,13 @@ export default function DRE() {
         ['(-) Distribuição de Lucros aos Sócios', formatCurrency(dre.distribuicao)],
         ['(=) LUCRO / PREJUÍZO LÍQUIDO DO EXERCÍCIO', formatCurrency(dre.lucroLiquido)],
       ],
-      headStyles: { fillColor: [49, 130, 206], fontSize: 11 },
-      styles: { fontSize: 10, textColor: [45, 55, 72] },
-      willDrawCell: function(data) {
-        // Coloca os "Totais" em Negrito no PDF
-        if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) {
-          doc.setFont("helvetica", "bold");
-        }
-      }
+      headStyles: { fillColor: [49, 130, 206], fontSize: 11 }, styles: { fontSize: 10, textColor: [45, 55, 72] },
+      willDrawCell: function(data) { if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) doc.setFont("helvetica", "bold"); }
     });
 
     const pageCount = doc.internal.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
-        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.setFont("helvetica", "normal");
-        doc.text(`Documento gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
-    }
-
-    doc.save(`DRE_${clientName}_${MONTHS_BR[currentMonth-1]}.pdf`);
+    for(let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.setFont("helvetica", "normal"); doc.text(`Gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290); }
+    doc.save(`DRE_${reportSubject.replace(/\s/g, '_')}_${MONTHS_BR[currentMonth-1]}.pdf`);
     toast.success("DRE exportado com sucesso!");
   }
 
@@ -129,7 +122,18 @@ export default function DRE() {
       </Header>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <h3 style={{ color: '#4a5568', fontSize: 18, fontWeight: 700 }}>Demonstrativo de Resultados do Exercício</h3>
+        
+        {/* 🔥 NOVO: FILTRO DE CLIENTE COM DESIGN PREMIUM */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', padding: '6px 16px', borderRadius: 8, border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400 }}>
+          <Filter size={18} color="#718096" />
+          <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#4a5568', fontWeight: 600, fontSize: 14 }}>
+            <option value="">Visão Geral (Todos os Dados)</option>
+            {clients?.map(c => (
+              <option key={c.id} value={c.id}>Filtrar: {c.fullName}</option>
+            ))}
+          </select>
+        </div>
+
         <MonthNavigator>
           <button onClick={handlePrev}><ChevronLeft size={20} /></button>
           <span style={{ minWidth: 140, textAlign: 'center' }}>{MONTHS_BR[currentMonth - 1]} de {currentYear}</span>
@@ -141,43 +145,14 @@ export default function DRE() {
         <p style={{ color: '#a0aec0' }}>A calcular métricas...</p>
       ) : (
         <DREContainer>
-          <DRERow $isTotal>
-            <span>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</span>
-            <span style={{ color: '#12a454' }}>{formatCurrency(dre.receitas)}</span>
-          </DRERow>
-          <DRERow $indent>
-            <span>(-) Impostos, Taxas e Deduções sobre Vendas</span>
-            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.impostos)}</span>
-          </DRERow>
-          <DRERow $isTotal style={{ background: '#ebf8ff', borderTop: '2px solid #3182ce', borderBottom: '2px solid #3182ce' }}>
-            <span>(=) RECEITA LÍQUIDA</span>
-            <span style={{ color: '#2b6cb0' }}>{formatCurrency(dre.receitaLiquida)}</span>
-          </DRERow>
-          
-          <DRERow $indent>
-            <span>(-) Custos com Pessoal e Encargos (Folha / Pró-labore)</span>
-            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.pessoal)}</span>
-          </DRERow>
-          <DRERow $indent>
-            <span>(-) Despesas Operacionais e Administrativas</span>
-            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.operacionais)}</span>
-          </DRERow>
-          
-          <DRERow $isTotal style={{ background: '#edf2f7' }}>
-            <span>(=) RESULTADO OPERACIONAL (EBITDA / LAIR)</span>
-            <span>{formatCurrency(dre.lucroOperacional)}</span>
-          </DRERow>
-
-          <DRERow $indent>
-            <span>(-) Distribuição de Lucros aos Sócios</span>
-            <span style={{ color: '#e53e3e' }}>{formatCurrency(dre.distribuicao)}</span>
-          </DRERow>
-
-          {/* O Lucro Líquido muda de cor automaticamente se der prejuízo! */}
-          <DRERow $isTotal style={{ background: dre.lucroLiquido >= 0 ? '#f0fff4' : '#fff5f5', borderTop: dre.lucroLiquido >= 0 ? '2px solid #48bb78' : '2px solid #f56565' }}>
-            <span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#22543d' : '#742a2a' }}>(=) LUCRO LÍQUIDO DO EXERCÍCIO</span>
-            <span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#38a169' : '#e53e3e' }}>{formatCurrency(dre.lucroLiquido)}</span>
-          </DRERow>
+          <DRERow $isTotal><span>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</span><span style={{ color: '#12a454' }}>{formatCurrency(dre.receitas)}</span></DRERow>
+          <DRERow $indent><span>(-) Impostos, Taxas e Deduções sobre Vendas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.impostos)}</span></DRERow>
+          <DRERow $isTotal style={{ background: '#ebf8ff', borderTop: '2px solid #3182ce', borderBottom: '2px solid #3182ce' }}><span>(=) RECEITA LÍQUIDA</span><span style={{ color: '#2b6cb0' }}>{formatCurrency(dre.receitaLiquida)}</span></DRERow>
+          <DRERow $indent><span>(-) Custos com Pessoal e Encargos (Folha / Pró-labore)</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.pessoal)}</span></DRERow>
+          <DRERow $indent><span>(-) Despesas Operacionais e Administrativas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.operacionais)}</span></DRERow>
+          <DRERow $isTotal style={{ background: '#edf2f7' }}><span>(=) RESULTADO OPERACIONAL (EBITDA / LAIR)</span><span>{formatCurrency(dre.lucroOperacional)}</span></DRERow>
+          <DRERow $indent><span>(-) Distribuição de Lucros aos Sócios</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.distribuicao)}</span></DRERow>
+          <DRERow $isTotal style={{ background: dre.lucroLiquido >= 0 ? '#f0fff4' : '#fff5f5', borderTop: dre.lucroLiquido >= 0 ? '2px solid #48bb78' : '2px solid #f56565' }}><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#22543d' : '#742a2a' }}>(=) LUCRO LÍQUIDO DO EXERCÍCIO</span><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#38a169' : '#e53e3e' }}>{formatCurrency(dre.lucroLiquido)}</span></DRERow>
         </DREContainer>
       )}
     </Container>
