@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "build": "prisma generate && prisma db push"
+"build": "npx prisma generate && npx prisma db push && node prisma/seed.js"
   },
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
