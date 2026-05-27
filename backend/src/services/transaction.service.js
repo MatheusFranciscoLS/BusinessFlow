@@ -49,7 +49,11 @@ export async function getAllTransactions(companyId, month, year) {
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
     where.date = { gte: startDate, lte: endDate };
   }
-  return prisma.transaction.findMany({ where, orderBy: { date: "desc" } });
+  return prisma.transaction.findMany({ 
+    where, 
+    include: { client: true }, 
+    orderBy: { date: "desc" } 
+  });
 }
 
 export async function getTransactionById(companyId, id) {
