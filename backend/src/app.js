@@ -29,9 +29,9 @@ app.options('*', cors(corsOptions));
 // 🔒 SEGURANÇA: Limita o tamanho do JSON para evitar sobrecarga de memória
 app.use(express.json({ limit: "10mb" }));
 
-// Pasta de uploads pública com trava para não executar scripts acidentalmente
+// 📂 Pasta de uploads pública com trava para não executar scripts acidentalmente
 app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
-  setHeaders: (res, path) => {
+  setHeaders: (res, filePath) => {
     res.set("X-Content-Type-Options", "nosniff");
   }
 }));

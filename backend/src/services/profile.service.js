@@ -6,13 +6,15 @@ const prisma = new PrismaClient();
 export async function getProfile(userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    // 🔥 Agora devolvemos também o agencyName
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      agencyName: true,
+    // 🔥 CORREÇÃO: Agora o sistema lembra-se do cargo (role) e da agência após o F5!
+    select: { 
+      id: true, 
+      name: true, 
+      email: true, 
+      avatarUrl: true, 
+      agencyName: true, 
+      role: true, 
+      companyAccessId: true 
     },
   });
   if (!user) throw new Error("Utilizador não encontrado.");
@@ -26,19 +28,16 @@ export async function updateProfile(userId, data, avatarPath) {
   const updateData = {
     name: data.name || user.name,
     email: data.email || user.email,
-    // 🔥 Se o Front-end enviar o nome da agência, gravamos!
-    agencyName:
-      data.agencyName !== undefined ? data.agencyName : user.agencyName,
+    // Garante que o nome da agência também pode ser atualizado aqui
+    agencyName: data.agencyName !== undefined ? data.agencyName : user.agencyName,
   };
 
-  // Se veio um arquivo novo, salva. Se veio a ordem de apagar, anula a foto!
   if (avatarPath) {
     updateData.avatarUrl = avatarPath;
   } else if (data.removeAvatar === "true") {
     updateData.avatarUrl = null;
   }
 
-  // Se o utilizador quiser alterar a palavra-passe
   if (data.oldPassword && data.newPassword) {
     const passwordMatch = await bcrypt.compare(data.oldPassword, user.password);
     if (!passwordMatch) {
@@ -50,13 +49,15 @@ export async function updateProfile(userId, data, avatarPath) {
   return prisma.user.update({
     where: { id: userId },
     data: updateData,
-    // 🔥 Devolvemos a agência atualizada para o Front-end atualizar o PDF na hora
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      agencyName: true,
+    // 🔥 CORREÇÃO: Devolvemos sempre a role para nunca quebrar o sistema
+    select: { 
+      id: true, 
+      name: true, 
+      email: true, 
+      avatarUrl: true, 
+      agencyName: true, 
+      role: true, 
+      companyAccessId: true 
     },
   });
 }
