@@ -3,9 +3,9 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
-  Calendar, Clock, CheckCircle, Plus, Trash2, Check, X, User, 
+  Calendar, Clock, CheckCircle, Plus, Trash2, Check, User, 
   DollarSign, ArrowUpCircle, ArrowDownCircle, Receipt,
-  AlertTriangle, CalendarClock
+  AlertTriangle, CalendarClock, Tag, Briefcase, FileText 
 } from 'lucide-react';
 import styled, { keyframes } from 'styled-components';
 
@@ -22,7 +22,7 @@ const DateHeader = styled.h3`font-size: 13px; color: #a0aec0; text-transform: up
 
 const ApptCard = styled.div`display: flex; background: white; border-radius: 12px; border: 1px solid #edf2f7; margin-bottom: 16px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s; border-left: 4px solid ${props => props.$customColor || (props.$status === 'concluido' ? '#48bb78' : props.$status === 'cancelado' ? '#f56565' : '#ecc94b')}; @media (max-width: 600px) { flex-direction: column; }`;
 const TimeSection = styled.div`padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: ${props => props.$bgColor || '#f7fafc'}; border-right: 1px solid #edf2f7; min-width: 100px; strong { font-size: 18px; color: ${props => props.$color || '#2d3748'}; } span { font-size: 11px; color: ${props => props.$color || '#718096'}; text-transform: uppercase; font-weight: 700; margin-top: 4px; text-align: center; line-height: 1.2; } @media (max-width: 600px) { border-right: none; border-bottom: 1px solid #edf2f7; flex-direction: row; gap: 8px; padding: 12px; }`;
-const InfoSection = styled.div`padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; .name { font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 4px; } .phone { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #718096; margin-bottom: 12px; } .notes { background: #f7fafc; padding: 10px; border-radius: 8px; font-size: 13px; color: #4a5568; font-style: italic; border: 1px solid #edf2f7; }`;
+const InfoSection = styled.div`padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; .name { font-size: 16px; font-weight: 800; color: #2d3748; margin-bottom: 6px; } .phone { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #718096; margin-bottom: 6px; } .notes { background: #f7fafc; padding: 10px; border-radius: 8px; font-size: 13px; color: #4a5568; font-style: italic; border: 1px solid #edf2f7; margin-top: 6px; }`;
 const ActionSection = styled.div`padding: 20px; display: flex; align-items: flex-end; justify-content: space-between; flex-direction: column; min-width: 140px; border-left: 1px solid #edf2f7; @media (max-width: 600px) { flex-direction: row; border-left: none; border-top: 1px solid #edf2f7; padding: 12px 20px; }`;
 const StatusBadge = styled.span`padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${props => props.$status === 'concluido' ? '#e6fffa' : props.$status === 'cancelado' ? '#fff5f5' : '#fffff0'}; color: ${props => props.$status === 'concluido' ? '#319795' : props.$status === 'cancelado' ? '#e53e3e' : '#d69e2e'}; display: inline-flex; align-items: center; gap: 4px;`;
 
@@ -39,19 +39,12 @@ const fetcher = (url) => api.get(url).then((res) => res.data);
 
 export default function Appointments() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({ clientId: '', date: '', time: '', notes: '' });
+  // 🔥 ESTADO ATUALIZADO: Focado na Tarefa!
+  const [form, setForm] = useState({ title: '', type: 'OBRIGACAO', clientId: '', date: '', time: '', notes: '' });
 
   const { data: appointments, error: errorAppts, mutate: mutateAppts } = useSWR('/appointments', fetcher);
   const { data: clients } = useSWR('/clients', fetcher);
   const { data: transactions, mutate: mutateTrans } = useSWR('/transactions', fetcher);
-
-  function formatPhone(phone) {
-    if (!phone) return 'Sem contato';
-    const p = phone.replace(/\D/g, ''); 
-    if (p.length === 11) return p.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-    if (p.length === 10) return p.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-    return phone;
-  }
 
   async function handleStatusChange(id, newStatus) {
     const tId = toast.loading('A atualizar...');
@@ -63,20 +56,31 @@ export default function Appointments() {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Excluir este agendamento?')) return;
+    if (!window.confirm('Excluir este registo?')) return;
     try { await api.delete(`/appointments/${id}`); toast.success('Removido!'); mutateAppts(); } 
     catch (err) { toast.error('Erro ao remover.'); }
   }
 
   async function handleSave(e) {
     e.preventDefault();
-    if (!form.clientId || !form.date || !form.time) return toast.error('Preencha tudo!');
+    if (!form.title || !form.date || !form.time) return toast.error('Preencha Título, Data e Hora!');
     const tId = toast.loading('A agendar...');
     try {
       const dateTime = new Date(`${form.date}T${form.time}:00`).toISOString();
-      await api.post('/appointments', { clientId: form.clientId, date: dateTime, notes: form.notes, status: 'pendente' });
-      toast.success('Agendamento criado!', { id: tId });
-      setIsModalOpen(false); setForm({ clientId: '', date: '', time: '', notes: '' }); mutateAppts();
+      const payload = { 
+        title: form.title, 
+        type: form.type, 
+        date: dateTime, 
+        notes: form.notes, 
+        status: 'pendente' 
+      };
+      if (form.clientId) payload.clientId = form.clientId; // Só envia se selecionou alguém
+
+      await api.post('/appointments', payload);
+      toast.success('Cadastrado com sucesso!', { id: tId });
+      setIsModalOpen(false); 
+      setForm({ title: '', type: 'OBRIGACAO', clientId: '', date: '', time: '', notes: '' }); 
+      mutateAppts();
     } catch (err) { toast.error('Erro.', { id: tId }); }
   }
 
@@ -103,7 +107,7 @@ export default function Appointments() {
   if (!appointments) {
     return (
       <Container>
-        <Header><h1>Agenda & Finanças</h1></Header>
+        <Header><h1>Prazos e Obrigações</h1></Header>
         <CardsGrid><SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard /></CardsGrid>
         <div style={{ marginTop: 40 }}><SkeletonRow /><SkeletonRow /></div>
       </Container>
@@ -140,15 +144,15 @@ export default function Appointments() {
   return (
     <Container>
       <Header>
-        <h1>Agenda e Prazos</h1>
+        <h1>Prazos e Obrigações</h1>
         <ActionButton onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} /> Novo Agendamento
+          <Plus size={18} /> Nova Tarefa / Prazo
         </ActionButton>
       </Header>
 
       <CardsGrid>
         <StatCard>
-          <div className="title">Agendados (Hoje) <Calendar size={18} color="#3182ce" /></div>
+          <div className="title">Prazos de Hoje <Calendar size={18} color="#3182ce" /></div>
           <div className="value">{todayCount}</div>
         </StatCard>
         <StatCard>
@@ -156,17 +160,17 @@ export default function Appointments() {
           <div className="value" style={{ color: '#e53e3e' }}>{pendingBoletosCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Reuniões Pendentes <Clock size={18} color="#d69e2e" /></div>
+          <div className="title">Tarefas Pendentes <Clock size={18} color="#d69e2e" /></div>
           <div className="value" style={{ color: '#d69e2e' }}>{pendingCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Atendimentos <CheckCircle size={18} color="#48bb78" /></div>
+          <div className="title">Concluídos <CheckCircle size={18} color="#48bb78" /></div>
           <div className="value" style={{ color: '#48bb78' }}>{completedCount}</div>
         </StatCard>
       </CardsGrid>
 
       {sortedDates.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#a0aec0', marginTop: 40, fontSize: 16 }}>Sua agenda está livre.</p>
+        <p style={{ textAlign: 'center', color: '#a0aec0', marginTop: 40, fontSize: 16 }}>Nenhum prazo ou pendência encontrada.</p>
       ) : (
         sortedDates.map(dateKey => {
           const dateObj = new Date(dateKey + 'T12:00:00'); 
@@ -178,26 +182,52 @@ export default function Appointments() {
               
               {groupedByDate[dateKey].map(item => {
                 
+                // -----------------------------------------------------
+                // RENDERIZAR TAREFAS / OBRIGAÇÕES
+                // -----------------------------------------------------
                 if (item.itemType === 'appointment') {
                   const timeStr = new Date(item.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  
+                  // 🔥 Cores dinâmicas por tipo
+                  let apptColor = '#3182ce'; // Azul para Reunião
+                  let typeIcon = <Briefcase size={14} />;
+                  let typeLabel = 'Reunião';
+
+                  if (item.type === 'OBRIGACAO') {
+                    apptColor = '#805ad5'; // Roxo
+                    typeIcon = <FileText size={14} />;
+                    typeLabel = 'Obrigação Fiscal / Prazo';
+                  } else if (item.type === 'TAREFA') {
+                    apptColor = '#ed8936'; // Laranja
+                    typeIcon = <Tag size={14} />;
+                    typeLabel = 'Tarefa Interna';
+                  }
+
                   return (
-                    <ApptCard key={`app-${item.id}`} $status={item.status}>
+                    <ApptCard key={`app-${item.id}`} $customColor={item.status === 'concluido' ? '#48bb78' : apptColor}>
                       <TimeSection>
                         <strong>{timeStr}</strong><span>Hora</span>
                       </TimeSection>
                       <InfoSection>
-                        <div className="name">{item.client?.fullName || 'Cliente Removido'}</div>
-                        <div className="phone"><User size={14} /> {formatPhone(item.client?.phone)}</div>
+                        {/* Agora o Título é o principal! */}
+                        <div className="name">{item.title}</div>
+                        
+                        <div className="phone" style={{ color: apptColor, fontWeight: 700 }}>
+                          {typeIcon} {typeLabel}
+                        </div>
+                        
+                        {item.client && (
+                          <div className="phone"><User size={14} /> Cliente: {item.client.fullName}</div>
+                        )}
+
                         {item.notes && <div className="notes">{item.notes}</div>}
                       </InfoSection>
+
                       <ActionSection>
                         <StatusBadge $status={item.status}>{item.status}</StatusBadge>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                           {item.status === 'pendente' && (
-                            <>
-                              <button onClick={() => handleStatusChange(item.id, 'concluido')} style={{ background: 'none', border: 'none', color: '#48bb78', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}><Check size={16} /> Concluir</button>
-                              <button onClick={() => handleStatusChange(item.id, 'cancelado')} style={{ background: 'none', border: 'none', color: '#e53e3e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}><X size={16} /> Cancelar</button>
-                            </>
+                            <button onClick={() => handleStatusChange(item.id, 'concluido')} style={{ background: 'none', border: 'none', color: '#48bb78', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}><Check size={16} /> Concluir</button>
                           )}
                           <button onClick={() => handleDelete(item.id)} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer' }}><Trash2 size={18} /></button>
                         </div>
@@ -205,12 +235,14 @@ export default function Appointments() {
                     </ApptCard>
                   );
                 } 
+                
+                // -----------------------------------------------------
+                // RENDERIZAR BOLETOS DO FINANCEIRO
+                // -----------------------------------------------------
                 else {
                   const isIncome = item.type === 'entrada' || item.type === 'income';
-                  
                   let cardColor = '#ecc94b'; 
                   let bgColor = '#fffff0';
-                  // 🔥 AQUI ESTÁ A CORREÇÃO: Setas para Cima ou para Baixo nos Boletos Pendentes!
                   let icon = isIncome ? <ArrowUpCircle size={24} color={cardColor} /> : <ArrowDownCircle size={24} color={cardColor} />;
                   let label = 'VENCE HOJE';
                   
@@ -232,7 +264,6 @@ export default function Appointments() {
                         {icon}
                         <span>{label}</span>
                       </TimeSection>
-                      
                       <InfoSection>
                         <div className="name">{item.title || item.description}</div>
                         <div className="phone"><Receipt size={14} /> Categoria: {item.category || 'Geral'}</div>
@@ -240,15 +271,11 @@ export default function Appointments() {
                           {isIncome ? '+' : '-'} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount || item.price || 0)}
                         </div>
                       </InfoSection>
-                      
                       <ActionSection>
-                        <StatusBadge style={{ background: bgColor, color: cardColor }}>
-                           {item.status}
-                        </StatusBadge>
-
+                        <StatusBadge style={{ background: bgColor, color: cardColor }}>{item.status}</StatusBadge>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                           <button onClick={() => handlePayBoleto(item)} style={{ background: '#3182ce', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
-                            <CheckCircle size={16} /> Dar Baixa (Pagar)
+                            <CheckCircle size={16} /> Dar Baixa
                           </button>
                         </div>
                       </ActionSection>
@@ -261,15 +288,31 @@ export default function Appointments() {
         })
       )}
 
+      {/* MODAL REFORMULADO PARA OBRIGAÇÕES */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
-            <h2 style={{ marginBottom: 24, color: '#1a202c' }}>Novo Agendamento</h2>
+            <h2 style={{ marginBottom: 24, color: '#1a202c' }}>Novo Prazo ou Tarefa</h2>
             <form onSubmit={handleSave}>
+              
               <FormGroup>
-                <label>Cliente</label>
-                <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})} required>
-                  <option value="">Selecione...</option>
+                <label>Título / Nome da Obrigação</label>
+                <input value={form.title} onChange={e => setForm({...form, title: e.target.value})} required placeholder="Ex: Enviar DAS Simples Nacional" />
+              </FormGroup>
+
+              <FormGroup>
+                <label>Tipo de Evento</label>
+                <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} required>
+                  <option value="OBRIGACAO">📄 Obrigação Fiscal / Imposto</option>
+                  <option value="TAREFA">📌 Tarefa Interna</option>
+                  <option value="REUNIAO">🤝 Reunião / Call</option>
+                </select>
+              </FormGroup>
+
+              <FormGroup>
+                <label>Cliente (Opcional)</label>
+                <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})}>
+                  <option value="">Nenhum específico (Geral)</option>
                   {clients?.map(c => (
                     <option key={c.id} value={c.id}>{c.fullName}</option>
                   ))}
@@ -277,18 +320,18 @@ export default function Appointments() {
               </FormGroup>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup><label>Data</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required /></FormGroup>
+                <FormGroup><label>Data Limite</label><input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required /></FormGroup>
                 <FormGroup><label>Hora</label><input type="time" value={form.time} onChange={e => setForm({...form, time: e.target.value})} required /></FormGroup>
               </div>
 
               <FormGroup>
                 <label>Observações</label>
-                <textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Ex: Reunião..." />
+                <textarea rows="3" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Ex: Documento pendente na pasta..." />
               </FormGroup>
 
               <ModalActions>
                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Agendar</button>
+                <button type="submit" className="save">Adicionar Prazo</button>
               </ModalActions>
             </form>
           </ModalContent>

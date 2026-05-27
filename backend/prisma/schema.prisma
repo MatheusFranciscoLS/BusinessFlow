@@ -107,12 +107,14 @@ model Image {
 
 model Appointment {
   id        String   @id @default(uuid())
+  title     String   @default("Compromisso") 
+  type      String   @default("REUNIAO")     
   date      DateTime
   notes     String?
-  status    String   @default("pendente") // pendente, concluido, cancelado
+  status    String   @default("pendente") 
   
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String?  
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
   companyId String   
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
