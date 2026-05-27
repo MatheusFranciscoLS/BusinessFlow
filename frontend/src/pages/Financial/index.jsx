@@ -321,8 +321,8 @@ export default function Financial() {
                                     {filteredTransactions.map(t => {
                                         const amount = t.amount || t.price || 0;
                                         const isIncome = t.type === 'income' || t.type === 'entrada';
-                                        const isNotPaid = t.status !== 'PAGO'; 
-                                        const isClient = t.type === 'client';
+                                        const isNotPaid = t.status !== 'PAGO';
+                                        const isClient = user?.role === 'CLIENT'; 
                                         return (
                                             <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : 'transparent' }}>
                                                 {/* 🔥 AQUI ESTÁ A CORREÇÃO DOS ÍCONES NA TABELA */}
@@ -353,7 +353,6 @@ export default function Financial() {
                                                   )}
                                                 </td>
 
-                                                // ... dentro do .map de filteredTransactions
 <td style={{ textAlign: 'right' }}>
     {/* 🔥 LÓGICA DE SEGURANÇA: Só mostra o botão se não estiver pago E se NÃO for cliente */}
     {isNotPaid && !isClient && (
@@ -367,11 +366,19 @@ export default function Financial() {
         </ActionButton>
     )}
     
-    <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar">
+    <ActionButton 
+        onClick={() => handleEdit(t)} 
+        color="#3182ce" 
+        title="Editar"
+    >
         <Edit size={18} />
     </ActionButton>
     
-    <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir">
+    <ActionButton 
+        onClick={() => handleDelete(t.id)} 
+        color="#e53e3e" 
+        title="Excluir"
+    >
         <Trash2 size={18} />
     </ActionButton>
 </td>
