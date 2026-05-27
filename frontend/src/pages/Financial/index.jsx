@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { 
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip, Download,
-  CheckCircle, Clock // 🔥 Novos ícones para os Boletos
+  CheckCircle, Clock, CalendarClock, AlertTriangle, CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -47,7 +47,8 @@ export default function Financial() {
     const [type, setType] = useState('income');
     const [date, setDate] = useState('');
     const [file, setFile] = useState(null);
-    const [status, setStatus] = useState('PAGO'); // 🔥 NOVO: Estado do Pagamento
+    const [status, setStatus] = useState('PAGO');
+    const [paymentMethod, setPaymentMethod] = useState(''); // 🔥 NOVO: Estado do Meio de Pagamento
 
     const queryString = showAllTime ? '' : `?month=${currentMonth}&year=${currentYear}`;
     const { data: transactions, error, mutate } = useSWR(`/transactions${queryString}`, fetcher);
@@ -81,7 +82,7 @@ export default function Financial() {
     const filteredSummary = useMemo(() => {
         return filteredTransactions.reduce((acc, transaction) => {
             const amount = transaction.amount || transaction.price || 0;
-            // 🔥 O Financeiro mostra as pendências na lista, mas os cartões do topo só somam o que está PAGO!
+            // Apenas soma o que já caiu na conta de verdade
             if (transaction.status === 'PAGO') {
                 if (transaction.type === 'income' || transaction.type === 'entrada') {
                     acc.entradas += amount; acc.total += amount;
@@ -142,15 +143,14 @@ export default function Financial() {
                 formatDateDisplay(t.date), 
                 t.title || t.description, 
                 t.category || 'Geral', 
-                isIncome ? 'Entrada' : 'Saída', 
+                t.paymentMethod || '-', // 🔥 Mostra a forma no PDF
                 `${isIncome ? '+' : '-'} ${formatCurrency(amount)}`,
-                t.status || 'PAGO' // 🔥 Nova Coluna no PDF
+                t.status || 'PAGO' 
             ];
         });
 
-        // 🔥 Adicionada a coluna "Situação" no PDF
         autoTable(doc, { 
-            head: [["Data", "Descrição", "Categoria", "Tipo", "Valor", "Situação"]], 
+            head: [["Data", "Descrição", "Categoria", "Forma", "Valor", "Situação"]], 
             body: tableRows, 
             startY: 75, theme: 'grid', 
             headStyles: { fillColor: primaryColor, fontSize: 10 },
@@ -170,7 +170,8 @@ export default function Financial() {
     }
 
     function handleOpenNew() {
-        setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null); setStatus('PAGO');
+        setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null); 
+        setStatus('PAGO'); setPaymentMethod(''); // 🔥 Limpa o campo
         setIsModalOpen(true);
     }
 
@@ -178,7 +179,8 @@ export default function Financial() {
         setEditingId(t.id); setTitle(t.title || t.description); setPrice(t.amount || t.price || 0); setCategory(t.category || '');
         setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
         setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
-        setStatus(t.status || 'PAGO'); setFile(null); 
+        setStatus(t.status || 'PAGO'); setPaymentMethod(t.paymentMethod || ''); // 🔥 Carrega o campo
+        setFile(null); 
         setIsModalOpen(true);
     }
 
@@ -189,10 +191,8 @@ export default function Financial() {
         }
     }
 
-    // 🔥 O BOTÃO MÁGICO "RECEBER/PAGAR AGORA"
     async function handleMarkAsPaid(t) {
-        if (!window.confirm(`Tem certeza que deseja baixar esta ${t.type === 'entrada' ? 'conta a receber' : 'conta a pagar'}? O dinheiro entrará no Dashboard.`)) return;
-        
+        if (!window.confirm(`Baixar esta conta? O valor entrará no Dashboard.`)) return;
         const toastId = toast.loading('A processar baixa...');
         try {
             const formData = new FormData();
@@ -202,11 +202,11 @@ export default function Financial() {
             formData.append('category', t.category);
             formData.append('type', t.type);
             formData.append('date', new Date(t.date).toISOString());
-            formData.append('status', 'PAGO'); // AQUI ESTÁ A MÁGICA!
+            formData.append('status', 'PAGO'); 
+            if(t.paymentMethod) formData.append('paymentMethod', t.paymentMethod); // Mantém o método
 
             await api.put(`/transactions/${t.id}`, formData);
-            mutate(); 
-            toast.success("Baixa realizada com sucesso!", { id: toastId });
+            mutate(); toast.success("Baixa realizada com sucesso!", { id: toastId });
         } catch { toast.error("Erro ao dar baixa.", { id: toastId }); }
     }
 
@@ -222,7 +222,8 @@ export default function Financial() {
             formData.append('category', category);
             formData.append('type', apiType);
             formData.append('date', new Date(date).toISOString());
-            formData.append('status', status); // 🔥 Salva se é Boleto ou Pago
+            formData.append('status', status); 
+            formData.append('paymentMethod', paymentMethod); // 🔥 Envia o Meio de Pagamento
             if (file) formData.append('file', file);
 
             if (editingId) await api.put(`/transactions/${editingId}`, formData);
@@ -237,6 +238,17 @@ export default function Financial() {
     }
 
     if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados financeiros.</div>;
+
+    // 🔥 RENDERIZADOR DE ETIQUETAS DE STATUS
+    const renderStatusBadge = (statusValue) => {
+      switch(statusValue) {
+        case 'PAGO': return <span style={{ background: '#C6F6D5', color: '#22543D', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} /> PAGO</span>;
+        case 'PENDENTE': return <span style={{ background: '#FEFCBF', color: '#B7791F', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> PENDENTE</span>;
+        case 'AGENDADO': return <span style={{ background: '#EBF8FF', color: '#2B6CB0', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CalendarClock size={12} /> AGENDADO</span>;
+        case 'ATRASADO': return <span style={{ background: '#FED7D7', color: '#9B2C2C', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={12} /> ATRASADO</span>;
+        default: return <span style={{ background: '#EDF2F7', color: '#4A5568', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>{statusValue}</span>;
+      }
+    };
 
     return (
         <Container>
@@ -284,15 +296,15 @@ export default function Financial() {
                 <>
                     <SummaryContainer>
                         <SummaryCard>
-                            <header><span>Entradas (Pagas)</span><ArrowUpCircle size={24} color="#12a454" /></header>
+                            <header><span>Entradas (Realizado)</span><ArrowUpCircle size={24} color="#12a454" /></header>
                             <strong style={{ color: '#12a454' }}>{formatCurrency(filteredSummary.entradas)}</strong>
                         </SummaryCard>
                         <SummaryCard>
-                            <header><span>Saídas (Pagas)</span><ArrowDownCircle size={24} color="#e52e4d" /></header>
+                            <header><span>Saídas (Realizado)</span><ArrowDownCircle size={24} color="#e52e4d" /></header>
                             <strong style={{ color: '#e52e4d' }}>{formatCurrency(filteredSummary.saidas)}</strong>
                         </SummaryCard>
                         <SummaryCard $highlight={true}>
-                            <header><span>Saldo Realizado</span><DollarSign size={24} color="white" /></header>
+                            <header><span>Saldo Disponível</span><DollarSign size={24} color="white" /></header>
                             <strong>{formatCurrency(filteredSummary.total)}</strong>
                         </SummaryCard>
                     </SummaryContainer>
@@ -304,17 +316,21 @@ export default function Financial() {
                             <Table>
                                 <thead>
                                     <tr>
-                                        <th>Título</th><th>Valor</th><th>Categoria</th><th>Data</th><th>Situação</th><th style={{ textAlign: 'center' }}>Anexo</th><th style={{ textAlign: 'right' }}>Ações</th>
+                                        <th>Descrição / Conta</th><th>Valor</th><th>Categoria</th><th>Data</th><th>Situação</th><th style={{ textAlign: 'center' }}>Anexo</th><th style={{ textAlign: 'right' }}>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredTransactions.map(t => {
                                         const amount = t.amount || t.price || 0;
                                         const isIncome = t.type === 'income' || t.type === 'entrada';
-                                        const isPending = t.status === 'PENDENTE'; // 🔥 Verifica se é Boleto
+                                        const isNotPaid = t.status !== 'PAGO'; 
                                         return (
-                                            <tr key={t.id} style={{ opacity: isPending ? 0.7 : 1 }}>
-                                                <td>{t.description || t.title}</td>
+                                            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : 'transparent' }}>
+                                                <td>
+                                                  <div style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</div>
+                                                  {/* 🔥 Exibe a forma de pagamento debaixo do nome */}
+                                                  {t.paymentMethod && <div style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}><CreditCard size={12}/> {t.paymentMethod}</div>}
+                                                </td>
                                                 <td>
                                                     <span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>
                                                         {!isIncome && '- '} {formatCurrency(amount)}
@@ -323,18 +339,7 @@ export default function Financial() {
                                                 <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
                                                 <td>{formatDateDisplay(t.date)}</td>
                                                 
-                                                {/* 🔥 NOVA COLUNA: ETIQUETA PAGO/PENDENTE */}
-                                                <td>
-                                                  {isPending ? (
-                                                    <span style={{ background: '#FEFCBF', color: '#B7791F', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                      <Clock size={12} /> PENDENTE
-                                                    </span>
-                                                  ) : (
-                                                    <span style={{ background: '#C6F6D5', color: '#22543D', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                      <CheckCircle size={12} /> PAGO
-                                                    </span>
-                                                  )}
-                                                </td>
+                                                <td>{renderStatusBadge(t.status || 'PAGO')}</td>
                                                 
                                                 <td style={{ textAlign: 'center' }}>
                                                   {t.fileUrl ? (
@@ -345,8 +350,7 @@ export default function Financial() {
                                                 </td>
 
                                                 <td style={{ textAlign: 'right' }}>
-                                                    {/* 🔥 BOTÃO MÁGICO DE BAIXA DE BOLETO */}
-                                                    {isPending && (
+                                                    {isNotPaid && (
                                                       <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa (Pagar/Receber)" style={{ marginRight: 8 }}><CheckCircle size={18} /></ActionButton>
                                                     )}
                                                     <ActionButton onClick={() => handleEdit(t)} color="#3182ce"><Edit size={18} /></ActionButton>
@@ -364,47 +368,96 @@ export default function Financial() {
 
             {isModalOpen && (
                 <ModalOverlay>
-                    <ModalContent>
-                        <h2>{editingId ? 'Editar' : 'Nova'} Transação</h2>
+                    <ModalContent style={{ maxWidth: 650 }}>
+                        <h2 style={{ marginBottom: 20 }}>{editingId ? 'Editar' : 'Novo Lançamento'} Financeiro</h2>
                         <form onSubmit={handleSave}>
-                            <FormGroup><label>Título</label><input value={title} onChange={e => setTitle(e.target.value)} required /></FormGroup>
-                            <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
-
-                            <TransactionTypeContainer>
+                            
+                            <TransactionTypeContainer style={{ marginBottom: 24 }}>
                                 <RadioBox type="button" onClick={() => setType('income')} $isActive={type === 'income' || type === 'entrada'} $activeColor="green">
-                                    <ArrowUpCircle size={24} color="#12a454" /> <span>Entrada</span>
+                                    <ArrowUpCircle size={24} color="#12a454" /> <span>Entrada de Receita</span>
                                 </RadioBox>
                                 <RadioBox type="button" onClick={() => setType('outcome')} $isActive={type === 'outcome' || type === 'saida'} $activeColor="red">
-                                    <ArrowDownCircle size={24} color="#e52e4d" /> <span>Saída</span>
+                                    <ArrowDownCircle size={24} color="#e52e4d" /> <span>Saída / Despesa</span>
                                 </RadioBox>
                             </TransactionTypeContainer>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                              <FormGroup><label>Descrição do Lançamento</label><input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: Mensalidade Cliente X" /></FormGroup>
+                              <FormGroup><label>Valor (R$)</label><input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required /></FormGroup>
+                            </div>
                             
+                            {/* 🔥 O NOVO PLANO DE CONTAS (CATEGORIAS DINÂMICAS) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
-                                  <label>Categoria</label>
-                                  <select value={category} onChange={e => setCategory(e.target.value)} required>
-                                      <option value="">Selecione...</option>
-                                      <option value="Serviço">Serviço Prestado</option>
-                                      <option value="Pró-labore">Pró-labore (Sócio)</option>
-                                      <option value="Folha">Folha de Pagamento</option>
-                                      <option value="Impostos">Impostos (FGTS/INSS/DAS)</option>
-                                      <option value="Fixo">Despesas Fixas</option>
-                                      <option value="Outros">Outros</option>
+                                  <label>Categoria (Plano de Contas)</label>
+                                  <select value={category} onChange={e => setCategory(e.target.value)} required style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                      <option value="">Selecione a conta...</option>
+                                      {(type === 'income' || type === 'entrada') ? (
+                                        <optgroup label="RECEITAS (Entradas)">
+                                          <option value="Prestação de Serviços">Prestação de Serviços</option>
+                                          <option value="Venda de Produtos">Venda de Produtos</option>
+                                          <option value="Rendimentos">Rendimentos / Juros</option>
+                                          <option value="Aporte de Sócio">Aporte de Capital (Sócio)</option>
+                                          <option value="Outras Receitas">Outras Receitas</option>
+                                        </optgroup>
+                                      ) : (
+                                        <>
+                                          <optgroup label="CUSTOS COM PESSOAL">
+                                            <option value="Folha de Pagamento">Folha de Pagamento</option>
+                                            <option value="Pró-labore">Pró-labore (Sócios)</option>
+                                            <option value="Encargos (INSS/FGTS)">Encargos Trabalhistas</option>
+                                            <option value="Benefícios">Benefícios (VR/VT)</option>
+                                          </optgroup>
+                                          <optgroup label="IMPOSTOS E TAXAS">
+                                            <option value="Simples Nacional">Simples Nacional (DAS)</option>
+                                            <option value="Impostos Federais">Impostos Federais</option>
+                                            <option value="Impostos Municipais">Impostos Municipais</option>
+                                            <option value="Taxas Bancárias">Taxas Bancárias</option>
+                                          </optgroup>
+                                          <optgroup label="DESPESAS OPERACIONAIS">
+                                            <option value="Honorários Contábeis">Honorários Contábeis</option>
+                                            <option value="Aluguel e Condomínio">Aluguel e Condomínio</option>
+                                            <option value="Infraestrutura">Infraestrutura (Água/Luz/Internet)</option>
+                                            <option value="Software">Softwares e Assinaturas</option>
+                                          </optgroup>
+                                          <optgroup label="OUTROS">
+                                            <option value="Distribuição de Lucros">Distribuição de Lucros</option>
+                                            <option value="Outras Despesas">Outras Despesas</option>
+                                          </optgroup>
+                                        </>
+                                      )}
                                   </select>
                               </FormGroup>
-                              <FormGroup><label>Data de Vencimento</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
+                              <FormGroup><label>Data de Competência/Vencimento</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></FormGroup>
                             </div>
 
-                            {/* 🔥 CAMPO DE SITUAÇÃO (PAGO/PENDENTE) */}
-                            <FormGroup style={{ marginTop: 16 }}>
-                                <label>Situação do Pagamento</label>
-                                <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                    <option value="PAGO">✅ Recebido / Pago</option>
-                                    <option value="PENDENTE">⏳ Pendente (Boleto a vencer)</option>
-                                </select>
-                            </FormGroup>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                              {/* 🔥 NOVO: STATUS DA CONCILIAÇÃO BANCÁRIA */}
+                              <FormGroup>
+                                  <label>Situação do Pagamento</label>
+                                  <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                      <option value="PAGO">✅ Realizado (Já na conta)</option>
+                                      <option value="PENDENTE">⏳ Pendente (A vencer)</option>
+                                      <option value="AGENDADO">📅 Agendado no Banco</option>
+                                      <option value="ATRASADO">⚠️ Atrasado (Inadimplente)</option>
+                                  </select>
+                              </FormGroup>
 
-                            <FormGroup style={{ marginTop: 16 }}>
+                              {/* 🔥 NOVO: FORMA DE PAGAMENTO */}
+                              <FormGroup>
+                                  <label>Meio de Pagamento</label>
+                                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                      <option value="">Não informado</option>
+                                      <option value="PIX">PIX</option>
+                                      <option value="Boleto Bancário">Boleto Bancário</option>
+                                      <option value="TED/DOC">Transferência (TED/DOC)</option>
+                                      <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                      <option value="Dinheiro Físico">Dinheiro Físico</option>
+                                  </select>
+                              </FormGroup>
+                            </div>
+
+                            <FormGroup style={{ marginTop: 8 }}>
                               <label>Comprovativo / Nota Fiscal</label>
                               <div style={{ border: '1px dashed #cbd5e0', padding: '16px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
                                 <input type="file" onChange={e => setFile(e.target.files[0])} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
@@ -417,7 +470,7 @@ export default function Financial() {
 
                             <ModalActions>
                                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                                <button type="submit" className="save">Salvar Transação</button>
+                                <button type="submit" className="save">Confirmar Lançamento</button>
                             </ModalActions>
                         </form>
                     </ModalContent>

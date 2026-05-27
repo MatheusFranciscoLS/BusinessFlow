@@ -63,24 +63,25 @@ model Client {
 }
 
 model Transaction {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  amount      Float
-  type        String   // 'entrada' ou 'saida'
-  category    String?
-  date        DateTime
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  amount        Float
+  type          String   
+  category      String?
   
-  status      String   @default("PAGO") // 'PAGO' ou 'PENDENTE'
-  fileUrl     String?  // Onde vamos salvar a Nota Fiscal / Comprovativo
+  status        String   @default("PAGO") 
+  paymentMethod String? 
+  fileUrl       String?  
+  date          DateTime
   
-  clientId    String?
-  client      Client?  @relation(fields: [clientId], references: [id])
+  clientId      String?
+  client        Client?  @relation(fields: [clientId], references: [id])
   
-  companyId   String   
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String   
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  createdAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
 }
 
 model Product {

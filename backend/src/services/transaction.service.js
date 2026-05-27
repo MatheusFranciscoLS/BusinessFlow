@@ -10,7 +10,8 @@ export async function createTransaction(companyId, data, fileUrl) {
       type: data.type,
       category: data.category,
       date: new Date(data.date),
-      status: data.status || "PAGO", // 🔥 Agora salva o estado do Boleto!
+      status: data.status || "PAGO",
+      paymentMethod: data.paymentMethod || null, // 🔥 Salva o método de pagamento
       clientId: data.clientId || null,
       fileUrl: fileUrl,
       companyId,
@@ -49,7 +50,8 @@ export async function updateTransaction(companyId, id, data, fileUrl) {
     type: data.type,
     category: data.category,
     date: data.date ? new Date(data.date) : undefined,
-    status: data.status, // 🔥 Atualiza se foi pago
+    status: data.status,
+    paymentMethod: data.paymentMethod, // 🔥 Atualiza o método de pagamento
     clientId: data.clientId || null,
   };
 
