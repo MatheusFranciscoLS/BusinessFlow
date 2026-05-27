@@ -352,13 +352,26 @@ export default function Financial() {
                                                   )}
                                                 </td>
 
-                                                <td style={{ textAlign: 'right' }}>
-                                                    {isNotPaid && (
-                                                      <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa (Pagar/Receber)" style={{ marginRight: 8 }}><CheckCircle size={18} /></ActionButton>
-                                                    )}
-                                                    <ActionButton onClick={() => handleEdit(t)} color="#3182ce"><Edit size={18} /></ActionButton>
-                                                    <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
-                                                </td>
+<td style={{ textAlign: 'right' }}>
+    {isNotPaid && !isClient && (
+        <ActionButton 
+            onClick={() => handleMarkAsPaid(t)} 
+            color="#12a454" 
+            title="Dar Baixa (Pagar/Receber)" 
+            style={{ marginRight: 8 }}
+        >
+            <CheckCircle size={18} />
+        </ActionButton>
+    )}
+    
+    <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar">
+        <Edit size={18} />
+    </ActionButton>
+    
+    <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir">
+        <Trash2 size={18} />
+    </ActionButton>
+</td>
                                             </tr>
                                         );
                                     })}
