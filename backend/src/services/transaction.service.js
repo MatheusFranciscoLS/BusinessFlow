@@ -6,12 +6,13 @@ export async function createTransaction(companyId, data, fileUrl) {
     data: {
       title: data.title,
       description: data.description || data.title,
-      amount: parseFloat(data.amount), // Converte para número
+      amount: parseFloat(data.amount),
       type: data.type,
       category: data.category,
       date: new Date(data.date),
+      status: data.status || "PAGO", // 🔥 Agora salva o estado do Boleto!
       clientId: data.clientId || null,
-      fileUrl: fileUrl, // 🔥 Guarda o link da Nota Fiscal!
+      fileUrl: fileUrl,
       companyId,
     },
   });
@@ -48,13 +49,11 @@ export async function updateTransaction(companyId, id, data, fileUrl) {
     type: data.type,
     category: data.category,
     date: data.date ? new Date(data.date) : undefined,
+    status: data.status, // 🔥 Atualiza se foi pago
     clientId: data.clientId || null,
   };
 
-  // Só atualiza o ficheiro se o utilizador enviou um novo
-  if (fileUrl) {
-    updateData.fileUrl = fileUrl;
-  }
+  if (fileUrl) updateData.fileUrl = fileUrl;
 
   return prisma.transaction.update({
     where: { id },

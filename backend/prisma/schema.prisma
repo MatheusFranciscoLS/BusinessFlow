@@ -71,6 +71,7 @@ model Transaction {
   category    String?
   date        DateTime
   
+  status      String   @default("PAGO") // 'PAGO' ou 'PENDENTE'
   fileUrl     String?  // Onde vamos salvar a Nota Fiscal / Comprovativo
   
   clientId    String?

@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-// 🧠 MOTOR DE DATAS INTELIGENTE
 function getDateFilters(period) {
   const now = new Date();
   let startDate, endDate, prevStartDate, prevEndDate;
@@ -85,8 +84,13 @@ export async function getSummary(companyId, period = "mes") {
   const { startDate, endDate, prevStartDate, prevEndDate } =
     getDateFilters(period);
 
+  // 🔥 O DASHBOARD AGORA IGNORA OS BOLETOS PENDENTES NO CAIXA!
   const currentTransactions = await prisma.transaction.findMany({
-    where: { companyId, date: { gte: startDate, lte: endDate } },
+    where: {
+      companyId,
+      date: { gte: startDate, lte: endDate },
+      status: "PAGO",
+    },
   });
 
   const entradas = currentTransactions
@@ -98,7 +102,11 @@ export async function getSummary(companyId, period = "mes") {
   const saldo = entradas - saidas;
 
   const prevTransactions = await prisma.transaction.findMany({
-    where: { companyId, date: { gte: prevStartDate, lte: prevEndDate } },
+    where: {
+      companyId,
+      date: { gte: prevStartDate, lte: prevEndDate },
+      status: "PAGO",
+    },
   });
 
   const prevEntradas = prevTransactions
@@ -145,7 +153,11 @@ export async function getSummary(companyId, period = "mes") {
 export async function monthly(companyId, period = "mes") {
   const { startDate, endDate } = getDateFilters(period);
   const transactions = await prisma.transaction.findMany({
-    where: { companyId, date: { gte: startDate, lte: endDate } },
+    where: {
+      companyId,
+      date: { gte: startDate, lte: endDate },
+      status: "PAGO",
+    },
   });
   const data = Array.from({ length: 12 }, () => ({ entradas: 0, saidas: 0 }));
   transactions.forEach((t) => {
@@ -162,6 +174,7 @@ export async function topClients(companyId, period = "mes") {
     where: {
       companyId,
       type: "entrada",
+      status: "PAGO",
       clientId: { not: null },
       date: { gte: startDate, lte: endDate },
     },
@@ -180,6 +193,7 @@ export async function topClients(companyId, period = "mes") {
     .slice(0, 5);
 }
 
+// O campo Recentes continua a mostrar tudo (mesmo os pendentes) para você saber o que está a acontecer
 export async function recent(companyId, period = "mes") {
   const { startDate, endDate } = getDateFilters(period);
   return prisma.transaction.findMany({
