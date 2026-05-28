@@ -4,12 +4,12 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
   Users, Building, DollarSign, Search, Plus, Edit, Trash2, 
-  ShieldCheck, AlertCircle, FileText, Phone 
+  ShieldCheck, AlertCircle, FileText, Phone, Key, CalendarClock, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import styled, { keyframes } from 'styled-components';
 
-// --- ESTILOS ---
+// --- ESTILOS EXPANDIDOS E ORGANIZADOS ---
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
 const Container = styled.div`width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;`;
 const Header = styled.header`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; h1 { font-size: 26px; color: #1a202c; font-weight: 800; }`;
@@ -22,12 +22,12 @@ const StatCard = styled.div`background: white; border-radius: 12px; padding: 24p
 const ClientsGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px;`;
 const ClientCard = styled.div`background: white; border-radius: 12px; border: 1px solid #edf2f7; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s; border-top: 4px solid ${props => props.$statusColor || '#3182ce'}; &:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.06); transform: translateY(-2px); }`;
 const ClientHeader = styled.div`display: flex; justify-content: space-between; align-items: flex-start; h3 { margin: 0; font-size: 18px; color: #2d3748; font-weight: 800; line-height: 1.3; } .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: ${props => props.$badgeBg}; color: ${props => props.$badgeColor}; }`;
-const ClientInfo = styled.div`display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #4a5568; div { display: flex; align-items: center; gap: 8px; } strong { color: #2d3748; }`;
+const ClientInfo = styled.div`display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #4a5568; div { display: flex; align-items: center; gap: 8px; } strong { color: #2d3748; }`;
 const ClientFooter = styled.div`display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #edf2f7; margin-top: auto; .fee { font-size: 18px; font-weight: 800; color: #38a169; } .actions { display: flex; gap: 8px; button { background: #f7fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; color: #718096; cursor: pointer; transition: 0.2s; &:hover { background: #edf2f7; color: #2d3748; } &.delete:hover { background: #fff5f5; color: #e53e3e; border-color: #feb2b2; } } }`;
 
 const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
-const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 600px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;`;
-const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; } input, select { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; transition: 0.2s; &:focus { border-color: #3182ce; } }`;
+const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 650px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto;`;
+const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; } input, select, textarea { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; transition: 0.2s; &:focus { border-color: #3182ce; } }`;
 const ModalActions = styled.div`display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; button { padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; } .cancel { background: #edf2f7; color: #4a5568; &:hover { background: #e2e8f0; } } .save { background: #3182ce; color: white; &:hover { background: #2c5282; } }`;
 
 const fetcher = (url) => api.get(url).then((res) => res.data);
@@ -39,16 +39,24 @@ export default function Clients() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ fullName: '', document: '', taxRegime: '', monthlyFee: '', email: '', phone: '', status: 'ATIVO' });
+  
+  // 🔥 NOVO FORMULÁRIO EXPANDIDO (Com dados reais que um escritório precisa)
+  const [form, setForm] = useState({ 
+    fullName: '', document: '', taxRegime: '', monthlyFee: '', 
+    email: '', phone: '', status: 'ATIVO', 
+    billingDay: '', certificateExpiry: '', notes: '' 
+  });
 
   const isClientAccess = user?.role === 'CLIENT';
 
   const filteredClients = useMemo(() => {
     if (!clients) return [];
-    return clients.filter(c => c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || (c.document && c.document.includes(searchTerm)));
+    return clients.filter(c => 
+      c.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (c.document && c.document.includes(searchTerm))
+    );
   }, [clients, searchTerm]);
 
-  // Inteligência do Dashboard
   const summary = useMemo(() => {
     if (!clients) return { total: 0, mrr: 0, inadimplentes: 0 };
     return clients.reduce((acc, c) => {
@@ -63,42 +71,73 @@ export default function Clients() {
 
   function handleOpenNew() {
     setEditingId(null);
-    setForm({ fullName: '', document: '', taxRegime: '', monthlyFee: '', email: '', phone: '', status: 'ATIVO' });
+    setForm({ fullName: '', document: '', taxRegime: '', monthlyFee: '', email: '', phone: '', status: 'ATIVO', billingDay: '', certificateExpiry: '', notes: '' });
     setIsModalOpen(true);
   }
 
   function handleEdit(c) {
     setEditingId(c.id);
-    setForm({ fullName: c.fullName, document: c.document || '', taxRegime: c.taxRegime || '', monthlyFee: c.monthlyFee || '', email: c.email || '', phone: c.phone || '', status: c.status || 'ATIVO' });
+    setForm({ 
+      fullName: c.fullName, document: c.document || '', taxRegime: c.taxRegime || '', 
+      monthlyFee: c.monthlyFee || '', email: c.email || '', phone: c.phone || '', 
+      status: c.status || 'ATIVO',
+      // Mantém os dados extra se já existirem no banco no futuro, caso contrário limpa
+      billingDay: c.billingDay || '', certificateExpiry: c.certificateExpiry ? new Date(c.certificateExpiry).toISOString().split('T')[0] : '', notes: c.notes || ''
+    });
     setIsModalOpen(true);
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Certeza que deseja excluir este cliente do CRM?')) return;
+    if (!window.confirm('Certeza que deseja excluir este cliente do CRM? Toda a base de dados dele será removida.')) return;
     const tId = toast.loading('A excluir...');
     try {
       await api.delete(`/clients/${id}`);
-      toast.success('Cliente removido!', { id: tId });
+      toast.success('Cliente removido com sucesso!', { id: tId });
       mutate();
-    } catch (err) { toast.error('Erro ao remover.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Erro ao remover o cliente.', { id: tId }); 
+    }
   }
 
   async function handleSave(e) {
     e.preventDefault();
     if (!form.fullName) return toast.error('O nome da empresa é obrigatório.');
-    const tId = toast.loading('A guardar cliente...');
+    const tId = toast.loading('A guardar dados do cliente...');
+    
+    // Tratamento da data do certificado antes de enviar
+    const payload = { ...form };
+    if (payload.certificateExpiry) {
+      payload.certificateExpiry = new Date(payload.certificateExpiry).toISOString();
+    } else {
+      payload.certificateExpiry = null;
+    }
+
     try {
-      if (editingId) await api.put(`/clients/${editingId}`, form);
-      else await api.post('/clients', form);
-      
-      toast.success('Cliente guardado com sucesso!', { id: tId });
-      setIsModalOpen(false);
+      if (editingId) {
+        await api.put(`/clients/${editingId}`, payload);
+      } else {
+        await api.post('/clients', payload);
+      }
+      toast.success('Dossiê do Cliente guardado com sucesso!', { id: tId });
+      setIsModalOpen(false); 
       mutate();
-    } catch (err) { toast.error('Erro ao guardar.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Erro ao guardar os dados.', { id: tId }); 
+    }
+  }
+
+  // Helper para verificar se o certificado está a vencer
+  function checkCertificateAlert(dateString) {
+    if (!dateString) return false;
+    const expiryDate = new Date(dateString);
+    const today = new Date();
+    const diffTime = Math.abs(expiryDate - today);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30; // Alerta se faltar 30 dias ou menos
   }
 
   if (isClientAccess) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Acesso Restrito ao Escritório.</div>;
+    return <div style={{ padding: 40, textAlign: 'center' }}>Acesso Restrito ao Escritório Contábil.</div>;
   }
 
   return (
@@ -108,10 +147,16 @@ export default function Clients() {
           <h1 style={{ margin: 0 }}>CRM Contábil</h1>
           <SearchContainer>
             <Search size={18} color="#a0aec0" style={{ marginRight: 8 }} />
-            <input placeholder="Procurar empresa ou CNPJ..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input 
+              placeholder="Procurar empresa ou CNPJ..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
           </SearchContainer>
         </div>
-        <ActionButton onClick={handleOpenNew}><Plus size={18} /> Novo Cliente</ActionButton>
+        <ActionButton onClick={handleOpenNew}>
+          <Plus size={18} /> Novo Cliente
+        </ActionButton>
       </Header>
 
       <CardsGrid>
@@ -120,11 +165,11 @@ export default function Clients() {
           <div className="value" style={{ color: '#3182ce' }}>{summary.total}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Receita Mensal (Honorários) <DollarSign size={18} color="#38a169" /></div>
+          <div className="title">Receita Mensal (MRR) <DollarSign size={18} color="#38a169" /></div>
           <div className="value" style={{ color: '#38a169' }}>{formatCurrency(summary.mrr)}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Inadimplentes <AlertCircle size={18} color="#e53e3e" /></div>
+          <div className="title">Inadimplentes (Atenção) <AlertCircle size={18} color="#e53e3e" /></div>
           <div className="value" style={{ color: '#e53e3e' }}>{summary.inadimplentes} empresas</div>
         </StatCard>
       </CardsGrid>
@@ -140,12 +185,11 @@ export default function Clients() {
       ) : (
         <ClientsGrid>
           {filteredClients.map(c => {
-            const isAtivo = c.status === 'ATIVO';
-            const isAlert = c.status === 'INADIMPLENTE';
-            
             let statusColor = '#3182ce'; let badgeBg = '#ebf8ff'; let badgeColor = '#2b6cb0';
-            if (isAlert) { statusColor = '#e53e3e'; badgeBg = '#fff5f5'; badgeColor = '#c53030'; }
+            if (c.status === 'INADIMPLENTE') { statusColor = '#e53e3e'; badgeBg = '#fff5f5'; badgeColor = '#c53030'; }
             if (c.status === 'INATIVO') { statusColor = '#a0aec0'; badgeBg = '#edf2f7'; badgeColor = '#4a5568'; }
+
+            const isCertExpiring = checkCertificateAlert(c.certificateExpiry);
 
             return (
               <ClientCard key={c.id} $statusColor={statusColor}>
@@ -157,14 +201,27 @@ export default function Clients() {
                 <ClientInfo>
                   <div><FileText size={16} /> <strong>CNPJ:</strong> {c.document || 'Não informado'}</div>
                   <div><ShieldCheck size={16} /> <strong>Regime:</strong> {c.taxRegime || 'Não informado'}</div>
+                  
+                  {/* 🔥 INFORMAÇÕES NOVAS NO CARD */}
+                  {c.billingDay && <div><CalendarClock size={16} /> <strong>Vencimento:</strong> Dia {c.billingDay}</div>}
                   {c.email && <div><Phone size={16} /> <strong>Contato:</strong> {c.email}</div>}
+                  
+                  {c.certificateExpiry && (
+                    <div style={{ color: isCertExpiring ? '#e53e3e' : '#4a5568', fontWeight: isCertExpiring ? 700 : 400, background: isCertExpiring ? '#fff5f5' : 'transparent', padding: isCertExpiring ? '4px 8px' : '0', borderRadius: 6, marginLeft: isCertExpiring ? -8 : 0 }}>
+                      <Key size={16} color={isCertExpiring ? '#e53e3e' : '#718096'} /> 
+                      <strong>e-CNPJ Vence:</strong> {new Date(c.certificateExpiry).toLocaleDateString('pt-BR')}
+                      {isCertExpiring && " (Vence em breve!)"}
+                    </div>
+                  )}
                 </ClientInfo>
 
                 <ClientFooter>
-                  <div className="fee">{formatCurrency(c.monthlyFee)} <span style={{ fontSize: 11, color: '#a0aec0', fontWeight: 600 }}>/MÊS</span></div>
+                  <div className="fee">
+                    {formatCurrency(c.monthlyFee)} <span style={{ fontSize: 11, color: '#a0aec0', fontWeight: 600 }}>/MÊS</span>
+                  </div>
                   <div className="actions">
-                    <button onClick={() => handleEdit(c)}><Edit size={16} /></button>
-                    <button className="delete" onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
+                    <button onClick={() => handleEdit(c)} title="Editar Dossiê"><Edit size={16} /></button>
+                    <button className="delete" onClick={() => handleDelete(c.id)} title="Remover"><Trash2 size={16} /></button>
                   </div>
                 </ClientFooter>
               </ClientCard>
@@ -173,63 +230,93 @@ export default function Clients() {
         </ClientsGrid>
       )}
 
-      {/* MODAL DE CADASTRO DO CRM */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
-            <h2 style={{ marginBottom: 24 }}>{editingId ? 'Editar Cliente' : 'Cadastrar Empresa'}</h2>
+            <h2 style={{ marginBottom: 24, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BookOpen color="#3182ce" />
+              {editingId ? 'Editar Dossiê do Cliente' : 'Cadastrar Nova Empresa'}
+            </h2>
             <form onSubmit={handleSave}>
-              <FormGroup>
-                <label>Razão Social / Nome Fantasia *</label>
-                <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: Padaria do João Ltda" />
-              </FormGroup>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              
+              <div style={{ background: '#f7fafc', padding: 16, borderRadius: 8, border: '1px solid #edf2f7', marginBottom: 24 }}>
+                <h4 style={{ margin: '0 0 16px 0', color: '#4a5568', fontSize: 14 }}>1. Dados Cadastrais</h4>
                 <FormGroup>
-                  <label>CNPJ / Documento</label>
-                  <input value={form.document} onChange={e => setForm({...form, document: e.target.value})} placeholder="00.000.000/0001-00" />
+                  <label>Razão Social / Nome Fantasia *</label>
+                  <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: Padaria do João Ltda" />
                 </FormGroup>
-                <FormGroup>
-                  <label>Regime Tributário</label>
-                  <select value={form.taxRegime} onChange={e => setForm({...form, taxRegime: e.target.value})}>
-                    <option value="">Selecione...</option>
-                    <option value="Simples Nacional">Simples Nacional</option>
-                    <option value="Lucro Presumido">Lucro Presumido</option>
-                    <option value="Lucro Real">Lucro Real</option>
-                    <option value="MEI">MEI / Pessoa Física</option>
-                  </select>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <FormGroup>
+                    <label>CNPJ / Documento</label>
+                    <input value={form.document} onChange={e => setForm({...form, document: e.target.value})} placeholder="00.000.000/0001-00" />
+                  </FormGroup>
+                  <FormGroup>
+                    <label>Regime Tributário</label>
+                    <select value={form.taxRegime} onChange={e => setForm({...form, taxRegime: e.target.value})}>
+                      <option value="">Selecione o Regime...</option>
+                      <option value="Simples Nacional">Simples Nacional</option>
+                      <option value="Lucro Presumido">Lucro Presumido</option>
+                      <option value="Lucro Real">Lucro Real</option>
+                      <option value="MEI">MEI / Pessoa Física</option>
+                    </select>
+                  </FormGroup>
+                </div>
+              </div>
+
+              <div style={{ background: '#f7fafc', padding: 16, borderRadius: 8, border: '1px solid #edf2f7', marginBottom: 24 }}>
+                <h4 style={{ margin: '0 0 16px 0', color: '#4a5568', fontSize: 14 }}>2. Contrato e Obrigações</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                  <FormGroup>
+                    <label>Honorários (R$)</label>
+                    <input type="number" step="0.01" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} placeholder="0,00" />
+                  </FormGroup>
+                  <FormGroup>
+                    <label>Vencimento (Dia)</label>
+                    <input type="number" min="1" max="31" value={form.billingDay} onChange={e => setForm({...form, billingDay: e.target.value})} placeholder="Ex: 5" />
+                  </FormGroup>
+                  <FormGroup>
+                    <label>Status</label>
+                    <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                      <option value="ATIVO">✅ Ativo</option>
+                      <option value="INADIMPLENTE">⚠️ Inadimplente</option>
+                      <option value="INATIVO">❌ Inativo</option>
+                    </select>
+                  </FormGroup>
+                </div>
+                <FormGroup style={{ marginTop: 16 }}>
+                  <label>Vencimento do Certificado Digital (e-CNPJ)</label>
+                  <input type="date" value={form.certificateExpiry} onChange={e => setForm({...form, certificateExpiry: e.target.value})} />
                 </FormGroup>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup>
-                  <label>Honorários Mensais (R$)</label>
-                  <input type="number" step="0.01" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} placeholder="Valor do contrato" />
-                </FormGroup>
-                <FormGroup>
-                  <label>Status Contratual</label>
-                  <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                    <option value="ATIVO">✅ Ativo (Em dia)</option>
-                    <option value="INADIMPLENTE">⚠️ Inadimplente</option>
-                    <option value="INATIVO">❌ Inativo / Rescindido</option>
-                  </select>
-                </FormGroup>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup>
-                  <label>E-mail de Contato</label>
-                  <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="contato@empresa.com" />
-                </FormGroup>
-                <FormGroup>
-                  <label>Telefone / WhatsApp</label>
-                  <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 90000-0000" />
+              <div style={{ background: '#f7fafc', padding: 16, borderRadius: 8, border: '1px solid #edf2f7', marginBottom: 24 }}>
+                 <h4 style={{ margin: '0 0 16px 0', color: '#4a5568', fontSize: 14 }}>3. Contato e Observações</h4>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <FormGroup>
+                    <label>E-mail Principal</label>
+                    <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="contato@empresa.com" />
+                  </FormGroup>
+                  <FormGroup>
+                    <label>WhatsApp / Telefone</label>
+                    <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 90000-0000" />
+                  </FormGroup>
+                </div>
+                <FormGroup style={{ marginTop: 16 }}>
+                  <label>Anotações Internas (Visível apenas para o Escritório)</label>
+                  <textarea 
+                    rows="3" 
+                    value={form.notes} 
+                    onChange={e => setForm({...form, notes: e.target.value})} 
+                    placeholder="Ex: O cliente prefere que envie os boletos pelo WhatsApp..."
+                    style={{ padding: 12, borderRadius: 8, border: '1px solid #e2e8f0', fontFamily: 'inherit' }}
+                  />
                 </FormGroup>
               </div>
 
               <ModalActions>
                 <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Salvar no CRM</button>
+                <button type="submit" className="save">Salvar Dossiê Completo</button>
               </ModalActions>
             </form>
           </ModalContent>
