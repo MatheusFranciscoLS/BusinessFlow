@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import ofxRoutes from "./routes/ofx.routes.js";
 
 dotenv.config();
 
@@ -40,5 +41,6 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
 // Rotas da API
 app.use("/api", routes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/ofx", ofxRoutes);
 
 export default app;

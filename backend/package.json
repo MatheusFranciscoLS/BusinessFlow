@@ -20,6 +20,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "node-ofx-parser": "^0.2.1",
     "nodemailer": "^7.0.10",
     "prisma": "5.16",
     "uuid": "^13.0.0",
