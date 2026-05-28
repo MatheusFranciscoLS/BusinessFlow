@@ -31,7 +31,6 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// A NOVA TABELA PRINCIPAL: As empresas que o escritório gerencia
 model Company {
   id           String        @id @default(uuid())
   name         String
@@ -48,22 +47,26 @@ model Company {
 }
 
 model Client {
-  id          String   @id @default(uuid())
-  fullName    String   // Nome da Empresa / Razão Social
-  document    String?  // CNPJ ou CPF
-  taxRegime   String?  // Simples Nacional, Lucro Presumido, etc.
-  monthlyFee  Float?   // Valor dos Honorários Mensais
-  status      String   @default("ATIVO") // ATIVO, INATIVO, INADIMPLENTE
-  email       String?
-  phone       String?
+  id                String   @id @default(uuid())
+  fullName          String
+  document          String?
+  taxRegime         String?
+  monthlyFee        Float?
+  email             String?
+  phone             String?
+  status            String   @default("ATIVO")
 
-  appointments Appointment[]
-  transactions Transaction[]
+  billingDay        String?
+  certificateExpiry DateTime?
+  notes             String?
 
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+  appointments      Appointment[]
 
-  createdAt   DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Transaction {
