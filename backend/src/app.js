@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import ofxRoutes from "./routes/ofx.routes.js";
+import ticketRoutes from "./routes/ticket.routes.js";
 
 dotenv.config();
 
@@ -42,5 +43,6 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads"), {
 app.use("/api", routes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ofx", ofxRoutes);
+app.use("/api/tickets", ticketRoutes);
 
 export default app;

@@ -42,6 +42,7 @@ model Company {
   transactions Transaction[]
   products     Product[]
   appointments Appointment[]
+  tickets Ticket[]
   
   createdAt    DateTime      @default(now())
 }
@@ -64,6 +65,7 @@ model Client {
   company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   transactions      Transaction[]
   appointments      Appointment[]
+  tickets Ticket[]
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -127,4 +129,23 @@ model Appointment {
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
+}
+
+model Ticket {
+  id          String   @id @default(uuid())
+  subject     String   // Assunto do chamado (Ex: Admissão de Funcionário)
+  department  String   // Departamento (Ex: Fiscal, RH, Contábil)
+  description String   // A mensagem do cliente
+  status      String   @default("ABERTO") // ABERTO, EM_ANDAMENTO, RESOLVIDO
+  priority    String   @default("NORMAL") // BAIXA, NORMAL, ALTA, URGENTE
+  reply       String?  // Resposta do contador
+
+  clientId    String   // O cliente que abriu o chamado
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  companyId   String   // A agência contábil dona do chamado
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
