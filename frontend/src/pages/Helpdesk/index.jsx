@@ -58,7 +58,7 @@ export default function Helpdesk() {
     return null;
   }, [isClient, selectedCompany, user, myClientRecord]);
 
-  const { data: tickets, mutate } = useSWR(ticketQuery ? `/tickets${ticketQuery}` : null, fetcher);
+const { data: tickets, mutate } = useSWR(ticketQuery ? `/tickets${ticketQuery}` : null, fetcher, { refreshInterval: 15000 });
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -145,6 +145,22 @@ export default function Helpdesk() {
     }
   }
 
+  async function handleOpenTicket(t) {
+    setSelectedTicket(t);
+    
+    // Verifica se este chamado tinha uma notificação para a pessoa logada
+    const hasUnread = isClient ? t.hasUnreadClient : t.hasUnreadAdmin;
+    
+    if (hasUnread) {
+      try {
+        await api.put(`/tickets/${t.id}/read`, { role: user.role });
+        mutate(); // Atualiza a tela para apagar a notificação visual
+      } catch (error) {
+        console.error("Erro ao marcar como lido");
+      }
+    }
+  }
+
   async function handleUpdateStatus(newStatus) {
     try {
       await api.put(`/tickets/${selectedTicket.id}/status`, { status: newStatus });
@@ -217,9 +233,13 @@ export default function Helpdesk() {
       ) : (
         <TicketsGrid>
           {tickets.map(t => (
-            <TicketCard key={t.id} $statusColor={getStatusColor(t.status)} onClick={() => setSelectedTicket(t)}>
+            <TicketCard key={t.id} $statusColor={getStatusColor(t.status)} onClick={() => handleOpenTicket(t)}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {(isClient ? t.hasUnreadClient : t.hasUnreadAdmin) && (
+         <span style={{ width: 8, height: 8, background: '#e53e3e', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(229, 62, 62, 0.2)' }} title="Nova Mensagem" />
+      )}
+      <strong style={{ fontSize: 16, color: '#2d3748' }}>{t.subject}</strong>
                   <strong style={{ fontSize: 16, color: '#2d3748' }}>{t.subject}</strong>
                   <span style={{ fontSize: 11, fontWeight: 800, background: '#edf2f7', padding: '2px 8px', borderRadius: 12, color: '#4a5568' }}>{t.department}</span>
                 </div>
