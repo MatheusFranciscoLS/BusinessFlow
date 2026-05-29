@@ -9,22 +9,26 @@ import {
 export default function Register() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
+  const [agencyName, setAgencyName] = useState(''); // 🔥 NOVO CAMPO
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleRegister(e) {
     e.preventDefault();
-    if (!name || !email || !password) return toast.error("Preencha tudo!");
+    if (!name || !agencyName || !email || !password) return toast.error("Preencha todos os campos obrigatórios!");
+    if (password.length < 6) return toast.error("A senha deve ter no mínimo 6 caracteres.");
 
     setLoading(true);
     try {
-      // Chama a rota de registro do seu backend
-      await api.post('/auth/register', { name, email, password });
-      toast.success("Conta criada! Faça login.");
-      navigate('/'); // Manda pro login
+      // Chama a rota de registro do backend passando o nome da agência
+      await api.post('/auth/register', { name, agencyName, email, password });
+      
+      toast.success("Escritório cadastrado com sucesso! Faça o Login.");
+      navigate('/'); 
     } catch (error) {
-      const msg = error.response?.data?.error || "Erro ao criar conta.";
+      // Aqui a mágica acontece: mostra EXATAMENTE o erro do backend (ex: "E-mail já está em uso")
+      const msg = error.response?.data?.error || "Erro de conexão com o servidor.";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -35,37 +39,45 @@ export default function Register() {
     <Container>
       <LeftPanel>
         <h1>Junte-se ao Business<span>Flow</span></h1>
-        <p>Comece a organizar sua empresa hoje mesmo. É rápido e fácil.</p>
+        <p>A plataforma definitiva para BPO Financeiro e Gestão Contábil. Modernize o seu escritório hoje mesmo.</p>
       </LeftPanel>
 
       <RightPanel>
-        <FormContainer>
-          <h2>Crie sua conta</h2>
-          <p>Preencha os dados abaixo para começar.</p>
+        <FormContainer style={{ marginTop: 20 }}>
+          <h2>Cadastre o seu Escritório</h2>
+          <p>Preencha os dados abaixo para configurar o seu ambiente.</p>
 
           <Form onSubmit={handleRegister}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <InputGroup>
+                <label>Seu Nome (Gestor)</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: João Silva" />
+              </InputGroup>
+
+              <InputGroup>
+                <label>Nome do Escritório</label>
+                <input value={agencyName} onChange={e => setAgencyName(e.target.value)} placeholder="Ex: JS Contabilidade" />
+              </InputGroup>
+            </div>
+
             <InputGroup>
-              <label>Nome Completo</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Seu nome" />
+              <label>E-mail Corporativo</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@escritorio.com" />
             </InputGroup>
 
             <InputGroup>
-              <label>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
-            </InputGroup>
-
-            <InputGroup>
-              <label>Senha</label>
+              <label>Senha de Acesso</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
             </InputGroup>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Criando...' : 'Cadastrar'}
+            <Button type="submit" disabled={loading} style={{ marginTop: 8 }}>
+              {loading ? 'A configurar ambiente...' : 'Criar Conta Gratuita'}
             </Button>
           </Form>
 
           <FooterActions>
-            <span>Já tem uma conta?</span>
+            <span>Já possui uma conta?</span>
             <Link to="/" className="bold">Fazer Login</Link>
           </FooterActions>
 
