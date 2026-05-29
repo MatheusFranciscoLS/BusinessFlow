@@ -9,6 +9,7 @@ import Login from '../pages/Auth';
 import Register from '../pages/Auth/Register';
 import ForgotPassword from '../pages/Auth/ForgotPassword';
 import ResetPassword from '../pages/Auth/ResetPassword';
+import Helpdesk from '../pages/Helpdesk';
 
 import Layout from '../components/Layout';
 const Dashboard = lazy(() => import('../pages/Dashboard'));
@@ -17,6 +18,7 @@ const Services = lazy(() => import('../pages/Services'));
 const Appointments = lazy(() => import('../pages/Appointments'));
 const Financial = lazy(() => import('../pages/Financial'));
 const Profile = lazy(() => import('../pages/Profile'));
+
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -73,6 +75,8 @@ const AppRoutes = () => {
            <Route path="agenda" element={<Appointments />} />
            <Route path="financeiro" element={<Financial />} />
            <Route path="perfil" element={<Profile />} />
+           <Route path="helpdesk" element={<PrivateRoute><Layout><Helpdesk /></Layout></PrivateRoute>} />
+           
           </Route>
 
         </Routes>

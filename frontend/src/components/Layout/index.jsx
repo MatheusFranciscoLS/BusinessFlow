@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api'; 
 import { 
   LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X, 
-  Settings, CircleUser, Building2, PieChart 
+  Settings, CircleUser, Building2, PieChart, LifeBuoy
 } from 'lucide-react';
 import { 
   Container, SidebarContainer, MainContent, Logo, NavMenu, 
@@ -13,18 +13,18 @@ import {
 } from './styles';
 
 export default function Layout() {
-  // 🔥 Adicionámos companies = [] por segurança para não quebrar se o array demorar a carregar
   const { signOut, user, companies = [], selectedCompany, changeCompany } = useAuth(); 
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
 
-  // 🔥 DETETOR DE NÍVEL DE ACESSO
+  // DETETOR DE NÍVEL DE ACESSO
   const isClient = user?.role === 'CLIENT';
 
   return (
     <Container>
+      
       <MobileHeader>
         <Logo style={{ fontSize: 20, margin: 0 }}>
           Business<span>Flow</span>
@@ -42,7 +42,7 @@ export default function Layout() {
             Business<span>Flow</span>
           </Logo>
           
-          {/* 🔥 SÓ MOSTRA O SELETOR SE FOR ADMIN. O CLIENTE FICA BLOQUEADO NA SUA EMPRESA */}
+          {/* SÓ MOSTRA O SELETOR SE FOR ADMIN. O CLIENTE FICA BLOQUEADO NA SUA EMPRESA */}
           {!isClient && companies?.length > 0 && (
             <div style={{ marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
@@ -79,7 +79,7 @@ export default function Layout() {
               <LayoutDashboard size={20} /> Dashboard
             </StyledNavLink>
             
-            {/* 🔥 ABA EXCLUSIVA DO ADMIN (O cliente não pode ver a lista de outros clientes) */}
+            {/* ABA EXCLUSIVA DO ADMIN (O cliente não pode ver a lista de outros clientes) */}
             {!isClient && (
               <StyledNavLink to="/app/clientes" onClick={closeMenu}>
                 <Users size={20} /> Clientes
@@ -90,6 +90,11 @@ export default function Layout() {
               <PieChart size={20} /> Relatórios DRE
             </StyledNavLink>
 
+            {/* 🔥 NOVO: Botão de Atendimento / Helpdesk visível para todos */}
+            <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
+              <LifeBuoy size={20} /> Atendimento
+            </StyledNavLink>
+
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
               <Calendar size={20} /> Agenda e Prazos
             </StyledNavLink>
@@ -98,7 +103,7 @@ export default function Layout() {
               <DollarSign size={20} /> Financeiro
             </StyledNavLink>
 
-            {/* 🔥 ABA EXCLUSIVA DO ADMIN (Configurações da agência e faturamento) */}
+            {/* ABA EXCLUSIVA DO ADMIN (Configurações da agência e faturamento) */}
             {!isClient && (
               <StyledNavLink to="/app/perfil" onClick={closeMenu}>
                 <Settings size={20} /> Configurações
