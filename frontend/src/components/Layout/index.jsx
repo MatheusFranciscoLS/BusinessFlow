@@ -23,9 +23,13 @@ export default function Layout() {
   const closeMenu = () => setIsOpen(false);
 
   const isClient = user?.role === 'CLIENT';
+  
+  // 🔥 O SEGREDO ESTÁ AQUI: Cliente usa o Acesso dele, o Gestor usa a Empresa selecionada
+  const activeCompanyId = isClient ? user?.companyAccessId : selectedCompany?.id;
 
-  const badgeQuery = user && selectedCompany 
-    ? `/tickets/unread-count?companyId=${selectedCompany.id}&role=${user.role}${isClient && user.companyAccessId ? `&clientId=${user.companyAccessId}` : ''}` 
+  // Envia o e-mail na pesquisa para o Back-end saber exatamente quem é o dono das notificações
+  const badgeQuery = user && activeCompanyId 
+    ? `/tickets/unread-count?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
     : null;
     
   const { data: unreadData } = useSWR(badgeQuery, fetcher, { refreshInterval: 15000 });
@@ -33,7 +37,6 @@ export default function Layout() {
 
   return (
     <Container>
-      
       <MobileHeader>
         <Logo style={{ fontSize: 20, margin: 0 }}>
           Business<span>Flow</span>
@@ -51,7 +54,6 @@ export default function Layout() {
             Business<span>Flow</span>
           </Logo>
           
-          {/* SÓ MOSTRA O SELETOR SE FOR ADMIN. O CLIENTE FICA BLOQUEADO NA SUA EMPRESA */}
           {!isClient && companies?.length > 0 && (
             <div style={{ marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
@@ -83,12 +85,10 @@ export default function Layout() {
           </div> 
 
           <NavMenu>
-            {/* Abas comuns para ambos os níveis */}
             <StyledNavLink to="/app" end onClick={closeMenu}> 
               <LayoutDashboard size={20} /> Dashboard
             </StyledNavLink>
             
-            {/* ABA EXCLUSIVA DO ADMIN (O cliente não pode ver a lista de outros clientes) */}
             {!isClient && (
               <StyledNavLink to="/app/clientes" onClick={closeMenu}>
                 <Users size={20} /> Clientes
@@ -99,7 +99,8 @@ export default function Layout() {
               <PieChart size={20} /> Relatórios DRE
             </StyledNavLink>
 
-<StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
+            {/* 🔥 MENU COM NOTIFICAÇÃO DINÂMICA */}
+            <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <LifeBuoy size={20} /> Atendimento
@@ -120,7 +121,6 @@ export default function Layout() {
               <DollarSign size={20} /> Financeiro
             </StyledNavLink>
 
-            {/* ABA EXCLUSIVA DO ADMIN (Configurações da agência e faturamento) */}
             {!isClient && (
               <StyledNavLink to="/app/perfil" onClick={closeMenu}>
                 <Settings size={20} /> Configurações

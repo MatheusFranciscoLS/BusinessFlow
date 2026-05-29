@@ -5,16 +5,28 @@ import { authMiddleware } from "../middlewares/auth.js";
 const router = Router();
 const prisma = new PrismaClient();
 
-// 🔥 NOVA ROTA: Contar chamados com mensagens não lidas (Para o Menu Lateral)
+// 🔥 NOVA ROTA CORRIGIDA: Contar chamados não lidos (Escritório e Cliente)
 router.get("/unread-count", authMiddleware, async (req, res) => {
   try {
-    const { companyId, clientId, role } = req.query;
+    const { companyId, role, userEmail } = req.query;
     if (!companyId) return res.json({ count: 0 });
 
-    const where =
-      role === "CLIENT"
-        ? { companyId, clientId, hasUnreadClient: true }
-        : { companyId, hasUnreadAdmin: true };
+    let where = { companyId };
+
+    if (role === "CLIENT") {
+      // Procura o ID do Dossiê do Cliente cruzando o e-mail
+      const clientRecord = await prisma.client.findFirst({
+        where: { companyId, email: userEmail },
+      });
+
+      if (!clientRecord) return res.json({ count: 0 });
+
+      // Filtra apenas os chamados DESTE cliente que têm mensagens não lidas por ele
+      where = { companyId, clientId: clientRecord.id, hasUnreadClient: true };
+    } else {
+      // O escritório vê as notificações de todos os clientes
+      where = { companyId, hasUnreadAdmin: true };
+    }
 
     const count = await prisma.ticket.count({ where });
     return res.json({ count });
@@ -36,7 +48,6 @@ router.post("/", authMiddleware, async (req, res) => {
       role,
     } = req.body;
 
-    // Se o cliente abrir, acende a notificação do Escritório. E vice-versa.
     const hasUnreadAdmin = role === "CLIENT";
     const hasUnreadClient = role === "ADMIN";
 
@@ -70,7 +81,7 @@ router.get("/", authMiddleware, async (req, res) => {
         client: true,
         messages: { orderBy: { createdAt: "asc" } },
       },
-      orderBy: { updatedAt: "desc" }, // Mostra os que tiveram respostas mais recentes no topo
+      orderBy: { updatedAt: "desc" },
     });
     return res.json(tickets);
   } catch (err) {
@@ -88,13 +99,12 @@ router.post("/:id/messages", authMiddleware, async (req, res) => {
       data: { message, senderRole, senderName, ticketId: id },
     });
 
-    // 🔥 ACENDE A NOTIFICAÇÃO DO OUTRO LADO!
     await prisma.ticket.update({
       where: { id },
       data: {
         hasUnreadAdmin: senderRole === "CLIENT",
         hasUnreadClient: senderRole === "ADMIN",
-        status: senderRole === "CLIENT" ? "ABERTO" : "EM_ANDAMENTO", // Se o cliente responde, volta a ficar Aberto pro escritório ver
+        status: senderRole === "CLIENT" ? "ABERTO" : "EM_ANDAMENTO",
       },
     });
 
@@ -104,7 +114,7 @@ router.post("/:id/messages", authMiddleware, async (req, res) => {
   }
 });
 
-// 🔥 NOVA ROTA: Marcar Ticket como Lido
+// 4. Marcar Ticket como Lido
 router.put("/:id/read", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,7 +134,7 @@ router.put("/:id/read", authMiddleware, async (req, res) => {
   }
 });
 
-// 4. Alterar Status
+// 5. Alterar Status
 router.put("/:id/status", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
