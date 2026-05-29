@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, 
-  AlertCircle, Send, User, Building2, Search, X
+  AlertCircle, Send, User, Building2, X, ShieldAlert
 } from 'lucide-react';
 import styled, { keyframes } from 'styled-components';
 
-// --- ESTILOS ---
+// --- ESTILOS VISUAIS ---
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
 const Container = styled.div`width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;`;
 const Header = styled.header`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; h1 { font-size: 26px; color: #1a202c; font-weight: 800; display: flex; align-items: center; gap: 12px; }`;
@@ -22,28 +22,62 @@ const TicketsGrid = styled.div`display: grid; gap: 16px;`;
 const TicketCard = styled.div`background: white; border-radius: 12px; border: 1px solid #edf2f7; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; border-left: 4px solid ${props => props.$statusColor}; &:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateX(4px); border-color: ${props => props.$statusColor}; }`;
 
 const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
-const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);`;
+const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 750px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);`;
 const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; } input, select, textarea { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; transition: 0.2s; &:focus { border-color: #3182ce; } }`;
 
+// --- ESTILOS DO CHAT ---
+const ChatContainer = styled.div`border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; height: 350px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;`;
+const ChatBubble = styled.div`max-width: 75%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; align-self: ${props => props.$isMe ? 'flex-end' : 'flex-start'}; background: ${props => props.$isMe ? '#3182ce' : 'white'}; color: ${props => props.$isMe ? 'white' : '#2d3748'}; border: ${props => props.$isMe ? 'none' : '1px solid #e2e8f0'}; box-shadow: 0 2px 4px rgba(0,0,0,0.02); .meta { font-size: 10px; font-weight: bold; margin-bottom: 4px; color: ${props => props.$isMe ? 'rgba(255,255,255,0.8)' : '#718096'}; text-transform: uppercase; }`;
+
+// 🔥 O FETCHER QUE FALTAVA VOLTOU AQUI!
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Helpdesk() {
   const { user, selectedCompany } = useAuth();
   const isClient = user?.role === 'CLIENT';
 
-  // O cliente tem o seu próprio ID, a agência usa o companyId para ver todos
-  const query = selectedCompany ? `?companyId=${selectedCompany.id}` : '';
-  const { data: tickets, mutate } = useSWR(`/tickets${query}`, fetcher);
-  
-  // Buscar clientes para o select (apenas para a Agência, caso queira abrir chamado em nome do cliente)
-  const { data: clients } = useSWR(!isClient && selectedCompany ? '/clients' : null, fetcher);
+  // 1. INTEGRIDADE DE DADOS: Busca os clientes para encontrar o Dossiê correto do utilizador
+  const clientsQuery = useMemo(() => {
+    if (isClient && user?.companyAccessId) return `?companyId=${user.companyAccessId}`;
+    if (!isClient && selectedCompany) return `?companyId=${selectedCompany.id}`;
+    return null;
+  }, [isClient, user, selectedCompany]);
+
+  const { data: clients } = useSWR(clientsQuery ? `/clients${clientsQuery}` : null, fetcher);
+
+  // 2. Encontra o ID do Cliente logado cruzando o e-mail
+  const myClientRecord = useMemo(() => {
+    if (!isClient || !clients) return null;
+    return clients.find(c => c.email === user.email);
+  }, [isClient, clients, user]);
+
+  // 3. Monta a Query segura para os Chamados (Impede que um cliente veja os chamados do outro)
+  const ticketQuery = useMemo(() => {
+    if (!isClient && selectedCompany) return `?companyId=${selectedCompany.id}`;
+    if (isClient && myClientRecord) return `?companyId=${user.companyAccessId}&clientId=${myClientRecord.id}`;
+    return null;
+  }, [isClient, selectedCompany, user, myClientRecord]);
+
+  const { data: tickets, mutate } = useSWR(ticketQuery ? `/tickets${ticketQuery}` : null, fetcher);
 
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   
   const [form, setForm] = useState({ subject: '', department: 'Contábil', description: '', priority: 'NORMAL', clientId: '' });
-  const [replyText, setReplyText] = useState('');
-  const [statusUpdate, setStatusUpdate] = useState('');
+  const [textMessage, setTextMessage] = useState('');
+  
+  const chatEndRef = useRef(null);
+
+  // Mantém a janela do chat sempre sincronizada e rola para baixo
+  useEffect(() => {
+    if (selectedTicket && tickets) {
+      const freshTicket = tickets.find(t => t.id === selectedTicket.id);
+      if (freshTicket && freshTicket.messages?.length !== selectedTicket.messages?.length) {
+        setSelectedTicket(freshTicket);
+      }
+    }
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [tickets, selectedTicket?.messages]);
 
   const summary = useMemo(() => {
     if (!tickets) return { abertos: 0, andamento: 0, resolvidos: 0 };
@@ -57,66 +91,103 @@ export default function Helpdesk() {
 
   async function handleCreateTicket(e) {
     e.preventDefault();
-    if (!selectedCompany && !isClient) return toast.error("Selecione uma empresa ativa primeiro.");
     
-    const tId = toast.loading("A abrir chamado...");
+    if (isClient && !myClientRecord) {
+      return toast.error("Erro: O seu e-mail não foi encontrado no cadastro de nenhuma empresa.");
+    }
+    if (!isClient && !selectedCompany) {
+      return toast.error("Selecione uma empresa ativa no menu lateral.");
+    }
+    if (!isClient && !form.clientId) {
+      return toast.error("Selecione um cliente para vincular o chamado.");
+    }
+
+    const tId = toast.loading("A processar a abertura do chamado...");
     try {
       const payload = {
         ...form,
         companyId: isClient ? user.companyAccessId : selectedCompany.id,
-        // Se for cliente, usa o ID da empresa dele. Se for agência, usa o ID que escolheu no select
-        clientId: isClient ? user.companyAccessId : form.clientId 
+        clientId: isClient ? myClientRecord.id : form.clientId 
       };
 
       await api.post('/tickets', payload);
-      toast.success("Chamado enviado com sucesso!", { id: tId });
+      toast.success("Solicitação aberta com sucesso!", { id: tId });
       setIsNewModalOpen(false);
       setForm({ subject: '', department: 'Contábil', description: '', priority: 'NORMAL', clientId: '' });
       mutate();
     } catch (err) {
-      toast.error("Erro ao abrir chamado.", { id: tId });
+      toast.error("Falha ao abrir chamado.", { id: tId });
     }
   }
 
-  async function handleReplyTicket(e) {
+  async function handleSendMessage(e) {
     e.preventDefault();
-    const tId = toast.loading("A atualizar chamado...");
+    if (!textMessage.trim()) return;
+
     try {
-      await api.put(`/tickets/${selectedTicket.id}`, {
-        status: statusUpdate || selectedTicket.status,
-        reply: replyText || selectedTicket.reply
-      });
-      toast.success("Atualizado!", { id: tId });
-      setSelectedTicket(null);
-      setReplyText('');
-      setStatusUpdate('');
+      const payload = {
+        message: textMessage,
+        senderRole: isClient ? "CLIENT" : "ADMIN",
+        senderName: user.name || "Usuário"
+      };
+
+      const { data: addedMessage } = await api.post(`/tickets/${selectedTicket.id}/messages`, payload);
+      
+      setSelectedTicket(prev => ({
+        ...prev,
+        messages: [...(prev.messages || []), addedMessage]
+      }));
+
+      setTextMessage('');
+      mutate(); 
+    } catch (err) {
+      toast.error("Erro ao transmitir mensagem.");
+    }
+  }
+
+  async function handleUpdateStatus(newStatus) {
+    try {
+      await api.put(`/tickets/${selectedTicket.id}/status`, { status: newStatus });
+      setSelectedTicket(prev => ({ ...prev, status: newStatus }));
+      toast.success(`Status alterado para ${newStatus.replace('_', ' ')}`);
       mutate();
     } catch (err) {
-      toast.error("Erro ao atualizar.", { id: tId });
+      toast.error("Erro ao alterar status.");
     }
-  }
-
-  function openTicketDetails(t) {
-    setSelectedTicket(t);
-    setReplyText(t.reply || '');
-    setStatusUpdate(t.status);
   }
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'ABERTO': return '#e53e3e'; // Vermelho
-      case 'EM_ANDAMENTO': return '#d69e2e'; // Amarelo
-      case 'RESOLVIDO': return '#38a169'; // Verde
+      case 'ABERTO': return '#e53e3e';
+      case 'EM_ANDAMENTO': return '#d69e2e';
+      case 'RESOLVIDO': return '#38a169';
       default: return '#a0aec0';
     }
   };
 
+  // 🔥 PROTEÇÃO VISUAL: Se for cliente mas não tiver o e-mail no CRM, bloqueia o ecrã.
+  if (isClient && clients && !myClientRecord) {
+    return (
+      <Container>
+        <Header><h1><LifeBuoy color="#3182ce" size={32} /> Central de Suporte</h1></Header>
+        <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 12, border: '1px solid #fed7d7' }}>
+          <ShieldAlert size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
+          <h2 style={{ color: '#c53030', margin: '0 0 8px 0' }}>Acesso Pendente de Validação</h2>
+          <p style={{ color: '#4a5568', margin: 0, fontSize: 16 }}>
+            O seu e-mail de acesso (<strong>{user.email}</strong>) não foi encontrado no cadastro do escritório.<br/>
+            Por favor, peça ao seu contador para atualizar o seu e-mail na aba <strong>Clientes (CRM)</strong>.
+          </p>
+        </div>
+      </Container>
+    );
+  }
+
   return (
     <Container>
       <Header>
-        <h1><LifeBuoy color="#3182ce" size={32} /> Central de Atendimento</h1>
+        <h1><LifeBuoy color="#3182ce" size={32} /> Central de Suporte Contábil</h1>
         <ActionButton onClick={() => setIsNewModalOpen(true)}>
-          <Plus size={18} /> Novo Chamado
+          <Plus size={18} /> Nova Solicitação
         </ActionButton>
       </Header>
 
@@ -126,11 +197,11 @@ export default function Helpdesk() {
           <div className="value" style={{ color: '#e53e3e' }}>{summary.abertos}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Em Análise <Clock size={18} color="#d69e2e" /></div>
+          <div className="title">Em Análise Técnica <Clock size={18} color="#d69e2e" /></div>
           <div className="value" style={{ color: '#d69e2e' }}>{summary.andamento}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Resolvidos <CheckCircle size={18} color="#38a169" /></div>
+          <div className="title">Resolvidos / Arquivados <CheckCircle size={18} color="#38a169" /></div>
           <div className="value" style={{ color: '#38a169' }}>{summary.resolvidos}</div>
         </StatCard>
       </CardsGrid>
@@ -140,13 +211,13 @@ export default function Helpdesk() {
       ) : tickets.length === 0 ? (
         <div style={{ textAlign: 'center', padding: 60, background: 'white', borderRadius: 12, border: '1px dashed #cbd5e0' }}>
           <MessageSquare size={48} color="#cbd5e0" style={{ marginBottom: 16 }} />
-          <h3 style={{ color: '#4a5568', margin: '0 0 8px 0' }}>Nenhum chamado em aberto</h3>
-          <p style={{ color: '#a0aec0', margin: 0 }}>Precisa de ajuda? Clique em "Novo Chamado".</p>
+          <h3 style={{ color: '#4a5568', margin: '0 0 8px 0' }}>Nenhuma solicitação em andamento</h3>
+          <p style={{ color: '#a0aec0', margin: 0 }}>O seu canal direto com a equipa contábil está limpo.</p>
         </div>
       ) : (
         <TicketsGrid>
           {tickets.map(t => (
-            <TicketCard key={t.id} $statusColor={getStatusColor(t.status)} onClick={() => openTicketDetails(t)}>
+            <TicketCard key={t.id} $statusColor={getStatusColor(t.status)} onClick={() => setSelectedTicket(t)}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <strong style={{ fontSize: 16, color: '#2d3748' }}>{t.subject}</strong>
@@ -154,7 +225,7 @@ export default function Helpdesk() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 13, color: '#718096' }}>
                   {!isClient && t.client && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Building2 size={14}/> {t.client.fullName}</span>}
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14}/> {new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={14}/> Aberto em: {new Date(t.createdAt).toLocaleDateString('pt-BR')}</span>
                   <span style={{ fontWeight: 600, color: t.priority === 'URGENTE' ? '#e53e3e' : '#718096' }}>Prioridade: {t.priority}</span>
                 </div>
               </div>
@@ -170,27 +241,27 @@ export default function Helpdesk() {
       {isNewModalOpen && (
         <ModalOverlay>
           <ModalContent style={{ maxWidth: 500 }}>
-            <h2 style={{ marginBottom: 24, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare color="#3182ce" /> Abrir Chamado</h2>
+            <h2 style={{ marginBottom: 24, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}><MessageSquare color="#3182ce" /> Detalhar Nova Solicitação</h2>
             <form onSubmit={handleCreateTicket}>
               
               {!isClient && (
                 <FormGroup>
-                  <label>Vincular Cliente (Opcional)</label>
-                  <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})}>
-                    <option value="">Selecione para qual cliente é este chamado...</option>
+                  <label>Vincular a qual Cliente?</label>
+                  <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})} required>
+                    <option value="">Selecione a empresa alvo...</option>
                     {clients?.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
                   </select>
                 </FormGroup>
               )}
 
               <FormGroup>
-                <label>Assunto Principal</label>
-                <input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} required placeholder="Ex: Dúvida sobre Férias" />
+                <label>Assunto Principal / Título</label>
+                <input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} required placeholder="Ex: Solicitação de Admissão - Funcionário Novo" />
               </FormGroup>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
-                  <label>Departamento</label>
+                  <label>Departamento Especializado</label>
                   <select value={form.department} onChange={e => setForm({...form, department: e.target.value})}>
                     <option value="Contábil">Contábil</option>
                     <option value="Fiscal / Impostos">Fiscal / Impostos</option>
@@ -200,84 +271,98 @@ export default function Helpdesk() {
                   </select>
                 </FormGroup>
                 <FormGroup>
-                  <label>Prioridade</label>
+                  <label>Nível de Gravidade</label>
                   <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
                     <option value="BAIXA">Baixa</option>
                     <option value="NORMAL">Normal</option>
                     <option value="ALTA">Alta</option>
-                    <option value="URGENTE">Urgente</option>
+                    <option value="URGENTE">🚨 Urgente (Risco de Multa)</option>
                   </select>
                 </FormGroup>
               </div>
 
               <FormGroup>
-                <label>Descrição do Pedido</label>
-                <textarea rows="4" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required placeholder="Descreva em detalhe o que necessita..." style={{ fontFamily: 'inherit' }} />
+                <label>Mensagem e Instruções Detalhadas</label>
+                <textarea rows="4" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required placeholder="Digite todas as informações para que a equipa técnica possa prosseguir..." style={{ fontFamily: 'inherit' }} />
               </FormGroup>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
                 <button type="button" onClick={() => setIsNewModalOpen(false)} style={{ background: '#edf2f7', color: '#4a5568', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" style={{ background: '#3182ce', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}><Send size={18} /> Enviar Pedido</button>
+                <button type="submit" style={{ background: '#3182ce', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}><Send size={18} /> Protocolar Pedido</button>
               </div>
             </form>
           </ModalContent>
         </ModalOverlay>
       )}
 
-      {/* MODAL: VER/RESPONDER CHAMADO */}
+      {/* MODAL DE CHAT INTERATIVO */}
       {selectedTicket && (
         <ModalOverlay>
-          <ModalContent>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #edf2f7' }}>
+          <ModalContent style={{ maxWidth: 800 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #edf2f7' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <h2 style={{ margin: 0, color: '#2d3748' }}>{selectedTicket.subject}</h2>
+                  <h2 style={{ margin: 0, color: '#2d3748', fontSize: 20 }}>{selectedTicket.subject}</h2>
                   <span style={{ fontSize: 11, fontWeight: 800, background: `${getStatusColor(selectedTicket.status)}15`, padding: '4px 10px', borderRadius: 12, color: getStatusColor(selectedTicket.status) }}>{selectedTicket.status.replace('_', ' ')}</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#718096' }}>Departamento: <strong>{selectedTicket.department}</strong> • Prioridade: <strong>{selectedTicket.priority}</strong></div>
+                <div style={{ fontSize: 13, color: '#718096' }}>Departamento: <strong>{selectedTicket.department}</strong> • Gravidade: <strong>{selectedTicket.priority}</strong></div>
               </div>
               <button onClick={() => setSelectedTicket(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={24} color="#a0aec0" /></button>
             </div>
 
-            {/* MENSAGEM DO CLIENTE */}
-            <div style={{ background: '#f8fafc', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: '#4a5568', fontWeight: 700 }}>
-                <User size={18} /> Mensagem Original {selectedTicket.client && `(${selectedTicket.client.fullName})`}
-              </div>
-              <p style={{ margin: 0, color: '#2d3748', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</p>
+            <div style={{ background: '#fffaf0', padding: 16, borderRadius: 8, border: '1px solid #feebc8', marginBottom: 20, fontSize: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontWeight: 700, color: '#dd6b20' }}><ShieldAlert size={16}/> Contexto de Abertura do Chamado:</div>
+              <p style={{ margin: 0, color: '#4a5568', whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</p>
             </div>
 
-            {/* RESPOSTA DO CONTADOR */}
-            <form onSubmit={handleReplyTicket}>
-              <div style={{ background: 'white', padding: 20, borderRadius: 12, border: '2px solid #ebf8ff', marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: '#3182ce', fontWeight: 700 }}>
-                  <Building2 size={18} /> Resposta do Escritório
-                </div>
-                
-                <textarea 
-                  rows="4" 
-                  value={replyText} 
-                  onChange={e => setReplyText(e.target.value)} 
-                  disabled={isClient} // O cliente só lê a resposta, não a edita!
-                  placeholder={isClient ? "A aguardar análise do contador..." : "Digite a sua resposta técnica aqui..."}
-                  style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0', fontFamily: 'inherit', background: isClient ? '#f7fafc' : 'white', resize: 'vertical' }} 
-                />
-              </div>
+            <ChatContainer>
+              {(!selectedTicket.messages || selectedTicket.messages.length === 0) ? (
+                <p style={{ color: '#a0aec0', textAlign: 'center', margin: 'auto', fontSize: 13 }}>Nenhuma interação registada. Escreva uma mensagem abaixo para iniciar o diálogo.</p>
+              ) : (
+                selectedTicket.messages.map(m => {
+                  const isMe = (isClient && m.senderRole === 'CLIENT') || (!isClient && m.senderRole === 'ADMIN');
+                  return (
+                    <ChatBubble key={m.id} $isMe={isMe}>
+                      <div className="meta">{m.senderName} ({m.senderRole === 'ADMIN' ? 'Escritório' : 'Cliente'})</div>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
+                    </ChatBubble>
+                  );
+                })
+              )}
+              {/* Elemento âncora para o Auto-Scroll */}
+              <div ref={chatEndRef} />
+            </ChatContainer>
 
+            <div style={{ display: 'grid', gridTemplateColumns: isClient ? '1fr' : '220px 1fr', gap: 16, alignItems: 'center', background: '#f8fafc', padding: 16, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              
               {!isClient && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f7fafc', padding: 16, borderRadius: 12, border: '1px solid #edf2f7' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontWeight: 600, color: '#4a5568', fontSize: 14 }}>Atualizar Status:</span>
-                    <select value={statusUpdate} onChange={e => setStatusUpdate(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e0', outline: 'none' }}>
-                      <option value="ABERTO">🔴 Aberto</option>
-                      <option value="EM_ANDAMENTO">🟡 Em Andamento</option>
-                      <option value="RESOLVIDO">🟢 Resolvido</option>
-                    </select>
-                  </div>
-                  <button type="submit" style={{ background: '#3182ce', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}><Send size={18} /> Salvar e Enviar Resposta</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderRight: '1px solid #e2e8f0', paddingRight: 16 }}>
+                  <span style={{ fontWeight: 700, color: '#4a5568', fontSize: 12, textTransform: 'uppercase' }}>Status:</span>
+                  <select 
+                    value={selectedTicket.status} 
+                    onChange={e => handleUpdateStatus(e.target.value)} 
+                    style={{ padding: '8px', borderRadius: 6, border: '1px solid #cbd5e0', fontSize: 13, background: 'white', fontWeight: 600 }}
+                  >
+                    <option value="ABERTO">🔴 Aberto</option>
+                    <option value="EM_ANDAMENTO">🟡 Em Análise</option>
+                    <option value="RESOLVIDO">🟢 Resolvido</option>
+                  </select>
                 </div>
               )}
-            </form>
+
+              <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12, width: '100%' }}>
+                <input 
+                  value={textMessage}
+                  onChange={e => setTextMessage(e.target.value)}
+                  placeholder="Escreva uma orientação técnica ou responda à equipa..."
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #cbd5e0', outline: 'none', fontSize: 14 }}
+                />
+                <button type="submit" style={{ background: '#3182ce', color: 'white', border: 'none', padding: '0 20px', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Send size={18} />
+                </button>
+              </form>
+
+            </div>
 
           </ModalContent>
         </ModalOverlay>
