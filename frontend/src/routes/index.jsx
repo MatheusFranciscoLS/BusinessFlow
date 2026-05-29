@@ -75,7 +75,7 @@ const AppRoutes = () => {
            <Route path="agenda" element={<Appointments />} />
            <Route path="financeiro" element={<Financial />} />
            <Route path="perfil" element={<Profile />} />
-           <Route path="helpdesk" element={<PrivateRoute><Layout><Helpdesk /></Layout></PrivateRoute>} />
+           <Route path="helpdesk" element={<Helpdesk />} />
            
           </Route>
 
