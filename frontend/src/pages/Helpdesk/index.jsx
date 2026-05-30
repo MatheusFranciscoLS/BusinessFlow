@@ -185,9 +185,9 @@ export default function Helpdesk() {
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={14} /> Departamento: {selectedTicket.department}</span>
                     </div>
                   </div>
-                  {!isClient && (
+                  {
                     <button onClick={() => setSelectedTicketId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a0aec0' }}><X size={20} /></button>
-                  )}
+                  }
                 </div>
 
                 {/* Área de rolagem do chat */}
