@@ -1,6 +1,9 @@
 import styled, { keyframes } from "styled-components";
 
-export const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
+export const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(10px); } 
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 export const Container = styled.div`
   width: 100%;
@@ -15,6 +18,7 @@ export const Header = styled.header`
   margin-bottom: 32px;
   flex-wrap: wrap;
   gap: 16px;
+
   h1 {
     font-size: 26px;
     color: #1a202c;
@@ -39,6 +43,7 @@ export const ActionButton = styled.button`
   background: #3182ce;
   color: white;
   box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
+
   &:hover {
     background: #2c5282;
     transform: translateY(-2px);
@@ -55,6 +60,7 @@ export const SearchBar = styled.div`
   flex: 1;
   min-width: 280px;
   height: 48px;
+
   input {
     border: none;
     outline: none;
@@ -92,6 +98,7 @@ export const DocCard = styled.div`
   flex-direction: column;
   gap: 16px;
   transition: 0.2s;
+
   &:hover {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
     border-color: #cbd5e0;
@@ -128,12 +135,14 @@ export const FormGroup = styled.div`
   flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
+
   label {
     font-size: 13px;
     font-weight: 700;
     color: #4a5568;
     text-transform: uppercase;
   }
+
   input,
   select {
     padding: 12px;
@@ -141,5 +150,10 @@ export const FormGroup = styled.div`
     border: 1px solid #e2e8f0;
     font-size: 14px;
     outline: none;
+    transition: 0.2s;
+
+    &:focus {
+      border-color: #3182ce;
+    }
   }
 `;
