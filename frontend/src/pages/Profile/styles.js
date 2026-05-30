@@ -1,6 +1,6 @@
 import styled, { keyframes } from "styled-components";
 
-const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
+export const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
 
 export const Container = styled.div`
   width: 100%;
@@ -28,7 +28,6 @@ export const ProfileCard = styled.div`
   border: 1px solid #edf2f7;
   padding: 32px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-  max-width: 700px;
   @media (max-width: 500px) {
     padding: 20px;
   }
@@ -36,131 +35,75 @@ export const ProfileCard = styled.div`
 
 export const AvatarSection = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #edf2f7;
-  .avatar-container {
-    position: relative;
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: #e2e8f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 3px solid #3182ce;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .placeholder {
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  }
-  .upload-btn {
-    position: relative;
-    background: #edf2f7;
-    color: #4a5568;
-    font-weight: 600;
-    padding: 10px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: 0.2s;
-    &:hover {
-      background: #e2e8f0;
-    }
-    input {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      cursor: pointer;
-    }
-  }
+  gap: 16px;
 `;
 
 export const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  h3 {
-    font-size: 14px;
-    color: #718096;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 16px;
-    margin-bottom: 8px;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 `;
 
 export const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+
   label {
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     color: #4a5568;
+    text-transform: uppercase;
   }
+
   input {
-    width: 100%;
-    padding: 12px 16px;
+    padding: 12px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
     font-size: 14px;
-    transition: all 0.2s;
+    outline: none;
+    transition: 0.2s;
     &:focus {
       border-color: #3182ce;
-      box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-      outline: none;
+    }
+    &:disabled {
+      background: #f7fafc;
+      cursor: not-allowed;
+      color: #a0aec0;
     }
   }
 `;
 
 export const ActionButton = styled.button`
-  margin-top: 32px;
-  width: 100%;
-  height: 48px;
-  border-radius: 8px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
   background: #3182ce;
   color: white;
-  box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
-  transition: all 0.2s;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+
   &:hover {
     background: #2c5282;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
   }
 `;
 
-// 🔥 NOVOS ESTILOS PARA O GESTOR DE EMPRESAS 🔥
-
 export const SectionTitle = styled.h2`
-  font-size: 20px;
-  color: #1a202c;
+  font-size: 22px;
   font-weight: 800;
+  color: #1a202c;
+  margin-bottom: 24px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 48px 0 24px;
+  gap: 12px;
 `;
 
 export const CompanyList = styled.div`
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 16px;
 `;
 
@@ -168,54 +111,21 @@ export const CompanyItem = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  background: #f7fafc;
-  border: 1px solid #edf2f7;
+  padding: 20px 24px;
+  background: #f8fafc;
   border-radius: 12px;
+  border: 1px solid #e2e8f0;
   transition: all 0.2s;
+
   &:hover {
     border-color: #cbd5e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
   }
-  .info {
-    display: flex;
+
+  @media (max-width: 768px) {
     flex-direction: column;
-    gap: 4px;
-    strong {
-      color: #2d3748;
-      font-size: 16px;
-    }
-    span {
-      color: #718096;
-      font-size: 13px;
-    }
-  }
-  .actions {
-    display: flex;
-    gap: 12px;
-    button {
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 8px;
-      cursor: pointer;
-      color: #718096;
-      transition: 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      &:hover {
-        background: #ebf8ff;
-        color: #3182ce;
-        border-color: #3182ce;
-      }
-      &.delete:hover {
-        background: #fff5f5;
-        color: #e53e3e;
-        border-color: #e53e3e;
-      }
-    }
+    align-items: flex-start;
+    gap: 16px;
   }
 `;
 
@@ -234,6 +144,7 @@ export const AddButton = styled.button`
   cursor: pointer;
   transition: 0.2s;
   font-size: 15px;
+
   &:hover {
     border-color: #3182ce;
     color: #3182ce;
@@ -261,11 +172,15 @@ export const ModalContent = styled.div`
   padding: 32px;
   border-radius: 16px;
   width: 100%;
-  max-width: 450px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  h2 {
-    margin-bottom: 24px;
-    color: #1a202c;
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #cbd5e0;
+    border-radius: 4px;
   }
 `;
 
@@ -273,7 +188,8 @@ export const ModalActions = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 32px;
+  margin-top: 24px;
+
   button {
     padding: 12px 24px;
     border-radius: 8px;
@@ -282,6 +198,7 @@ export const ModalActions = styled.div`
     border: none;
     transition: 0.2s;
   }
+
   .cancel {
     background: #edf2f7;
     color: #4a5568;

@@ -285,7 +285,7 @@ export default function Profile() {
           {!userCompanies ? (
             <p style={{ color: '#a0aec0', padding: 20, textAlign: 'center' }}>A carregar ecossistema...</p>
           ) : userCompanies.map(comp => (
-             <CompanyItem key={comp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', transition: 'all 0.2s' }}>
+             <CompanyItem key={comp.id}>
                 <div className="info" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <strong style={{ fontSize: 18, color: '#2d3748', fontWeight: 800 }}>{comp.name}</strong>
                   <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -306,7 +306,7 @@ export default function Profile() {
                 </div>
              </CompanyItem>
           ))}
-          <AddButton type="button" onClick={handleOpenNewCompany} style={{ marginTop: 16, border: '2px dashed #cbd5e0', background: 'transparent', color: '#4a5568', padding: 24, fontSize: 16, fontWeight: 700 }}>
+          <AddButton type="button" onClick={handleOpenNewCompany}>
             <Plus size={24} color="#3182ce" style={{ marginRight: 8 }} /> 
             Cadastrar Nova Empresa (Filial ou Matriz)
           </AddButton>
