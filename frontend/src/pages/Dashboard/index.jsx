@@ -3,10 +3,13 @@ import useSWR from 'swr';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+
+// 🔥 LIMPEZA: O 'Clock' foi removido e o 'ShieldAlert' foi adicionado!
 import { 
-  TrendingUp, Users, AlertTriangle, CheckCircle, Clock, 
-  LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity
+  TrendingUp, Users, AlertTriangle, CheckCircle, 
+  LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert
 } from 'lucide-react';
+
 import {
   Container, Header, GridTop, StatCard, MainGrid, Panel,
   ProgressBar, ListItem, ActionGrid, ActionShortcut
@@ -21,17 +24,23 @@ export default function Dashboard() {
 
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
 
-  // 🔥 Segurança integrada na requisição HTTP enviada ao Back-end
+  // Segurança integrada na requisição HTTP enviada ao Back-end
   const secureQuery = queryCompany 
     ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
     : null;
 
+  // 🔥 Busca a lista de clientes apenas se for um utilizador CLIENT, para validar o acesso visual
+  const { data: clients } = useSWR(isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   const { data: summary } = useSWR(secureQuery ? `/dashboard/summary${secureQuery}` : null, fetcher);
   const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
 
+  const myClientRecord = useMemo(() => {
+    if (!isClient || !clients) return null;
+    return clients.find(c => c.email === user.email);
+  }, [isClient, clients, user]);
+
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
-  // Processamento seguro das métricas operacionais
   const metrics = useMemo(() => {
     if (!tasks || !summary) return null;
     const totalTasks = tasks.length;
@@ -41,8 +50,19 @@ export default function Dashboard() {
     return { productivityPercent };
   }, [tasks, summary]);
 
+  // 🔥 PROTEÇÃO VISUAL: Bloqueia a tela se o dossiê ainda não existir
+  if (isClient && clients && !myClientRecord) {
+    return (
+      <Container style={{ textAlign: 'center', padding: 60 }}>
+        <ShieldAlert size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
+        <h2>Acesso Pendente</h2>
+        <p>O seu e-mail não foi encontrado no dossiê. Fale com o seu contador.</p>
+      </Container>
+    );
+  }
+
   // =======================================================
-  // 1. VISÃO DO CLIENTE (Isolamento completo de escopo)
+  // 1. VISÃO DO CLIENTE
   // =======================================================
   if (isClient) {
     return (
@@ -84,7 +104,7 @@ export default function Dashboard() {
   }
 
   // =======================================================
-  // 2. VISÃO DO SÓCIO / GESTOR (Painel Consolidado de Gestão)
+  // 2. VISÃO DO SÓCIO / GESTOR 
   // =======================================================
   if (!summary || !metrics) {
     return <Container><p style={{ color: '#a0aec0', padding: 40, textAlign: 'center' }}>Compilando indicadores estratégicos...</p></Container>;
