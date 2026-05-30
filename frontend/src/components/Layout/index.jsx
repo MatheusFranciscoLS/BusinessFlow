@@ -5,7 +5,7 @@ import api from '../../services/api';
 import useSWR from 'swr';
 import { 
   LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X, 
-  Settings, CircleUser, Building2, PieChart, LifeBuoy
+  Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock
 } from 'lucide-react';
 import { 
   Container, SidebarContainer, MainContent, Logo, NavMenu, 
@@ -94,6 +94,10 @@ export default function Layout() {
                 <Users size={20} /> Clientes
               </StyledNavLink>
             )}
+
+            <StyledNavLink to="/app/documentos" onClick={closeMenu}>
+              <FolderLock size={20} /> Cofre Digital
+            </StyledNavLink>
 
             <StyledNavLink to="/app/servicos" onClick={closeMenu}>
               <PieChart size={20} /> Relatórios DRE
