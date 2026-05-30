@@ -1,52 +1,78 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import * as dashboardController from "../controllers/dashboard.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
+import { companyMiddleware } from "../middlewares/company.js";
+import { PrismaClient } from "@prisma/client";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// 🔥 ROTA DO SUPER PAINEL: Resumo panorâmico do escritório
-router.get("/summary", authMiddleware, async (req, res) => {
+// 🔥 INTERCEPTOR DE SEGURANÇA MÁXIMA PARA O DASHBOARD
+router.use(async (req, res, next) => {
   try {
-    const userId = req.userId || req.user.id;
-    
-    // Busca todas as empresas do escritório e cruza com Clientes e Finanças
-    const companies = await prisma.company.findMany({
-      where: { userId },
-      include: {
-        clients: true,
-        transactions: {
-          where: { status: { in: ["PENDENTE", "ATRASADO"] } }
-        }
-      }
+    const { role, userEmail, companyId } = req.query;
+
+    // Se for Administrador (Escritório), está autorizado a ver os dados consolidados
+    if (role !== "CLIENT") return next();
+
+    // Se for Cliente, localiza o ID do dossiê dele no CRM pelo e-mail
+    const client = await prisma.client.findFirst({
+      where: { email: userEmail, companyId: companyId },
     });
 
-    let totalMRR = 0;
-    let totalPending = 0;
-    let totalOverdue = 0;
+    if (!client)
+      return res.json({
+        entradas: 0,
+        saidas: 0,
+        saldo: 0,
+        inadimplentes: [],
+        distribuicao: [],
+      });
 
-    const list = companies.map(comp => {
-      let mrr = 0;
-      // Soma os honorários de clientes ATIVOS vinculados a esta empresa
-      comp.clients.forEach(c => { if (c.status === 'ATIVO') mrr += (c.monthlyFee || 0); });
-      
-      const pending = comp.transactions.filter(t => t.status === 'PENDENTE').length;
-      const overdue = comp.transactions.filter(t => t.status === 'ATRASADO').length;
-      
-      totalMRR += mrr;
-      totalPending += pending;
-      totalOverdue += overdue;
-
-      return { id: comp.id, name: comp.name, mrr, pending, overdue };
-    });
-
-    // Ordena as empresas: As que têm mais problemas (atrasos + pendências) aparecem no topo!
-    list.sort((a, b) => (b.overdue + b.pending) - (a.overdue + a.pending));
-
-    return res.json({ totalMRR, totalPending, totalOverdue, companies: list });
-  } catch (err) {
-    return res.status(500).json({ error: "Erro ao gerar a Central de Comando." });
+    // Injeta de forma oculta o ID do cliente na requisição
+    req.query.clientId = client.id;
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: "Falha na segurança do painel." });
   }
 });
+
+// Rotas protegidas e monitorizadas
+router.get(
+  "/summary",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.getSummary,
+);
+router.get(
+  "/by-category",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.byCategory,
+);
+router.get(
+  "/daily",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.daily,
+);
+router.get(
+  "/monthly",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.monthly,
+);
+router.get(
+  "/top-clients",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.topClients,
+);
+router.get(
+  "/recent",
+  authMiddleware,
+  companyMiddleware,
+  dashboardController.recent,
+);
 
 export default router;
