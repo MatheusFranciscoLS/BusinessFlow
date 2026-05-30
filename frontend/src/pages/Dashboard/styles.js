@@ -42,10 +42,12 @@ export const StatCard = styled.div`
   flex-direction: column;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
   transition: 0.2s;
+  cursor: pointer; /* 🔥 A MÁGICA DO UX COMEÇA AQUI */
 
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    border-color: #cbd5e0; /* Dá um leve destaque na borda ao passar o rato */
   }
 
   .header {

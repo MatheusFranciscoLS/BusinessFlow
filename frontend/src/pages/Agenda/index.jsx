@@ -166,12 +166,19 @@ export default function Agenda() {
         </StatCard>
       </CardsGrid>
 
-      <TabsContainer>
+<TabsContainer>
         <TabButton $active={activeTab === 'KANBAN'} onClick={() => setActiveTab('KANBAN')}>
           <ListTodo size={20} /> Quadro Operacional (Fiscal & RH)
+          {/* 🔥 NOVO: Badge inteligente que avisa quantas tarefas não estão concluídas */}
+          {pendingTasksCount > 0 && (
+            <span style={{ background: '#e53e3e', color: 'white', fontSize: 11, padding: '2px 8px', borderRadius: 12, marginLeft: 8 }}>
+              {pendingTasksCount}
+            </span>
+          )}
         </TabButton>
         <TabButton $active={activeTab === 'BPO'} onClick={() => setActiveTab('BPO')}>
           <DollarSign size={20} /> Radar de Contas (BPO Financeiro)
+          {/* O badge do financeiro que já funcionava perfeitamente */}
           {pendingTransactions.length > 0 && (
             <span style={{ background: '#e53e3e', color: 'white', fontSize: 11, padding: '2px 8px', borderRadius: 12, marginLeft: 8 }}>
               {pendingTransactions.length}

@@ -3,13 +3,10 @@ import useSWR from 'swr';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-
-// 🔥 LIMPEZA: O 'Clock' foi removido e o 'ShieldAlert' foi adicionado!
 import { 
   TrendingUp, Users, AlertTriangle, CheckCircle, 
   LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert
 } from 'lucide-react';
-
 import {
   Container, Header, GridTop, StatCard, MainGrid, Panel,
   ProgressBar, ListItem, ActionGrid, ActionShortcut
@@ -24,12 +21,10 @@ export default function Dashboard() {
 
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
 
-  // Segurança integrada na requisição HTTP enviada ao Back-end
   const secureQuery = queryCompany 
     ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
     : null;
 
-  // 🔥 Busca a lista de clientes apenas se for um utilizador CLIENT, para validar o acesso visual
   const { data: clients } = useSWR(isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   const { data: summary } = useSWR(secureQuery ? `/dashboard/summary${secureQuery}` : null, fetcher);
   const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
@@ -50,7 +45,6 @@ export default function Dashboard() {
     return { productivityPercent };
   }, [tasks, summary]);
 
-  // 🔥 PROTEÇÃO VISUAL: Bloqueia a tela se o dossiê ainda não existir
   if (isClient && clients && !myClientRecord) {
     return (
       <Container style={{ textAlign: 'center', padding: 60 }}>
@@ -61,9 +55,6 @@ export default function Dashboard() {
     );
   }
 
-  // =======================================================
-  // 1. VISÃO DO CLIENTE
-  // =======================================================
   if (isClient) {
     return (
       <Container>
@@ -103,9 +94,6 @@ export default function Dashboard() {
     );
   }
 
-  // =======================================================
-  // 2. VISÃO DO SÓCIO / GESTOR 
-  // =======================================================
   if (!summary || !metrics) {
     return <Container><p style={{ color: '#a0aec0', padding: 40, textAlign: 'center' }}>Compilando indicadores estratégicos...</p></Container>;
   }
@@ -118,7 +106,8 @@ export default function Dashboard() {
       </Header>
 
       <GridTop>
-        <StatCard>
+        {/* 🔥 CLIQUE AQUI VAI PARA O FINANCEIRO */}
+        <StatCard onClick={() => navigate('/app/financeiro')} title="Aceder ao Financeiro">
           <div className="header">
             <span className="title">Receita Mensal Otimizada (MRR)</span>
             <div className="icon-wrap" style={{ background: '#f0fff4', color: '#38a169' }}><TrendingUp size={24} /></div>
@@ -127,7 +116,8 @@ export default function Dashboard() {
           <div className="subtitle" style={{ color: '#38a169' }}><ArrowUpRight size={16} /> Honorários Contábeis Recebidos</div>
         </StatCard>
 
-        <StatCard style={{ borderColor: summary.inadimplentes?.length > 0 ? '#fed7d7' : '#edf2f7' }}>
+        {/* 🔥 CLIQUE AQUI VAI PARA O FINANCEIRO */}
+        <StatCard onClick={() => navigate('/app/financeiro')} style={{ borderColor: summary.inadimplentes?.length > 0 ? '#fed7d7' : '#edf2f7' }} title="Analisar Inadimplência">
           <div className="header">
             <span className="title">Risco de Inadimplência</span>
             <div className="icon-wrap" style={{ background: '#fff5f5', color: '#e53e3e' }}><AlertTriangle size={24} /></div>
@@ -136,7 +126,8 @@ export default function Dashboard() {
           <div className="subtitle" style={{ color: '#e53e3e' }}><ArrowDownRight size={16} /> Empresas com pendências de faturamento</div>
         </StatCard>
 
-        <StatCard>
+        {/* 🔥 CLIQUE AQUI VAI PARA A AGENDA/KANBAN */}
+        <StatCard onClick={() => navigate('/app/agenda')} title="Aceder ao Quadro Kanban">
           <div className="header">
             <span className="title">Vazão do Quadro Fiscal</span>
             <div className="icon-wrap" style={{ background: '#ebf8ff', color: '#3182ce' }}><CheckCircle size={24} /></div>
