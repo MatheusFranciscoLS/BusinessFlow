@@ -5,8 +5,10 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FolderLock, UploadCloud, FileText, Download, Trash2, 
-  Search, Filter, Folder, ShieldCheck, Building2
+  Search, Filter, Folder, Building2
 } from 'lucide-react';
+
+// 🔥 A MÁGICA DA ORGANIZAÇÃO: Todos os estilos vêm do ficheiro externo!
 import {
   Container, Header, ActionButton, SearchBar, SelectFilter,
   DocsGrid, DocCard, ModalOverlay, ModalContent, FormGroup
@@ -20,30 +22,25 @@ export default function Documents() {
   const isClient = user?.role === 'CLIENT';
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
   
-  // 🔥 SEGURANÇA TOTAL: Passa as credenciais de auditoria na URL para o MVC do Back-end
+  // 🔥 SEGURANÇA NO SERVIDOR: A URL carrega a identidade para o Interceptor
   const queryParams = queryCompany 
     ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
     : null;
 
+  // O Gestor puxa a lista de clientes para poder anexar contratos. O Cliente não precisa.
   const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
+  
+  // Aqui puxamos os documentos, já filtrados perfeitamente pelo Back-end
   const { data: documents, mutate } = useSWR(queryParams ? `/documents${queryParams}` : null, fetcher);
-
-  const myClientRecord = useMemo(() => {
-    if (!isClient || !clients) return null;
-    return clients.find(c => c.email === user.email);
-  }, [isClient, clients, user]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'Societário (Contrato Social)', clientId: '', file: null });
 
-  // Default Deny Front-end
+  // Apenas filtro visual para a barra de pesquisa
   const filteredDocs = useMemo(() => {
     if (!documents) return [];
-    
-    // Se for cliente mas não for validado, não mostra nada visualmente
-    if (isClient && !myClientRecord) return [];
 
     return documents.filter(doc => {
       const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -51,7 +48,7 @@ export default function Documents() {
       const matchesCategory = filterCategory === '' || doc.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [documents, searchTerm, filterCategory, isClient, myClientRecord]);
+  }, [documents, searchTerm, filterCategory]);
 
   async function handleUpload(e) {
     e.preventDefault();
@@ -90,17 +87,6 @@ export default function Documents() {
   }
 
   const getFileUrl = (path) => `${api.defaults.baseURL.replace('/api', '')}${path}`;
-
-  // Se o cliente não existir no CRM, bloqueia a UI
-  if (isClient && clients && !myClientRecord) {
-    return (
-      <Container style={{ textAlign: 'center', padding: 60 }}>
-        <ShieldCheck size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
-        <h2>Acesso Pendente</h2>
-        <p>O seu e-mail não foi encontrado no dossiê. Fale com o seu contador.</p>
-      </Container>
-    );
-  }
 
   return (
     <Container>
