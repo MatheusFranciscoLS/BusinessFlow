@@ -7,20 +7,28 @@ import { PrismaClient } from "@prisma/client";
 const router = Router();
 const prisma = new PrismaClient();
 
-// 🔥 INTERCEPTOR DE SEGURANÇA MÁXIMA PARA O DASHBOARD
+// 1. Aplica a segurança em TODAS as rotas do painel
+router.use(authMiddleware);
+router.use(companyMiddleware);
+
+// 🔥 2. INTERCEPTOR ZERO TRUST (Prova de Balas)
 router.use(async (req, res, next) => {
   try {
-    const { role, userEmail, companyId } = req.query;
+    const userId = req.user?.id || req.userId;
 
-    // Se for Administrador (Escritório), está autorizado a ver os dados consolidados
-    if (role !== "CLIENT") return next();
+    const loggedUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!loggedUser)
+      return res.status(401).json({ error: "Utilizador não encontrado." });
 
-    // Se for Cliente, localiza o ID do dossiê dele no CRM pelo e-mail
+    // Gestores passam direto para ver a "Visão Geral"
+    if (loggedUser.role !== "CLIENT") return next();
+
+    // Clientes são filtrados rigorosamente pelo e-mail do banco
     const client = await prisma.client.findFirst({
-      where: { email: userEmail, companyId: companyId },
+      where: { email: loggedUser.email, companyId: req.companyId },
     });
 
-    if (!client)
+    if (!client) {
       return res.json({
         entradas: 0,
         saidas: 0,
@@ -28,51 +36,22 @@ router.use(async (req, res, next) => {
         inadimplentes: [],
         distribuicao: [],
       });
+    }
 
-    // Injeta de forma oculta o ID do cliente na requisição
     req.query.clientId = client.id;
     next();
   } catch (error) {
-    return res.status(500).json({ error: "Falha na segurança do painel." });
+    return res
+      .status(500)
+      .json({ error: "Falha de segurança ao carregar métricas." });
   }
 });
 
-// Rotas protegidas e monitorizadas
-router.get(
-  "/summary",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.getSummary,
-);
-router.get(
-  "/by-category",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.byCategory,
-);
-router.get(
-  "/daily",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.daily,
-);
-router.get(
-  "/monthly",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.monthly,
-);
-router.get(
-  "/top-clients",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.topClients,
-);
-router.get(
-  "/recent",
-  authMiddleware,
-  companyMiddleware,
-  dashboardController.recent,
-);
+router.get("/summary", dashboardController.getSummary);
+router.get("/by-category", dashboardController.byCategory);
+router.get("/daily", dashboardController.daily);
+router.get("/monthly", dashboardController.monthly);
+router.get("/top-clients", dashboardController.topClients);
+router.get("/recent", dashboardController.recent);
 
 export default router;
