@@ -6,7 +6,6 @@ export async function createTransaction(companyId, data, fileUrl) {
   const baseDate = new Date(data.date);
   const transactions = [];
 
-  // 🔥 O MOTOR DE RECORRÊNCIA MÁGICO
   for (let i = 0; i < installments; i++) {
     const currentDate = new Date(baseDate);
     currentDate.setMonth(currentDate.getMonth() + i);
@@ -40,11 +39,9 @@ export async function createTransaction(companyId, data, fileUrl) {
   return transactions[0];
 }
 
-// 🔥 A FECHADURA DE SEGURANÇA MÁXIMA ENTRA AQUI
 export async function getAllTransactions(companyId, month, year, clientId) {
   const where = { companyId };
 
-  // Se o Controlador avisou que é um Cliente, o Prisma filtra na raiz!
   if (clientId) {
     where.clientId = clientId;
   }
@@ -70,6 +67,7 @@ export async function getTransactionById(companyId, id) {
   return transaction;
 }
 
+// 🔥 SEGREDO DA CORREÇÃO: Preserva os dados antigos se eles não forem enviados no payload!
 export async function updateTransaction(companyId, id, data, fileUrl) {
   const transaction = await prisma.transaction.findFirst({
     where: { id, companyId },
@@ -77,15 +75,24 @@ export async function updateTransaction(companyId, id, data, fileUrl) {
   if (!transaction) throw new Error("Transação não encontrada.");
 
   const updateData = {
-    title: data.title,
-    description: data.description || data.title,
-    amount: data.amount ? parseFloat(data.amount) : undefined,
-    type: data.type,
-    category: data.category,
-    date: data.date ? new Date(data.date) : undefined,
-    status: data.status,
-    paymentMethod: data.paymentMethod,
-    clientId: data.clientId || null,
+    title: data.title !== undefined ? data.title : transaction.title,
+    description:
+      data.description !== undefined
+        ? data.description
+        : transaction.description,
+    amount: data.amount ? parseFloat(data.amount) : transaction.amount,
+    type: data.type !== undefined ? data.type : transaction.type,
+    category:
+      data.category !== undefined ? data.category : transaction.category,
+    date: data.date ? new Date(data.date) : transaction.date,
+    status: data.status !== undefined ? data.status : transaction.status,
+    paymentMethod:
+      data.paymentMethod !== undefined
+        ? data.paymentMethod
+        : transaction.paymentMethod,
+    // Se data.clientId for enviado, atualiza (mesmo que seja null). Se não for enviado, mantém o que já estava!
+    clientId:
+      data.clientId !== undefined ? data.clientId : transaction.clientId,
   };
 
   if (fileUrl) updateData.fileUrl = fileUrl;

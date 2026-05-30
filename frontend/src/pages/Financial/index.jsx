@@ -83,20 +83,28 @@ export default function Financial() {
     function handlePreviousMonth() { if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
     function handleNextMonth() { if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
 
-    const filteredTransactions = useMemo(() => {
+const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
         let filtered = transactions;
 
-        // Se for o Admin e selecionou uma empresa no filtro visual
-        if (!isClient && clientFilter) {
-            filtered = filtered.filter(t => t.clientId === clientFilter);
+        if (!isClient) {
+            if (clientFilter === "") {
+                // 🔥 Separação de escopo: Por padrão, mostra apenas dados operacionais de CLIENTES
+                filtered = filtered.filter(t => t.clientId !== null);
+            } else if (clientFilter === "INTERNO") {
+                // Mostra apenas os custos/receitas da própria agência contábil
+                filtered = filtered.filter(t => t.clientId === null);
+            } else {
+                // Filtra um cliente específico do CRM
+                filtered = filtered.filter(t => t.clientId === clientFilter);
+            }
         }
 
         return filtered.filter(t => {
             const titleMatch = t.title ? t.title.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const clientMatch = t.client?.fullName ? t.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const matchesSearch = searchTerm === '' || titleMatch || clientMatch;
-            const matchesCategory = filterCategory === 'Todos' || t.category === filterCategory;
+            const matchesCategory = filterCategory === 'Tomados' || filterCategory === 'Todos' || t.category === filterCategory;
             return matchesSearch && matchesCategory;
         });
     }, [transactions, searchTerm, filterCategory, clientFilter, isClient]);

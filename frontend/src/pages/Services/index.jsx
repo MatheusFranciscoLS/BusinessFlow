@@ -38,14 +38,20 @@ export default function DRE() {
   const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
   // Calcula a matemática do DRE
-  const dre = useMemo(() => {
+const dre = useMemo(() => {
     if (!transactions) return null;
     
-    // Se for o Gestor a usar a caixa de filtro, aplicamos o filtro. 
-    // Se for Cliente, o Back-end já entregou os dados 100% filtrados!
     let filteredTransactions = transactions;
-    if (!isClient && clientFilter) {
-      filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
+    if (!isClient) {
+      if (clientFilter === "") {
+        // 🔥 Considera apenas a saúde financeira das empresas dos clientes
+        filteredTransactions = transactions.filter(t => t.clientId !== null);
+      } else if (clientFilter === "INTERNO") {
+        // Considera apenas as movimentações da própria agência
+        filteredTransactions = transactions.filter(t => t.clientId === null);
+      } else {
+        filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
+      }
     }
     
     const paid = filteredTransactions.filter(t => t.status === 'PAGO');
@@ -126,18 +132,19 @@ export default function DRE() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         
         {/* 🔥 BLINDAGEM: O Cliente não vê a caixa de pesquisa de outras empresas */}
-        {!isClient ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400 }}>
-            <Filter size={20} color="#718096" />
-            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#2d3748', fontWeight: 700, fontSize: 15, cursor: 'pointer', appearance: 'none' }}>
-              <option value="">Visão Geral (Todos os Dados)</option>
-              {clients?.map(c => <option key={c.id} value={c.id}>Filtrar: {c.fullName}</option>)}
-            </select>
-            <ChevronDown size={20} color="#a0aec0" style={{ pointerEvents: 'none' }} />
-          </div>
-        ) : (
-          <div style={{ flex: 1, minWidth: 280, maxWidth: 400 }}></div> /* Div vazia para empurrar os botões para a direita */
-        )}
+{!isClient ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400 }}>
+        <Filter size={20} color="#718096" />
+        <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#2d3748', fontWeight: 700, fontSize: 15, cursor: 'pointer', appearance: 'none' }}>
+          <option value="">Consolidado de Clientes (BPO)</option>
+          <option value="INTERNO">Caixa Interno do Escritório</option>
+          {clients?.map(c => <option key={c.id} value={c.id}>Cliente: {c.fullName}</option>)}
+        </select>
+        <ChevronDown size={20} color="#a0aec0" style={{ pointerEvents: 'none' }} />
+      </div>
+    ) : (
+      <div style={{ flex: 1, minWidth: 280, maxWidth: 400 }}></div>
+    )}
 
         <MonthNavigator>
           <button onClick={handlePrev}><ChevronLeft size={20} /></button>
