@@ -11,15 +11,15 @@ import ForgotPassword from '../pages/Auth/ForgotPassword';
 import ResetPassword from '../pages/Auth/ResetPassword';
 import Helpdesk from '../pages/Helpdesk';
 import Documents from '../pages/Documents';
-
+import Agenda from '../pages/Agenda';
 import Layout from '../components/Layout';
+
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Customers = lazy(() => import('../pages/Customers'));
 const Services = lazy(() => import('../pages/Services'));
 const Appointments = lazy(() => import('../pages/Appointments'));
 const Financial = lazy(() => import('../pages/Financial'));
 const Profile = lazy(() => import('../pages/Profile'));
-
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -78,6 +78,7 @@ const AppRoutes = () => {
            <Route path="perfil" element={<Profile />} />
            <Route path="helpdesk" element={<Helpdesk />} />
            <Route path="documentos" element={<Documents />} />
+           <Route path="agenda" element={<Agenda />} />
            
           </Route>
 
