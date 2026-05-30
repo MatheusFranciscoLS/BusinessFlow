@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
-    "build": "prisma generate && prisma db push --accept-data-loss"
+    "build": "prisma generate && prisma db push"
   },
   "dependencies": {
     "@faker-js/faker": "^10.1.0",
