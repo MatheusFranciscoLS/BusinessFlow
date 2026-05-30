@@ -3,7 +3,7 @@ import * as transactionController from "../controllers/transaction.controller.js
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { upload } from "../config/multer.js";
-import { PrismaClient } from "@prisma/client"; // 🔥 Importamos o Prisma para a Segurança
+import { PrismaClient } from "@prisma/client";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -16,35 +16,36 @@ router.post(
   transactionController.create,
 );
 
-// 🔥 INTERCEPTOR DE SEGURANÇA MÁXIMA (ISOLAMENTO DE CLIENTE)
+// 🔥 INTERCEPTOR ZERO TRUST (BASEADO NO TOKEN CRIPTOGRAFADO)
 router.get(
   "/",
   authMiddleware,
   companyMiddleware,
   async (req, res, next) => {
     try {
-      const { role, userEmail, companyId } = req.query;
+      // 1. Extraímos a identidade DIRETO DO TOKEN JWT (À prova de manipulações e delays do React)
+      const userRole = req.user?.role;
+      const userEmail = req.user?.email;
 
-      // Se for o Sócio da Contabilidade, passa direto para ver tudo
-      if (role !== "CLIENT") return next();
+      // 2. Se for Sócio/Admin, permite acesso total e passa para o Controller
+      if (userRole !== "CLIENT") return next();
 
-      // Se for Cliente, descobre o Dossiê dele cruzando o E-mail
+      // 3. Se for Cliente, busca o Dossiê dele cruzando o E-mail de forma silenciosa
       const client = await prisma.client.findFirst({
-        where: { email: userEmail, companyId: companyId },
+        where: { email: userEmail, companyId: req.companyId },
       });
 
-      // Se o email não existir no CRM, bloqueia o acesso e devolve vazio!
+      // Se não achar o dossiê, a porta fecha e devolve VAZIO!
       if (!client) return res.json([]);
 
-      // 🔥 MÁGICA: Injeta o ID do cliente na query de forma oculta.
-      // O Controller vai achar que foi um filtro normal e só vai devolver os dados dele!
+      // 4. Injeta a trava de filtro oculta no Controller
       req.query.clientId = client.id;
 
-      next(); // Libera a passagem para o Controller
+      next();
     } catch (error) {
       return res
         .status(500)
-        .json({ error: "Falha na validação de segurança." });
+        .json({ error: "Falha crítica na segurança da rota." });
     }
   },
   transactionController.getAll,

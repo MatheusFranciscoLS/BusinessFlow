@@ -17,7 +17,7 @@ import Layout from '../components/Layout';
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Customers = lazy(() => import('../pages/Customers'));
 const Services = lazy(() => import('../pages/Services'));
-const Appointments = lazy(() => import('../pages/Appointments'));
+
 const Financial = lazy(() => import('../pages/Financial'));
 const Profile = lazy(() => import('../pages/Profile'));
 
