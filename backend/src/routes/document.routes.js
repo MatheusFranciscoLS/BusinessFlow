@@ -1,9 +1,11 @@
 import { Router } from "express";
-import multer from "multer";
-import { PrismaClient } from "@prisma/client";
+import * as documentController from "../controllers/document.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
+import { companyMiddleware } from "../middlewares/company.js";
+import multer from "multer";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 
 const router = Router();
 const prisma = new PrismaClient();

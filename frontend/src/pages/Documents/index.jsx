@@ -7,67 +7,51 @@ import {
   FolderLock, UploadCloud, FileText, Download, Trash2, 
   Search, Filter, Folder, ShieldCheck, Building2
 } from 'lucide-react';
-import styled, { keyframes } from 'styled-components';
-
-const fadeIn = keyframes`from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); }`;
-const Container = styled.div`width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;`;
-const Header = styled.header`display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; h1 { font-size: 26px; color: #1a202c; font-weight: 800; display: flex; align-items: center; gap: 12px; }`;
-const ActionButton = styled.button`display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; transition: 0.2s; background: #3182ce; color: white; box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2); &:hover { background: #2c5282; transform: translateY(-2px); }`;
-
-const SearchBar = styled.div`display: flex; alignItems: center; background: white; border: 1px solid #e2e8f0; borderRadius: 8px; padding: 0 16px; flex: 1; minWidth: 280px; height: 48px; input { border: none; outline: none; padding: 12px; width: 100%; fontSize: 14px; background: transparent; }`;
-const SelectFilter = styled.select`height: 48px; padding: 0 16px; border-radius: 8px; border: 1px solid #e2e8f0; outline: none; background: white; color: #4a5568; font-weight: 600; cursor: pointer;`;
-
-const DocsGrid = styled.div`display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;`;
-const DocCard = styled.div`background: white; border-radius: 12px; border: 1px solid #edf2f7; padding: 20px; display: flex; flex-direction: column; gap: 16px; transition: 0.2s; &:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.06); border-color: #cbd5e0; transform: translateY(-2px); }`;
-
-const ModalOverlay = styled.div`position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(2px);`;
-const ModalContent = styled.div`background: white; padding: 32px; border-radius: 16px; width: 100%; max-width: 550px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);`;
-const FormGroup = styled.div`display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; label { font-size: 13px; font-weight: 700; color: #4a5568; text-transform: uppercase; } input, select { padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; outline: none; }`;
+import {
+  Container, Header, ActionButton, SearchBar, SelectFilter,
+  DocsGrid, DocCard, ModalOverlay, ModalContent, FormGroup
+} from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
-
 const CATEGORIES = ["Societário (Contrato Social)", "Fiscal e Tributário", "Alvarás e Licenças", "Trabalhista / RH", "Outros"];
 
 export default function Documents() {
   const { user, selectedCompany } = useAuth();
   const isClient = user?.role === 'CLIENT';
-
-  // O cliente tem o seu próprio ID, a agência usa o companyId para ver todos
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
   
-  // Buscar clientes para o select do upload (apenas para a Agência)
-  const { data: clients } = useSWR(!isClient && selectedCompany ? '/clients' : null, fetcher);
-  
-  // Se for cliente, cruza o email dele com os clientes do CRM para saber o ID dele (como fizemos no Helpdesk)
+  // 🔥 SEGURANÇA TOTAL: Passa as credenciais de auditoria na URL para o MVC do Back-end
+  const queryParams = queryCompany 
+    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
+    : null;
+
+  const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
+  const { data: documents, mutate } = useSWR(queryParams ? `/documents${queryParams}` : null, fetcher);
+
   const myClientRecord = useMemo(() => {
     if (!isClient || !clients) return null;
     return clients.find(c => c.email === user.email);
   }, [isClient, clients, user]);
 
-  const docQuery = useMemo(() => {
-    if (!queryCompany) return null;
-    if (isClient && myClientRecord) return `?companyId=${queryCompany}&clientId=${myClientRecord.id}`;
-    if (!isClient) return `?companyId=${queryCompany}`;
-    return null;
-  }, [queryCompany, isClient, myClientRecord]);
-
-  const { data: documents, mutate } = useSWR(docQuery ? `/documents${docQuery}` : null, fetcher);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'Societário (Contrato Social)', clientId: '', file: null });
 
+  // Default Deny Front-end
   const filteredDocs = useMemo(() => {
     if (!documents) return [];
+    
+    // Se for cliente mas não for validado, não mostra nada visualmente
+    if (isClient && !myClientRecord) return [];
+
     return documents.filter(doc => {
       const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (doc.client && doc.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = filterCategory === '' || doc.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [documents, searchTerm, filterCategory]);
+  }, [documents, searchTerm, filterCategory, isClient, myClientRecord]);
 
   async function handleUpload(e) {
     e.preventDefault();
@@ -105,10 +89,9 @@ export default function Documents() {
     }
   }
 
-  // Monta a URL completa para o download
   const getFileUrl = (path) => `${api.defaults.baseURL.replace('/api', '')}${path}`;
 
-  // Se for cliente mas o e-mail não estiver no CRM, bloqueia o ecrã (como no Helpdesk)
+  // Se o cliente não existir no CRM, bloqueia a UI
   if (isClient && clients && !myClientRecord) {
     return (
       <Container style={{ textAlign: 'center', padding: 60 }}>
@@ -186,7 +169,7 @@ export default function Documents() {
         </DocsGrid>
       )}
 
-      {/* MODAL DE UPLOAD (Apenas Agência) */}
+      {/* MODAL DE UPLOAD */}
       {isModalOpen && !isClient && (
         <ModalOverlay>
           <ModalContent>
