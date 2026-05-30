@@ -44,6 +44,7 @@ model Company {
   appointments Appointment[]
   tickets Ticket[]
   documents Document[]
+  tasks Task[]
   
   createdAt    DateTime      @default(now())
 }
@@ -67,6 +68,7 @@ model Client {
   transactions      Transaction[]
   appointments      Appointment[]
   tickets Ticket[]
+  tasks Task[]
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -180,4 +182,22 @@ model Document {
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String   // Título (Ex: Apurar Simples Nacional, Renovar e-CNPJ)
+  description String?  // Instruções ou observações
+  status      String   @default("A_FAZER") // A_FAZER, EM_ANDAMENTO, AGUARDANDO, CONCLUIDO
+  priority    String   @default("NORMAL")  // BAIXA, NORMAL, ALTA, URGENTE
+  dueDate     DateTime // Prazo limite (Data de Vencimento)
+
+  clientId    String?  // Opcional: A qual cliente pertence esta obrigação?
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  companyId   String   // A agência contábil responsável
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

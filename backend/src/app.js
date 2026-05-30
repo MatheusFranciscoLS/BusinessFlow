@@ -8,6 +8,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import ofxRoutes from "./routes/ofx.routes.js";
 import ticketRoutes from "./routes/ticket.routes.js";
 import documentRoutes from "./routes/document.routes.js";
+import taskRoutes from "./routes/task.routes.js";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ofx", ofxRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/tasks", taskRoutes);
 
 
 export default app;
