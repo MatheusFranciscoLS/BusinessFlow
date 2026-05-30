@@ -4,7 +4,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronLeft, ChevronRight, FileText, PieChart, Filter, ChevronDown } from 'lucide-react'; // 🔥 ChevronDown importado
+import { ChevronLeft, ChevronRight, FileText, PieChart, Filter, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, DREContainer, DRERow, MonthNavigator } from './styles';
 
@@ -13,46 +13,53 @@ const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function DRE() {
   const { user, selectedCompany } = useAuth();
+  const isClient = user?.role === 'CLIENT';
+  
+  // Identifica a empresa (via acesso do cliente ou seleção do gestor)
+  const queryCompany = isClient ? user?.companyAccessId : selectedCompany?.id;
+
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  
   const [clientFilter, setClientFilter] = useState('');
 
-  const { data: transactions, error } = useSWR(`/transactions?month=${currentMonth}&year=${currentYear}`, fetcher);
-  const { data: clients } = useSWR('/clients', fetcher);
+  // 🔥 A MÁGICA: Enviamos os dados para o Back-end. O Interceptor garante que o Cliente só receba as SUAS transações.
+  const queryParams = queryCompany 
+    ? `?month=${currentMonth}&year=${currentYear}&companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
+    : null;
+    
+  const { data: transactions, error } = useSWR(queryParams ? `/transactions${queryParams}` : null, fetcher);
+  
+  // O Gestor precisa da lista de clientes para a caixa de filtro. O Cliente não (por isso é false).
+  const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
 
   function handlePrev() { if(currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
   function handleNext() { if(currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
 
   const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
+  // Calcula a matemática do DRE
   const dre = useMemo(() => {
     if (!transactions) return null;
     
+    // Se for o Gestor a usar a caixa de filtro, aplicamos o filtro. 
+    // Se for Cliente, o Back-end já entregou os dados 100% filtrados!
     let filteredTransactions = transactions;
-    if (clientFilter) {
+    if (!isClient && clientFilter) {
       filteredTransactions = transactions.filter(t => t.clientId === clientFilter);
     }
     
     const paid = filteredTransactions.filter(t => t.status === 'PAGO');
-
     let receitas = 0; let impostos = 0; let pessoal = 0; let operacionais = 0; let distribuicao = 0;
 
     paid.forEach(t => {
       const val = t.amount || t.price || 0;
-      if (t.type === 'entrada' || t.type === 'income') {
-        receitas += val;
-      } else {
+      if (t.type === 'entrada' || t.type === 'income') receitas += val;
+      else {
         const cat = t.category || '';
-        if (cat.includes('Simples') || cat.includes('Impostos') || cat.includes('Taxas Bancárias')) {
-          impostos += val;
-        } else if (cat.includes('Folha') || cat.includes('Pró-labore') || cat.includes('Encargos') || cat.includes('Benefícios')) {
-          pessoal += val;
-        } else if (cat.includes('Distribuição de Lucros')) {
-          distribuicao += val;
-        } else {
-          operacionais += val; 
-        }
+        if (cat.includes('Simples') || cat.includes('Impostos') || cat.includes('Taxas Bancárias')) impostos += val;
+        else if (cat.includes('Folha') || cat.includes('Pró-labore') || cat.includes('Encargos') || cat.includes('Benefícios')) pessoal += val;
+        else if (cat.includes('Distribuição de Lucros')) distribuicao += val;
+        else operacionais += val; 
       }
     });
 
@@ -61,7 +68,7 @@ export default function DRE() {
     const lucroLiquido = lucroOperacional - distribuicao;
 
     return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido };
-  }, [transactions, clientFilter]);
+  }, [transactions, clientFilter, isClient]);
 
   function exportDRE() {
     if (!dre) return;
@@ -69,7 +76,8 @@ export default function DRE() {
     const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
     
     let reportSubject = selectedCompany?.name || 'Visão Geral (Agência)';
-    if (clientFilter && clients) {
+    if (isClient) reportSubject = user.name;
+    else if (clientFilter && clients) {
         const c = clients.find(c => c.id === clientFilter);
         if (c) reportSubject = c.fullName;
     }
@@ -97,13 +105,11 @@ export default function DRE() {
       willDrawCell: function(data) { if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) doc.setFont("helvetica", "bold"); }
     });
 
-    const pageCount = doc.internal.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.setFont("helvetica", "normal"); doc.text(`Gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290); }
     doc.save(`DRE_${reportSubject.replace(/\s/g, '_')}_${MONTHS_BR[currentMonth-1]}.pdf`);
     toast.success("DRE exportado com sucesso!");
   }
 
-  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados do DRE.</div>;
+  if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados financeiros.</div>;
 
   return (
     <Container>
@@ -112,28 +118,26 @@ export default function DRE() {
            <PieChart size={32} color="#3182ce" />
            <h1 style={{ margin: 0 }}>Análise de Dados e DRE</h1>
         </div>
-        <button onClick={exportDRE} disabled={!dre} style={{ height: 48, padding: '0 20px', borderRadius: 8, background: '#3182ce', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 6px rgba(49,130,206,0.2)' }}>
+        <button onClick={exportDRE} disabled={!dre} style={{ height: 48, padding: '0 20px', borderRadius: 8, background: '#3182ce', color: 'white', fontWeight: 600, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
           <FileText size={18} /> Baixar Relatório (PDF)
         </button>
       </Header>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         
-        {/* 🔥 DESIGN PREMIUM: Filtro sem bordas do navegador */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400, transition: 'all 0.2s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-          <Filter size={20} color="#718096" />
-          <select 
-            value={clientFilter} 
-            onChange={e => setClientFilter(e.target.value)} 
-            style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#2d3748', fontWeight: 700, fontSize: 15, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
-          >
-            <option value="">Visão Geral (Todos os Dados)</option>
-            {clients?.map(c => (
-              <option key={c.id} value={c.id}>Filtrar: {c.fullName}</option>
-            ))}
-          </select>
-          <ChevronDown size={20} color="#a0aec0" style={{ pointerEvents: 'none' }} />
-        </div>
+        {/* 🔥 BLINDAGEM: O Cliente não vê a caixa de pesquisa de outras empresas */}
+        {!isClient ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', flex: 1, minWidth: 280, maxWidth: 400 }}>
+            <Filter size={20} color="#718096" />
+            <select value={clientFilter} onChange={e => setClientFilter(e.target.value)} style={{ border: 'none', outline: 'none', width: '100%', background: 'transparent', color: '#2d3748', fontWeight: 700, fontSize: 15, cursor: 'pointer', appearance: 'none' }}>
+              <option value="">Visão Geral (Todos os Dados)</option>
+              {clients?.map(c => <option key={c.id} value={c.id}>Filtrar: {c.fullName}</option>)}
+            </select>
+            <ChevronDown size={20} color="#a0aec0" style={{ pointerEvents: 'none' }} />
+          </div>
+        ) : (
+          <div style={{ flex: 1, minWidth: 280, maxWidth: 400 }}></div> /* Div vazia para empurrar os botões para a direita */
+        )}
 
         <MonthNavigator>
           <button onClick={handlePrev}><ChevronLeft size={20} /></button>
