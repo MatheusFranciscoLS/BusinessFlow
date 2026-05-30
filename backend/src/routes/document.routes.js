@@ -6,10 +6,11 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import { PrismaClient } from "@prisma/client";
 
 const router = Router();
+const prisma = new PrismaClient();
 
-// Configuração segura da pasta do Cofre
 const docFolder = path.resolve("uploads", "documents");
 if (!fs.existsSync(docFolder)) fs.mkdirSync(docFolder, { recursive: true });
 
@@ -22,20 +23,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// 🔥 Arquitetura MVC Perfeita: Rota -> Middleware de Empresa -> Controller
-router.post(
-  "/",
-  authMiddleware,
-  companyMiddleware,
-  upload.single("file"),
-  documentController.create,
-);
-router.get("/", authMiddleware, companyMiddleware, documentController.getAll);
-router.delete(
-  "/:id",
-  authMiddleware,
-  companyMiddleware,
-  documentController.remove,
-);
+router.use(authMiddleware);
+router.use(companyMiddleware);
+
+// 🔥 INTERCEPTOR ZERO TRUST
+router.use(async (req, res, next) => {
+  try {
+    const userId = req.user?.id || req.userId;
+    const loggedUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!loggedUser)
+      return res.status(401).json({ error: "Utilizador não encontrado." });
+
+    // Sobrescreve a URL com a verdade
+    req.query.role = loggedUser.role;
+    req.query.userEmail = loggedUser.email;
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: "Falha na segurança da rota." });
+  }
+});
+
+router.post("/", upload.single("file"), documentController.create);
+router.get("/", documentController.getAll);
+router.delete("/:id", documentController.remove);
 
 export default router;

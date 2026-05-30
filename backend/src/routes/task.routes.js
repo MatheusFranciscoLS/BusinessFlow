@@ -1,23 +1,37 @@
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "../middlewares/auth.js";
+import { companyMiddleware } from "../middlewares/company.js";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// 1. Criar um Cartão
-router.post("/", authMiddleware, async (req, res) => {
+// Aplica a segurança base
+router.use(authMiddleware);
+router.use(companyMiddleware);
+
+// 🔥 INTERCEPTOR ZERO TRUST: Extrai a identidade 100% segura do Token JWT
+router.use(async (req, res, next) => {
   try {
-    const {
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-      clientId,
-      companyId,
-    } = req.body;
-    if (!title || !dueDate || !companyId)
+    const userId = req.user?.id || req.userId;
+    const loggedUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!loggedUser)
+      return res.status(401).json({ error: "Utilizador inválido." });
+
+    // Sobrescreve o que o Front-end mandou com a verdade absoluta do Banco de Dados
+    req.query.role = loggedUser.role;
+    req.query.userEmail = loggedUser.email;
+    next();
+  } catch (error) {
+    return res.status(500).json({ error: "Falha na segurança da rota." });
+  }
+});
+
+router.post("/", async (req, res) => {
+  try {
+    const { title, description, status, priority, dueDate, clientId } =
+      req.body;
+    if (!title || !dueDate)
       return res
         .status(400)
         .json({ error: "Preencha o título e o prazo limite." });
@@ -30,7 +44,7 @@ router.post("/", authMiddleware, async (req, res) => {
         priority,
         dueDate: new Date(dueDate),
         clientId,
-        companyId,
+        companyId: req.companyId,
       },
     });
     return res.status(201).json(task);
@@ -39,23 +53,16 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 🔥 2. LISTAR TAREFAS (BLINDAGEM DE SEGURANÇA TOTAL)
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const { companyId, role, userEmail } = req.query;
-    if (!companyId) return res.json([]);
+    const { role, userEmail } = req.query; // Agora estes dados são infalsificáveis
+    let where = { companyId: req.companyId };
 
-    let where = { companyId };
-
-    // SE FOR CLIENTE: O Servidor barra qualquer dado que não seja dele
     if (role === "CLIENT") {
       const clientRecord = await prisma.client.findFirst({
-        where: { companyId, email: userEmail },
+        where: { companyId: req.companyId, email: userEmail },
       });
-
-      // Se não achar o cliente no CRM, devolve um array vazio (Proteção Máxima)
       if (!clientRecord) return res.json([]);
-
       where.clientId = clientRecord.id;
     }
 
@@ -70,14 +77,47 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 3. Atualizar Cartão
-router.put("/:id", authMiddleware, async (req, res) => {
+// 🔥 O FIM DOS ALERTAS FANTASMAS (Notificações Corrigidas)
+router.get("/alerts", async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status, priority, dueDate, description } = req.body;
+    const { role, userEmail } = req.query;
+    let clientIdFilter = undefined;
 
+    if (role === "CLIENT") {
+      const clientRecord = await prisma.client.findFirst({
+        where: { companyId: req.companyId, email: userEmail },
+      });
+      if (!clientRecord) return res.json({ total: 0 }); // Devolve 0 notificações para clientes sem dossiê
+      clientIdFilter = clientRecord.id;
+    }
+
+    const pendingBpo = await prisma.transaction.count({
+      where: {
+        companyId: req.companyId,
+        clientId: clientIdFilter,
+        status: { not: "PAGO" },
+      },
+    });
+    const overdueTasks = await prisma.task.count({
+      where: {
+        companyId: req.companyId,
+        clientId: clientIdFilter,
+        status: { not: "CONCLUIDO" },
+        dueDate: { lt: new Date() },
+      },
+    });
+
+    return res.json({ total: pendingBpo + overdueTasks });
+  } catch (err) {
+    return res.status(500).json({ error: "Erro ao buscar alertas." });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const { status, priority, dueDate, description } = req.body;
     const task = await prisma.task.update({
-      where: { id },
+      where: { id: req.params.id },
       data: {
         ...(status && { status }),
         ...(priority && { priority }),
@@ -91,30 +131,23 @@ router.put("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// 4. Excluir Cartão
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    await prisma.task.delete({ where: { id } });
+    await prisma.task.delete({ where: { id: req.params.id } });
     return res.json({ message: "Tarefa excluída." });
   } catch (err) {
     return res.status(500).json({ error: "Erro ao excluir a tarefa." });
   }
 });
 
-// 5. Varredura Automática
-router.post("/auto-scan", authMiddleware, async (req, res) => {
+router.post("/auto-scan", async (req, res) => {
   try {
-    const { companyId } = req.body;
-    if (!companyId)
-      return res.status(400).json({ error: "ID da Agência obrigatório." });
-
     const today = new Date();
     const nextMonth = new Date();
     nextMonth.setDate(today.getDate() + 30);
 
     const clients = await prisma.client.findMany({
-      where: { companyId, certificateExpiry: { not: null } },
+      where: { companyId: req.companyId, certificateExpiry: { not: null } },
     });
     let newTasksCount = 0;
 
@@ -124,7 +157,7 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
         const taskTitle = `⚠️ Renovar e-CNPJ: ${client.fullName}`;
         const taskExists = await prisma.task.findFirst({
           where: {
-            companyId,
+            companyId: req.companyId,
             clientId: client.id,
             title: taskTitle,
             status: { not: "CONCLUIDO" },
@@ -135,12 +168,12 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
           await prisma.task.create({
             data: {
               title: taskTitle,
-              description: `O certificado digital desta empresa vence no dia ${expiryDate.toLocaleDateString("pt-BR")}. Contacte o cliente urgentemente para a renovação!`,
+              description: `O certificado digital desta empresa vence no dia ${expiryDate.toLocaleDateString("pt-BR")}.`,
               status: "A_FAZER",
               priority: "URGENTE",
               dueDate: expiryDate,
               clientId: client.id,
-              companyId,
+              companyId: req.companyId,
             },
           });
           newTasksCount++;
@@ -152,42 +185,7 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
       newTasksGenerated: newTasksCount,
     });
   } catch (err) {
-    return res
-      .status(500)
-      .json({ error: "Erro ao executar a automação de robô." });
-  }
-});
-
-// 6. Alertas Globais (Para o Menu)
-router.get("/alerts", authMiddleware, async (req, res) => {
-  try {
-    const { companyId, role, userEmail } = req.query;
-    if (!companyId) return res.json({ total: 0 });
-
-    let clientIdFilter = undefined;
-    if (role === "CLIENT") {
-      const clientRecord = await prisma.client.findFirst({
-        where: { companyId, email: userEmail },
-      });
-      if (!clientRecord) return res.json({ total: 0 });
-      clientIdFilter = clientRecord.id;
-    }
-
-    const pendingBpo = await prisma.transaction.count({
-      where: { companyId, clientId: clientIdFilter, status: { not: "PAGO" } },
-    });
-    const overdueTasks = await prisma.task.count({
-      where: {
-        companyId,
-        clientId: clientIdFilter,
-        status: { not: "CONCLUIDO" },
-        dueDate: { lt: new Date() },
-      },
-    });
-
-    return res.json({ total: pendingBpo + overdueTasks });
-  } catch (err) {
-    return res.status(500).json({ error: "Erro ao buscar alertas globais." });
+    return res.status(500).json({ error: "Erro na automação." });
   }
 });
 
