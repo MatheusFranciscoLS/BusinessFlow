@@ -43,6 +43,7 @@ model Company {
   products     Product[]
   appointments Appointment[]
   tickets Ticket[]
+  documents Document[]
   
   createdAt    DateTime      @default(now())
 }
@@ -69,6 +70,7 @@ model Client {
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  documents Document[]
 }
 
 model Transaction {
@@ -162,5 +164,20 @@ model TicketMessage {
   ticketId    String
   ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
+  createdAt   DateTime @default(now())
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  name        String   // Nome do arquivo (Ex: Contrato Social Atualizado)
+  category    String   // Pasta/Categoria (Ex: Societário, Fiscal, Trabalhista, Alvarás)
+  fileUrl     String   // O caminho onde o PDF está guardado
+  
+  clientId    String   // De qual cliente é este documento
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  companyId   String   // Agência dona do documento
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
   createdAt   DateTime @default(now())
 }
