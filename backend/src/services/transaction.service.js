@@ -9,17 +9,15 @@ export async function createTransaction(companyId, data, fileUrl) {
   // 🔥 O MOTOR DE RECORRÊNCIA MÁGICO
   for (let i = 0; i < installments; i++) {
     const currentDate = new Date(baseDate);
-    currentDate.setMonth(currentDate.getMonth() + i); // Avança um mês a cada loop
+    currentDate.setMonth(currentDate.getMonth() + i);
 
     let title = data.title;
     if (installments > 1) {
-      title = `${data.title} (${i + 1}/${installments})`; // Ex: Mensalidade (1/12)
+      title = `${data.title} (${i + 1}/${installments})`;
     }
 
-    // A primeira parcela segue o status que o usuário escolheu. 
-    // As parcelas dos meses seguintes entram SEMPRE como PENDENTES!
     const isFirst = i === 0;
-    const currentStatus = isFirst ? (data.status || 'PAGO') : 'PENDENTE';
+    const currentStatus = isFirst ? data.status || "PAGO" : "PENDENTE";
 
     const t = await prisma.transaction.create({
       data: {
@@ -32,7 +30,7 @@ export async function createTransaction(companyId, data, fileUrl) {
         status: currentStatus,
         paymentMethod: data.paymentMethod || null,
         clientId: data.clientId || null,
-        fileUrl: isFirst ? fileUrl : null, // Só anexa o PDF na primeira parcela
+        fileUrl: isFirst ? fileUrl : null,
         companyId,
       },
     });
@@ -42,28 +40,40 @@ export async function createTransaction(companyId, data, fileUrl) {
   return transactions[0];
 }
 
-export async function getAllTransactions(companyId, month, year) {
+// 🔥 A FECHADURA DE SEGURANÇA MÁXIMA ENTRA AQUI
+export async function getAllTransactions(companyId, month, year, clientId) {
   const where = { companyId };
+
+  // Se o Controlador avisou que é um Cliente, o Prisma filtra na raiz!
+  if (clientId) {
+    where.clientId = clientId;
+  }
+
   if (month && year) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
     where.date = { gte: startDate, lte: endDate };
   }
-  return prisma.transaction.findMany({ 
-    where, 
-    include: { client: true }, 
-    orderBy: { date: "desc" } 
+
+  return prisma.transaction.findMany({
+    where,
+    include: { client: true },
+    orderBy: { date: "desc" },
   });
 }
 
 export async function getTransactionById(companyId, id) {
-  const transaction = await prisma.transaction.findFirst({ where: { id, companyId } });
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, companyId },
+  });
   if (!transaction) throw new Error("Transação não encontrada.");
   return transaction;
 }
 
 export async function updateTransaction(companyId, id, data, fileUrl) {
-  const transaction = await prisma.transaction.findFirst({ where: { id, companyId } });
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, companyId },
+  });
   if (!transaction) throw new Error("Transação não encontrada.");
 
   const updateData = {
@@ -87,7 +97,9 @@ export async function updateTransaction(companyId, id, data, fileUrl) {
 }
 
 export async function deleteTransaction(companyId, id) {
-  const transaction = await prisma.transaction.findFirst({ where: { id, companyId } });
+  const transaction = await prisma.transaction.findFirst({
+    where: { id, companyId },
+  });
   if (!transaction) throw new Error("Transação não encontrada.");
   return prisma.transaction.delete({ where: { id } });
 }
@@ -97,8 +109,8 @@ export async function updateOverdueTransactions() {
   today.setHours(0, 0, 0, 0);
 
   const overdue = await prisma.transaction.updateMany({
-    where: { status: 'PENDENTE', date: { lt: today } },
-    data: { status: 'ATRASADO' }
+    where: { status: "PENDENTE", date: { lt: today } },
+    data: { status: "ATRASADO" },
   });
   return overdue;
 }

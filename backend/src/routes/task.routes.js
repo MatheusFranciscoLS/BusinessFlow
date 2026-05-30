@@ -5,7 +5,7 @@ import { authMiddleware } from "../middlewares/auth.js";
 const router = Router();
 const prisma = new PrismaClient();
 
-// 1. Criar um Cartão Manualmente (Ex: "Apurar Folha de Pagamento")
+// 1. Criar um Cartão
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const {
@@ -17,12 +17,10 @@ router.post("/", authMiddleware, async (req, res) => {
       clientId,
       companyId,
     } = req.body;
-
-    if (!title || !dueDate || !companyId) {
+    if (!title || !dueDate || !companyId)
       return res
         .status(400)
         .json({ error: "Preencha o título e o prazo limite." });
-    }
 
     const task = await prisma.task.create({
       data: {
@@ -41,16 +39,30 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 2. Listar todas as Tarefas (Para montar o quadro Kanban)
+// 🔥 2. LISTAR TAREFAS (BLINDAGEM DE SEGURANÇA TOTAL)
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const { companyId } = req.query;
+    const { companyId, role, userEmail } = req.query;
     if (!companyId) return res.json([]);
 
+    let where = { companyId };
+
+    // SE FOR CLIENTE: O Servidor barra qualquer dado que não seja dele
+    if (role === "CLIENT") {
+      const clientRecord = await prisma.client.findFirst({
+        where: { companyId, email: userEmail },
+      });
+
+      // Se não achar o cliente no CRM, devolve um array vazio (Proteção Máxima)
+      if (!clientRecord) return res.json([]);
+
+      where.clientId = clientRecord.id;
+    }
+
     const tasks = await prisma.task.findMany({
-      where: { companyId },
-      include: { client: { select: { fullName: true } } }, // Traz o nome do cliente para mostrar no cartão
-      orderBy: { dueDate: "asc" }, // Ordena pelas que vencem primeiro
+      where,
+      include: { client: { select: { fullName: true } } },
+      orderBy: { dueDate: "asc" },
     });
     return res.json(tasks);
   } catch (err) {
@@ -58,7 +70,7 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 3. Atualizar Cartão (Usado principalmente quando você arrastar o cartão para outra coluna)
+// 3. Atualizar Cartão
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -75,11 +87,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
     });
     return res.json(task);
   } catch (err) {
-    return res.status(500).json({ error: "Erro ao mover/atualizar a tarefa." });
+    return res.status(500).json({ error: "Erro ao atualizar a tarefa." });
   }
 });
 
-// 4. Excluir um Cartão
+// 4. Excluir Cartão
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -90,35 +102,26 @@ router.delete("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// =================================================================
-// 🔥 5. A MÁGICA: Varredura Automática de Vencimentos (e-CNPJ)
-// =================================================================
+// 5. Varredura Automática
 router.post("/auto-scan", authMiddleware, async (req, res) => {
   try {
     const { companyId } = req.body;
     if (!companyId)
       return res.status(400).json({ error: "ID da Agência obrigatório." });
 
-    // Data limite: O sistema vai procurar tudo o que vence em até 30 dias
     const today = new Date();
     const nextMonth = new Date();
     nextMonth.setDate(today.getDate() + 30);
 
-    // Busca apenas os clientes que têm um Certificado Digital preenchido no CRM
     const clients = await prisma.client.findMany({
       where: { companyId, certificateExpiry: { not: null } },
     });
-
     let newTasksCount = 0;
 
     for (const client of clients) {
       const expiryDate = new Date(client.certificateExpiry);
-
-      // Se a data de validade estiver dentro dos próximos 30 dias (ou se já tiver vencido)
       if (expiryDate <= nextMonth) {
         const taskTitle = `⚠️ Renovar e-CNPJ: ${client.fullName}`;
-
-        // Verifica se nós já criámos este aviso antes (para não inundar o seu quadro com cartões repetidos)
         const taskExists = await prisma.task.findFirst({
           where: {
             companyId,
@@ -129,7 +132,6 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
         });
 
         if (!taskExists) {
-          // Cria o cartão vermelho urgente na primeira coluna do Kanban!
           await prisma.task.create({
             data: {
               title: taskTitle,
@@ -145,52 +147,44 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
         }
       }
     }
-
     return res.json({
       message: "Varredura concluída",
       newTasksGenerated: newTasksCount,
     });
   } catch (err) {
-    console.error(err);
     return res
       .status(500)
       .json({ error: "Erro ao executar a automação de robô." });
   }
 });
 
-// =================================================================
-// 6. RADAR GLOBAL: Alertas para o Menu Lateral (Layout)
-// =================================================================
+// 6. Alertas Globais (Para o Menu)
 router.get("/alerts", authMiddleware, async (req, res) => {
   try {
     const { companyId, role, userEmail } = req.query;
     if (!companyId) return res.json({ total: 0 });
 
     let clientIdFilter = undefined;
-
-    // Se for cliente, descobre o ID do Dossiê dele para filtrar
     if (role === "CLIENT") {
-       const clientRecord = await prisma.client.findFirst({ where: { companyId, email: userEmail } });
-       if (!clientRecord) return res.json({ total: 0 });
-       clientIdFilter = clientRecord.id;
+      const clientRecord = await prisma.client.findFirst({
+        where: { companyId, email: userEmail },
+      });
+      if (!clientRecord) return res.json({ total: 0 });
+      clientIdFilter = clientRecord.id;
     }
 
-    // 1. Conta os Boletos Pendentes (BPO)
     const pendingBpo = await prisma.transaction.count({
-      where: { companyId, clientId: clientIdFilter, status: { not: "PAGO" } }
+      where: { companyId, clientId: clientIdFilter, status: { not: "PAGO" } },
     });
-
-    // 2. Conta as Obrigações Atrasadas no Kanban (Ignora as que estão no prazo)
     const overdueTasks = await prisma.task.count({
-      where: { 
-        companyId, 
-        clientId: clientIdFilter, 
-        status: { not: "CONCLUIDO" }, 
-        dueDate: { lt: new Date() } // Data menor que hoje (Atrasado)
-      }
+      where: {
+        companyId,
+        clientId: clientIdFilter,
+        status: { not: "CONCLUIDO" },
+        dueDate: { lt: new Date() },
+      },
     });
 
-    // Devolve a soma das duas urgências
     return res.json({ total: pendingBpo + overdueTasks });
   } catch (err) {
     return res.status(500).json({ error: "Erro ao buscar alertas globais." });

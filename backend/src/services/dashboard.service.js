@@ -56,6 +56,7 @@ function getDateFilters(period) {
     prevStartDate = startDate;
     prevEndDate = startDate;
   } else {
+    // Mês Padrão
     startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     endDate = new Date(
       now.getFullYear(),
@@ -80,58 +81,71 @@ function getDateFilters(period) {
   return { startDate, endDate, prevStartDate, prevEndDate };
 }
 
-export async function getSummary(companyId, period = "mes") {
+// 🔥 Recebe o clientId para aplicar a blindagem
+export async function getSummary(companyId, period = "mes", clientId = null) {
   const { startDate, endDate, prevStartDate, prevEndDate } =
     getDateFilters(period);
 
-  // 🔥 O DASHBOARD AGORA IGNORA OS BOLETOS PENDENTES NO CAIXA!
+  const currentWhere = {
+    companyId,
+    date: { gte: startDate, lte: endDate },
+    status: "PAGO",
+  };
+  const prevWhere = {
+    companyId,
+    date: { gte: prevStartDate, lte: prevEndDate },
+    status: "PAGO",
+  };
+
+  // 🔥 Se for cliente, trava a query apenas nos dados dele
+  if (clientId) {
+    currentWhere.clientId = clientId;
+    prevWhere.clientId = clientId;
+  }
+
   const currentTransactions = await prisma.transaction.findMany({
-    where: {
-      companyId,
-      date: { gte: startDate, lte: endDate },
-      status: "PAGO",
-    },
+    where: currentWhere,
   });
 
   const entradas = currentTransactions
-    .filter((t) => t.type === "entrada")
-    .reduce((acc, t) => acc + t.amount, 0);
+    .filter((t) => t.type === "entrada" || t.type === "income")
+    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
   const saidas = currentTransactions
-    .filter((t) => t.type === "saida")
-    .reduce((acc, t) => acc + t.amount, 0);
+    .filter((t) => t.type === "saida" || t.type === "outcome")
+    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
   const saldo = entradas - saidas;
 
   const prevTransactions = await prisma.transaction.findMany({
-    where: {
-      companyId,
-      date: { gte: prevStartDate, lte: prevEndDate },
-      status: "PAGO",
-    },
+    where: prevWhere,
   });
 
   const prevEntradas = prevTransactions
-    .filter((t) => t.type === "entrada")
-    .reduce((acc, t) => acc + t.amount, 0);
+    .filter((t) => t.type === "entrada" || t.type === "income")
+    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
   const prevSaidas = prevTransactions
-    .filter((t) => t.type === "saida")
-    .reduce((acc, t) => acc + t.amount, 0);
+    .filter((t) => t.type === "saida" || t.type === "outcome")
+    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
 
   const growthEntradas =
     prevEntradas === 0 ? 100 : ((entradas - prevEntradas) / prevEntradas) * 100;
   const growthSaidas =
     prevSaidas === 0 ? 100 : ((saidas - prevSaidas) / prevSaidas) * 100;
 
-  const inadimplentes = await prisma.client.findMany({
-    where: { companyId, tag: "INADIMPLENTE" },
-    select: { fullName: true, phone: true },
-    take: 4,
-  });
+  let inadimplentes = [];
+  // 🔥 O Cliente não pode ver a lista de clientes com dívidas, só o escritório!
+  if (!clientId) {
+    inadimplentes = await prisma.client.findMany({
+      where: { companyId, status: "INADIMPLENTE" }, // BUG CORRIGIDO (Era "tag")
+      select: { fullName: true, phone: true },
+      take: 4,
+    });
+  }
 
   const incomeByCategory = currentTransactions
-    .filter((t) => t.type === "entrada")
+    .filter((t) => t.type === "entrada" || t.type === "income")
     .reduce((acc, t) => {
       const cat = t.category || "Geral";
-      acc[cat] = (acc[cat] || 0) + t.amount;
+      acc[cat] = (acc[cat] || 0) + (t.amount || t.price || 0);
       return acc;
     }, {});
 
@@ -150,20 +164,25 @@ export async function getSummary(companyId, period = "mes") {
   };
 }
 
-export async function monthly(companyId, period = "mes") {
+// 🔥 Recebe clientId e blinda
+export async function monthly(companyId, period = "mes", clientId = null) {
   const { startDate, endDate } = getDateFilters(period);
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      companyId,
-      date: { gte: startDate, lte: endDate },
-      status: "PAGO",
-    },
-  });
+  const where = {
+    companyId,
+    date: { gte: startDate, lte: endDate },
+    status: "PAGO",
+  };
+
+  if (clientId) where.clientId = clientId;
+
+  const transactions = await prisma.transaction.findMany({ where });
+
   const data = Array.from({ length: 12 }, () => ({ entradas: 0, saidas: 0 }));
   transactions.forEach((t) => {
     const m = t.date.getMonth();
-    if (t.type === "entrada") data[m].entradas += t.amount;
-    else data[m].saidas += t.amount;
+    if (t.type === "entrada" || t.type === "income")
+      data[m].entradas += t.amount || t.price || 0;
+    else data[m].saidas += t.amount || t.price || 0;
   });
   return data;
 }
@@ -173,7 +192,7 @@ export async function topClients(companyId, period = "mes") {
   const transactions = await prisma.transaction.findMany({
     where: {
       companyId,
-      type: "entrada",
+      type: { in: ["entrada", "income"] },
       status: "PAGO",
       clientId: { not: null },
       date: { gte: startDate, lte: endDate },
@@ -184,7 +203,7 @@ export async function topClients(companyId, period = "mes") {
     if (!t.client) return acc;
     acc[t.clientId] = {
       clientName: t.client.fullName,
-      total: (acc[t.clientId]?.total || 0) + t.amount,
+      total: (acc[t.clientId]?.total || 0) + (t.amount || t.price || 0),
     };
     return acc;
   }, {});
@@ -193,11 +212,14 @@ export async function topClients(companyId, period = "mes") {
     .slice(0, 5);
 }
 
-// O campo Recentes continua a mostrar tudo (mesmo os pendentes) para você saber o que está a acontecer
-export async function recent(companyId, period = "mes") {
+export async function recent(companyId, period = "mes", clientId = null) {
   const { startDate, endDate } = getDateFilters(period);
+  const where = { companyId, date: { gte: startDate, lte: endDate } };
+
+  if (clientId) where.clientId = clientId;
+
   return prisma.transaction.findMany({
-    where: { companyId, date: { gte: startDate, lte: endDate } },
+    where,
     orderBy: { date: "desc" },
     take: 5,
   });
@@ -206,6 +228,7 @@ export async function recent(companyId, period = "mes") {
 export async function byCategory(companyId, period) {
   return [];
 }
+
 export async function daily(companyId, period) {
   return [];
 }

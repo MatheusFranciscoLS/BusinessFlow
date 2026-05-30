@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { authMiddleware } from "../middlewares/auth.js";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -128,34 +129,23 @@ router.post("/reset-password", async (req, res) => {
 });
 
 // ---------------------------------------------------------
-// 4. GESTÃO DE ACESSOS DO PORTAL DO CLIENTE (Mantido para o Profile)
+// 4. GESTÃO DE ACESSOS DO PORTAL DO CLIENTE
 // ---------------------------------------------------------
-router.post("/client-account", async (req, res) => {
+router.post("/client-account", authMiddleware, async (req, res) => { // 🔥 TRAVADO
   try {
     const { name, email, password, companyId } = req.body;
     const userExists = await prisma.user.findUnique({ where: { email } });
-    if (userExists)
-      return res
-        .status(400)
-        .json({ error: "E-mail já tem acesso ao sistema." });
+    if (userExists) return res.status(400).json({ error: "E-mail já tem acesso." });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const clientUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: "CLIENT",
-        companyAccessId: companyId,
-      },
+      data: { name, email, password: hashedPassword, role: "CLIENT", companyAccessId: companyId },
     });
     return res.status(201).json(clientUser);
-  } catch (error) {
-    return res.status(500).json({ error: "Erro ao gerar credenciais." });
-  }
+  } catch (error) { return res.status(500).json({ error: "Erro." }); }
 });
 
-router.get("/client-account/:companyId", async (req, res) => {
+router.get("/client-account/:companyId", authMiddleware, async (req, res) => { // 🔥 TRAVADO
   try {
     const { companyId } = req.params;
     const clients = await prisma.user.findMany({
@@ -163,18 +153,14 @@ router.get("/client-account/:companyId", async (req, res) => {
       select: { id: true, name: true, email: true },
     });
     return res.json(clients);
-  } catch (error) {
-    return res.status(500).json({ error: "Erro ao buscar acessos." });
-  }
+  } catch (error) { return res.status(500).json({ error: "Erro." }); }
 });
 
-router.delete("/client-account/:userId", async (req, res) => {
+router.delete("/client-account/:userId", authMiddleware, async (req, res) => { // 🔥 TRAVADO
   try {
     await prisma.user.delete({ where: { id: req.params.userId } });
     return res.json({ message: "Acesso revogado." });
-  } catch (error) {
-    return res.status(500).json({ error: "Erro ao revogar acesso." });
-  }
+  } catch (error) { return res.status(500).json({ error: "Erro." }); }
 });
 
 export default router;

@@ -3,55 +3,51 @@ const prisma = new PrismaClient();
 
 export async function companyMiddleware(req, res, next) {
   try {
-    // 1. Descobrimos quem é o utilizador que está a tentar aceder
     const userId = req.userId || (req.user && req.user.id);
-    if (!userId) {
+    if (!userId)
       return res.status(401).json({ error: "Utilizador não autenticado." });
-    }
 
-    const currentUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (!currentUser) {
+    // 🔥 OTIMIZAÇÃO DE PERFORMANCE MÁXIMA: Traz apenas o necessário (sem carregar senhas e dados pesados)
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, companyAccessId: true },
+    });
+
+    if (!currentUser)
       return res
         .status(401)
         .json({ error: "Utilizador não encontrado no banco." });
-    }
 
-    // 🔥 2. A MÁGICA DA SEGURANÇA DE NÍVEL ENTERPRISE
+    // 🔥 SEGURANÇA TOTAL PARA O CLIENTE
     if (currentUser.role === "CLIENT") {
-      // Se for um CLIENTE, ignoramos o que ele pediu e FORÇAMOS a empresa dele!
-      if (!currentUser.companyAccessId) {
+      if (!currentUser.companyAccessId)
         return res
           .status(403)
           .json({ error: "Cliente sem empresa vinculada." });
-      }
       req.companyId = currentUser.companyAccessId;
       return next();
     }
 
-    // 3. Se for o ADMIN (Você), lemos a empresa que você escolheu no Menu Lateral
+    // 🔥 PARA O ESCRITÓRIO: Verifica o menu lateral
     const companyId = req.headers["x-company-id"];
-
-    if (!companyId) {
+    if (!companyId)
       return res
         .status(400)
-        .json({ error: "ID da empresa não fornecido (x-company-id)." });
-    }
+        .json({ error: "ID da empresa não fornecido no cabeçalho." });
 
-    // Verifica se a empresa realmente pertence ao escritório do ADMIN
-    const company = await prisma.company.findFirst({
-      where: { id: companyId, userId: currentUser.id },
+    // 🔥 OTIMIZAÇÃO: "count" não descarrega a empresa para a memória, apenas responde com um número (1 ou 0)
+    const companyExists = await prisma.company.count({
+      where: { id: companyId, userId: userId },
     });
 
-    if (!company) {
+    if (companyExists === 0)
       return res.status(403).json({ error: "Acesso negado a esta empresa." });
-    }
 
-    // Tudo certo! Passa o ID para a frente
     req.companyId = companyId;
     return next();
   } catch (error) {
     return res
       .status(500)
-      .json({ error: "Erro interno ao validar a empresa." });
+      .json({ error: "Erro crítico na validação do acesso." });
   }
 }
