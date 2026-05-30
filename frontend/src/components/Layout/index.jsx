@@ -23,17 +23,21 @@ export default function Layout() {
   const closeMenu = () => setIsOpen(false);
 
   const isClient = user?.role === 'CLIENT';
-  
-  // 🔥 O SEGREDO ESTÁ AQUI: Cliente usa o Acesso dele, o Gestor usa a Empresa selecionada
   const activeCompanyId = isClient ? user?.companyAccessId : selectedCompany?.id;
 
-  // Envia o e-mail na pesquisa para o Back-end saber exatamente quem é o dono das notificações
+  // 🔥 1. RADAR DO HELPDESK
   const badgeQuery = user && activeCompanyId 
     ? `/tickets/unread-count?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
     : null;
-    
   const { data: unreadData } = useSWR(badgeQuery, fetcher, { refreshInterval: 15000 });
   const unreadCount = unreadData?.count || 0;
+
+  // 🔥 2. RADAR DA AGENDA / BPO FINANCEIRO (O que faltava!)
+  const agendaQuery = user && activeCompanyId 
+    ? `/tasks/alerts?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
+    : null;
+  const { data: agendaAlerts } = useSWR(agendaQuery, fetcher, { refreshInterval: 15000 });
+  const agendaCount = agendaAlerts?.total || 0;
 
   return (
     <Container>
@@ -50,22 +54,15 @@ export default function Layout() {
 
       <SidebarContainer $isOpen={isOpen}>
         <div>
-          <Logo>
-            Business<span>Flow</span>
-          </Logo>
+          <Logo>Business<span>Flow</span></Logo>
           
           {!isClient && companies?.length > 0 && (
             <div style={{ marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
                 <Building2 size={14} /> Empresa Ativa
               </div>
-              <CompanySelector 
-                value={selectedCompany?.id || ''} 
-                onChange={(e) => changeCompany(e.target.value)}
-              >
-                {companies.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+              <CompanySelector value={selectedCompany?.id || ''} onChange={(e) => changeCompany(e.target.value)}>
+                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </CompanySelector>
             </div>
           )}
@@ -103,7 +100,6 @@ export default function Layout() {
               <PieChart size={20} /> Relatórios DRE
             </StyledNavLink>
 
-            {/* 🔥 MENU COM NOTIFICAÇÃO DINÂMICA */}
             <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -117,8 +113,18 @@ export default function Layout() {
               </div>
             </StyledNavLink>
 
+            {/* 🔥 O BADGE DA AGENDA ENTRA AQUI 🔥 */}
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
-              <Calendar size={20} /> Agenda e Prazos
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar size={20} /> Agenda e Prazos
+                </div>
+                {agendaCount > 0 && (
+                  <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>
+                    {agendaCount}
+                  </span>
+                )}
+              </div>
             </StyledNavLink>
 
             <StyledNavLink to="/app/financeiro" onClick={closeMenu}>
@@ -139,15 +145,7 @@ export default function Layout() {
       </SidebarContainer>
 
       <MainContent>
-        <Suspense 
-          fallback={
-            <div style={{ width: '100%', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ width: '200px', height: '32px', background: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s infinite ease-in-out' }} />
-              <div style={{ width: '100%', height: '120px', background: '#e2e8f0', borderRadius: '12px', animation: 'pulse 1.5s infinite ease-in-out' }} />
-              <style>{`@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }`}</style>
-            </div>
-          }
-        >
+        <Suspense fallback={<div style={{ padding: 20 }}>Carregando...</div>}>
           <Outlet />
         </Suspense>
       </MainContent>

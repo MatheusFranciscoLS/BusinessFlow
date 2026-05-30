@@ -158,4 +158,43 @@ router.post("/auto-scan", authMiddleware, async (req, res) => {
   }
 });
 
+// =================================================================
+// 6. RADAR GLOBAL: Alertas para o Menu Lateral (Layout)
+// =================================================================
+router.get("/alerts", authMiddleware, async (req, res) => {
+  try {
+    const { companyId, role, userEmail } = req.query;
+    if (!companyId) return res.json({ total: 0 });
+
+    let clientIdFilter = undefined;
+
+    // Se for cliente, descobre o ID do Dossiê dele para filtrar
+    if (role === "CLIENT") {
+       const clientRecord = await prisma.client.findFirst({ where: { companyId, email: userEmail } });
+       if (!clientRecord) return res.json({ total: 0 });
+       clientIdFilter = clientRecord.id;
+    }
+
+    // 1. Conta os Boletos Pendentes (BPO)
+    const pendingBpo = await prisma.transaction.count({
+      where: { companyId, clientId: clientIdFilter, status: { not: "PAGO" } }
+    });
+
+    // 2. Conta as Obrigações Atrasadas no Kanban (Ignora as que estão no prazo)
+    const overdueTasks = await prisma.task.count({
+      where: { 
+        companyId, 
+        clientId: clientIdFilter, 
+        status: { not: "CONCLUIDO" }, 
+        dueDate: { lt: new Date() } // Data menor que hoje (Atrasado)
+      }
+    });
+
+    // Devolve a soma das duas urgências
+    return res.json({ total: pendingBpo + overdueTasks });
+  } catch (err) {
+    return res.status(500).json({ error: "Erro ao buscar alertas globais." });
+  }
+});
+
 export default router;
