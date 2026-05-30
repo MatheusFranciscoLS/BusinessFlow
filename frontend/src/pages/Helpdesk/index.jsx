@@ -3,10 +3,13 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+
+// 🔥 LIMPEZA: CheckCircle removido. ShieldAlert agora será usado para a tela de bloqueio!
 import { 
-  LifeBuoy, Plus, MessageSquare, Clock, CheckCircle, 
-  AlertCircle, Send, User, Building2, X
+  LifeBuoy, Plus, MessageSquare, Clock, 
+  AlertCircle, Send, User, Building2, X, ShieldAlert 
 } from 'lucide-react';
+
 import {
   Container, Header, ActionButton, Layout, Sidebar, 
   TicketCard, Badge, ChatArea, MessageBubble, 
@@ -20,15 +23,11 @@ export default function Helpdesk() {
   const isClient = user?.role === 'CLIENT';
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
 
-  // 🔥 URL Segura: Avisa o Back-end de quem está pedindo!
   const queryParams = queryCompany 
     ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
     : null;
 
-  // Busca os clientes para o modal de novo chamado (apenas se for Gestor)
   const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
-  
-  // O SWR busca os tickets de forma contínua para atualizar o chat
   const { data: tickets, mutate } = useSWR(queryParams ? `/tickets${queryParams}` : null, fetcher, { refreshInterval: 5000 });
 
   const [selectedTicketId, setSelectedTicketId] = useState(null);
@@ -38,18 +37,21 @@ export default function Helpdesk() {
 
   const [form, setForm] = useState({ subject: '', department: 'Fiscal e Tributário', description: '', priority: 'NORMAL', clientId: '' });
 
-  // Pega o chamado selecionado
+  // Dossiê do cliente logado (Para a trava de segurança)
+  const myClientRecord = useMemo(() => {
+    if (!isClient || !clients) return null;
+    return clients.find(c => c.email === user.email);
+  }, [isClient, clients, user]);
+
   const selectedTicket = useMemo(() => {
     if (!tickets || !selectedTicketId) return null;
     return tickets.find(t => t.id === selectedTicketId);
   }, [tickets, selectedTicketId]);
 
-  // Rola o chat para o fim quando chega mensagem nova
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedTicket?.messages]);
 
-  // Marca como lido automaticamente ao clicar no chamado
   useEffect(() => {
     if (selectedTicket) {
       const isUnread = isClient ? selectedTicket.hasUnreadClient : selectedTicket.hasUnreadAdmin;
@@ -69,15 +71,12 @@ export default function Helpdesk() {
       const payload = {
         ...form,
         companyId: queryCompany,
-        clientId: isClient ? (tickets?.[0]?.clientId || "") : form.clientId, // Se for cliente, usa o ID que já veio nos dados
+        clientId: isClient ? (tickets?.[0]?.clientId || "") : form.clientId, 
         role: user.role
       };
 
-      // Tenta cruzar o cliente se for a primeira vez
       if (isClient && !payload.clientId) {
-         const clientRes = await api.get(`/clients?companyId=${queryCompany}`);
-         const myClient = clientRes.data.find(c => c.email === user.email);
-         if(myClient) payload.clientId = myClient.id;
+         if(myClientRecord) payload.clientId = myClientRecord.id;
       }
 
       await api.post('/tickets', payload);
@@ -110,6 +109,17 @@ export default function Helpdesk() {
       toast.success("Status atualizado!");
       mutate();
     } catch (err) { toast.error("Erro ao atualizar status."); }
+  }
+
+  // 🔥 PROTEÇÃO VISUAL: Bloqueia a tela se o dossiê ainda não existir no CRM do Escritório!
+  if (isClient && clients && !myClientRecord && !tickets) {
+    return (
+      <Container style={{ textAlign: 'center', padding: 60 }}>
+        <ShieldAlert size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
+        <h2>Acesso Pendente</h2>
+        <p>A sua conta está a ser configurada. Fale com o seu contador.</p>
+      </Container>
+    );
   }
 
   return (
@@ -185,15 +195,14 @@ export default function Helpdesk() {
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={14} /> Departamento: {selectedTicket.department}</span>
                     </div>
                   </div>
-                  {
-                    <button onClick={() => setSelectedTicketId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a0aec0' }}><X size={20} /></button>
-                  }
+                  {/* O "X" agora está disponível tanto para o Cliente quanto para o Gestor fecharem a conversa no mobile/tablet! */}
+                  <button onClick={() => setSelectedTicketId(null)} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', cursor: 'pointer', color: '#a0aec0' }}>
+                    <X size={20} />
+                  </button>
                 </div>
 
                 {/* Área de rolagem do chat */}
                 <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, background: '#fcfcfc' }}>
-                  
-                  {/* Primeira mensagem (A descrição do ticket) */}
                   <MessageBubble $isMine={isClient}>
                     <div style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4, opacity: 0.8 }}>
                       {isClient ? 'Você' : selectedTicket.client?.fullName}
@@ -201,7 +210,6 @@ export default function Helpdesk() {
                     {selectedTicket.description}
                   </MessageBubble>
 
-                  {/* Mensagens das respostas */}
                   {selectedTicket.messages.map(msg => {
                     const isMine = msg.senderRole === user.role;
                     return (
@@ -216,7 +224,7 @@ export default function Helpdesk() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Área de envio de mensagem e alterar status */}
+                {/* Área de envio de mensagem */}
                 <div style={{ padding: '20px', borderTop: '1px solid #edf2f7', background: 'white', display: 'flex', gap: 16, alignItems: 'center' }}>
                   
                   {!isClient && (
