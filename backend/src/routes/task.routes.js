@@ -55,7 +55,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { role, userEmail } = req.query; // Agora estes dados são infalsificáveis
+    const { role, userEmail } = req.query;
     let where = { companyId: req.companyId };
 
     if (role === "CLIENT") {
@@ -77,7 +77,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 🔥 O FIM DOS ALERTAS FANTASMAS (Notificações Corrigidas)
+// 🔥 O FIM DOS ALERTAS FANTASMAS E CONFUSOS
 router.get("/alerts", async (req, res) => {
   try {
     const { role, userEmail } = req.query;
@@ -87,10 +87,11 @@ router.get("/alerts", async (req, res) => {
       const clientRecord = await prisma.client.findFirst({
         where: { companyId: req.companyId, email: userEmail },
       });
-      if (!clientRecord) return res.json({ total: 0 }); // Devolve 0 notificações para clientes sem dossiê
+      if (!clientRecord) return res.json({ total: 0 });
       clientIdFilter = clientRecord.id;
     }
 
+    // Conta tudo o que NÃO ESTÁ PAGO (Contas a Pagar + Receber)
     const pendingBpo = await prisma.transaction.count({
       where: {
         companyId: req.companyId,
@@ -98,16 +99,18 @@ router.get("/alerts", async (req, res) => {
         status: { not: "PAGO" },
       },
     });
-    const overdueTasks = await prisma.task.count({
+
+    // Conta tudo o que NÃO ESTÁ CONCLUÍDO (Pendentes, que já inclui as Atrasadas)
+    const pendingTasks = await prisma.task.count({
       where: {
         companyId: req.companyId,
         clientId: clientIdFilter,
         status: { not: "CONCLUIDO" },
-        dueDate: { lt: new Date() },
       },
     });
 
-    return res.json({ total: pendingBpo + overdueTasks });
+    // A bolinha agora refletirá a soma exata dos Cards principais!
+    return res.json({ total: pendingBpo + pendingTasks });
   } catch (err) {
     return res.status(500).json({ error: "Erro ao buscar alertas." });
   }

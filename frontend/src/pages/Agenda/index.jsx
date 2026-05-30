@@ -1,14 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Calendar, Plus, Clock, AlertTriangle, Zap, Building2, 
-  CheckCircle, ListTodo, ShieldAlert, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt
+  CheckCircle, ListTodo, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt
 } from 'lucide-react';
 
-// 🔥 Importando os estilos centralizados
 import {
   Container, Header, ActionGroup, Button, CardsGrid, StatCard,
   TabsContainer, TabButton, KanbanBoard, Column, ColumnHeader, Card,
@@ -30,35 +29,17 @@ export default function Agenda() {
   
   const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   
-  // 🔥 SEGURANÇA TOTAL: Passa as credenciais de auditoria na URL para as 2 APIs
-  const queryParams = queryCompany 
-    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
-    : null;
+  // 🔥 SEGURANÇA TOTAL: O backend extrai a identidade do token!
+  const queryParams = queryCompany ? `?companyId=${queryCompany}` : null;
 
   const { data: tasks, mutate: mutateTasks } = useSWR(queryParams ? `/tasks${queryParams}` : null, fetcher);
   const { data: allTransactions, mutate: mutateTrans } = useSWR(queryParams ? `/transactions${queryParams}` : null, fetcher);
   
-  const myClientRecord = useMemo(() => {
-    if (!isClient || !clients) return null;
-    return clients.find(c => c.email === user.email);
-  }, [isClient, clients, user]);
-
-  // A filtragem visual fica simples, pois o backend já bloqueou dados alheios
-  const visibleTasks = useMemo(() => {
-    if (!tasks) return [];
-    if (isClient && !myClientRecord) return []; 
-    return isClient ? tasks.filter(t => t.clientId === myClientRecord.id) : tasks;
-  }, [tasks, isClient, myClientRecord]);
-
-  const pendingTransactions = useMemo(() => {
-    if (!allTransactions) return [];
-    let pendings = allTransactions.filter(t => t.status !== 'PAGO');
-    if (isClient) {
-      if (!myClientRecord) return []; 
-      pendings = pendings.filter(t => t.clientId === myClientRecord.id);
-    }
-    return pendings.sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [allTransactions, isClient, myClientRecord]);
+  // 🔥 FIM DA CEGUEIRA: O Backend já nos devolve os dados exatos de quem está logado. É só renderizar!
+  const visibleTasks = tasks || [];
+  const pendingTransactions = (allTransactions || [])
+    .filter(t => t.status !== 'PAGO')
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const [activeTab, setActiveTab] = useState('KANBAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -142,16 +123,6 @@ export default function Agenda() {
   const getPriorityColor = (prio) => {
     switch(prio) { case 'URGENTE': return '#e53e3e'; case 'ALTA': return '#ed8936'; case 'NORMAL': return '#3182ce'; default: return '#a0aec0'; }
   };
-
-  if (isClient && clients && !myClientRecord) {
-    return (
-      <Container style={{ textAlign: 'center', padding: 60 }}>
-        <ShieldAlert size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
-        <h2>Acesso Pendente</h2>
-        <p>O seu e-mail não foi encontrado no dossiê. Fale com o seu contador.</p>
-      </Container>
-    );
-  }
 
   const pendingTasksCount = visibleTasks.filter(t => t.status !== 'CONCLUIDO').length;
   const overdueTasksCount = visibleTasks.filter(t => new Date(t.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && t.status !== 'CONCLUIDO').length;
