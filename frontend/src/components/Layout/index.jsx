@@ -3,10 +3,13 @@ import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; 
 import api from '../../services/api'; 
 import useSWR from 'swr';
+
+// 🔥 TODOS OS ÍCONES GARANTIDOS AQUI
 import { 
   LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X, 
   Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock
 } from 'lucide-react';
+
 import { 
   Container, SidebarContainer, MainContent, Logo, NavMenu, 
   StyledNavLink, LogoutButton, MobileHeader, HamburgerButton, Overlay,
@@ -25,14 +28,13 @@ export default function Layout() {
   const isClient = user?.role === 'CLIENT';
   const activeCompanyId = isClient ? user?.companyAccessId : selectedCompany?.id;
 
-  // 🔥 1. RADAR DO HELPDESK
+  // Consultas de Notificações (SWR)
   const badgeQuery = user && activeCompanyId 
     ? `/tickets/unread-count?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
     : null;
   const { data: unreadData } = useSWR(badgeQuery, fetcher, { refreshInterval: 15000 });
-  const unreadCount = unreadData?.count || 0;
+  const helpdeskCount = unreadData?.count || 0;
 
-  // 🔥 2. RADAR DA AGENDA / BPO FINANCEIRO (O que faltava!)
   const agendaQuery = user && activeCompanyId 
     ? `/tasks/alerts?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
     : null;
@@ -42,12 +44,8 @@ export default function Layout() {
   return (
     <Container>
       <MobileHeader>
-        <Logo style={{ fontSize: 20, margin: 0 }}>
-          Business<span>Flow</span>
-        </Logo>
-        <HamburgerButton onClick={toggleMenu}>
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </HamburgerButton>
+        <Logo style={{ fontSize: 20, margin: 0 }}>Business<span>Flow</span></Logo>
+        <HamburgerButton onClick={toggleMenu}>{isOpen ? <X size={24} /> : <Menu size={24} />}</HamburgerButton>
       </MobileHeader>
 
       {isOpen && <Overlay onClick={closeMenu} />}
@@ -88,7 +86,7 @@ export default function Layout() {
             
             {!isClient && (
               <StyledNavLink to="/app/clientes" onClick={closeMenu}>
-                <Users size={20} /> Clientes
+                <Users size={20} /> Clientes (CRM)
               </StyledNavLink>
             )}
 
@@ -102,28 +100,15 @@ export default function Layout() {
 
             <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <LifeBuoy size={20} /> Atendimento
-                </div>
-                {unreadCount > 0 && (
-                  <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>
-                    {unreadCount}
-                  </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><LifeBuoy size={20} /> Atendimento</div>
+                {helpdeskCount > 0 && <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>{helpdeskCount}</span>}
               </div>
             </StyledNavLink>
 
-            {/* 🔥 O BADGE DA AGENDA ENTRA AQUI 🔥 */}
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
-               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={20} /> Agenda e Prazos
-                </div>
-                {agendaCount > 0 && (
-                  <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>
-                    {agendaCount}
-                  </span>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={20} /> Agenda e Prazos</div>
+                {agendaCount > 0 && <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>{agendaCount}</span>}
               </div>
             </StyledNavLink>
 
@@ -145,7 +130,9 @@ export default function Layout() {
       </SidebarContainer>
 
       <MainContent>
-        <Suspense fallback={<div style={{ padding: 20 }}>Carregando...</div>}>
+        <Suspense fallback={
+          <div style={{ padding: 40, color: '#a0aec0', display: 'flex', justifyContent: 'center' }}>A carregar módulo...</div>
+        }>
           <Outlet />
         </Suspense>
       </MainContent>

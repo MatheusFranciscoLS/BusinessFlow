@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import api from '../../services/api'; // 🔥 A API ESTÁ LIGADA!
 import { 
   Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
 } from './styles';
@@ -11,43 +12,47 @@ export default function ForgotPassword() {
 
   async function handleRecover(e) {
     e.preventDefault();
-    if (!email) return toast.error("Digite seu e-mail");
+    if (!email) return toast.error("Digite o seu e-mail cadastrado.");
 
     setLoading(true);
-    // Simulação de envio (No futuro você conecta na API)
-    setTimeout(() => {
-      toast.success("Link de recuperação enviado para seu e-mail!");
+    try {
+      // 🔥 A MÁGICA: Conectando com a rota real de esquecimento de senha!
+      await api.post('/auth/forgot-password', { email });
+      toast.success("Se o e-mail existir, receberá um link de recuperação!");
+      setEmail('');
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Ocorreu uma falha ao solicitar a recuperação.");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   }
 
   return (
     <Container>
       <LeftPanel>
         <h1>Recuperação de Conta</h1>
-        <p>Não se preocupe, vamos ajudar você a recuperar seu acesso.</p>
+        <p>Não se preocupe, o sistema garante a integridade dos seus dados. Vamos ajudar a recuperar o seu acesso.</p>
       </LeftPanel>
 
       <RightPanel>
         <FormContainer>
-          <h2>Esqueceu a senha?</h2>
-          <p>Digite seu e-mail para receber as instruções.</p>
+          <h2>Esqueceu a sua senha?</h2>
+          <p>Digite o seu e-mail para receber as instruções seguras.</p>
 
           <Form onSubmit={handleRecover}>
             <InputGroup>
               <label>E-mail cadastrado</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" autoFocus />
             </InputGroup>
 
             <Button type="submit" disabled={loading}>
-              {loading ? 'Enviando...' : 'Enviar Link'}
+              {loading ? 'A processar solicitação...' : 'Enviar Link de Recuperação'}
             </Button>
           </Form>
 
           <FooterActions>
-            <Link to="/" className="bold">Voltar para Login</Link>
+            <Link to="/">Voltar para a página de Login</Link>
           </FooterActions>
-
         </FormContainer>
       </RightPanel>
     </Container>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom'; // <--- Importante
+import { Link } from 'react-router-dom'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import { 
   Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
@@ -15,15 +15,15 @@ export default function Login() {
 
   async function handleLogin(e) {
     e.preventDefault();
-    if (!email || !password) return toast.error("Preencha todos os campos");
+    if (!email || !password) return toast.error("Preencha todos os campos obrigatórios.");
 
     setLoading(true);
     const loginPromise = signIn({ email, password });
 
     toast.promise(loginPromise, {
-      loading: 'Acessando...',
-      success: 'Bem-vindo!',
-      error: (err) => err.response?.data?.error || 'Falha no login.'
+      loading: 'A autenticar credenciais...',
+      success: 'Bem-vindo ao BusinessFlow!',
+      error: (err) => err.response?.data?.error || 'Falha ao iniciar sessão. Verifique os dados.'
     });
 
     try {
@@ -39,36 +39,36 @@ export default function Login() {
     <Container>
       <LeftPanel>
         <h1>Business<span>Flow</span></h1>
-        <p>Gerencie seus clientes, financeiro e serviços em um único lugar.</p>
+        <p>A plataforma definitiva para Gestão Contábil, BPO Financeiro e Relacionamento com o Cliente.</p>
       </LeftPanel>
 
       <RightPanel>
         <FormContainer>
           <h2>Bem-vindo de volta!</h2>
-          <p>Insira suas credenciais para acessar.</p>
+          <p>Insira as suas credenciais para aceder ao portal.</p>
 
           <Form onSubmit={handleLogin}>
             <InputGroup>
-              <label>E-mail</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus />
+              <label>E-mail Corporativo</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus placeholder="exemplo@email.com" />
             </InputGroup>
 
             <InputGroup>
-              <label>Senha</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+              <label>Senha de Acesso</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
             </InputGroup>
 
             <Button type="submit" disabled={loading}>
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'A entrar no sistema...' : 'Entrar na Plataforma'}
             </Button>
           </Form>
 
-          {/* --- LINKS NOVOS --- */}
           <FooterActions>
-            <Link to="/forgot-password">Esqueceu sua senha?</Link>
-            <Link to="/register" className="bold">Não tem conta? Crie agora</Link>
+            <Link to="/forgot-password">Esqueceu-se da sua senha?</Link>
+            <span style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              Ainda não é parceiro? <Link to="/register">Registe o seu Escritório</Link>
+            </span>
           </FooterActions>
-
         </FormContainer>
       </RightPanel>
     </Container>

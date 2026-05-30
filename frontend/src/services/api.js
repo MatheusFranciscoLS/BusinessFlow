@@ -1,22 +1,28 @@
 import axios from "axios";
 
 const api = axios.create({
-  // Lê a variável segura, ou usa o localhost se estiver a programar localmente
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
 });
+
 api.interceptors.request.use((config) => {
-  // CORREÇÃO: Buscando a chave exata que o AuthContext salva
   const token = localStorage.getItem("@BusinessFlow:token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  const companyId = localStorage.getItem("@BusinessFlow:companyId");
+
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (companyId) config.headers["x-company-id"] = companyId;
+
   return config;
 });
 
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401) {
+    if (
+      error.response?.status === 401 &&
+      error.config &&
+      !error.config._retry
+    ) {
+      error.config._retry = true;
       const refreshToken = localStorage.getItem("@BusinessFlow:refreshToken");
 
       if (!refreshToken) {

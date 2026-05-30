@@ -9,7 +9,7 @@ import {
 export default function Register() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
-  const [agencyName, setAgencyName] = useState(''); // 🔥 NOVO CAMPO
+  const [agencyName, setAgencyName] = useState(''); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,18 +17,16 @@ export default function Register() {
   async function handleRegister(e) {
     e.preventDefault();
     if (!name || !agencyName || !email || !password) return toast.error("Preencha todos os campos obrigatórios!");
-    if (password.length < 6) return toast.error("A senha deve ter no mínimo 6 caracteres.");
+    if (password.length < 6) return toast.error("A senha deve ter no mínimo 6 caracteres de segurança.");
 
     setLoading(true);
     try {
-      // Chama a rota de registro do backend passando o nome da agência
       await api.post('/auth/register', { name, agencyName, email, password });
       
       toast.success("Escritório cadastrado com sucesso! Faça o Login.");
       navigate('/'); 
     } catch (error) {
-      // Aqui a mágica acontece: mostra EXATAMENTE o erro do backend (ex: "E-mail já está em uso")
-      const msg = error.response?.data?.error || "Erro de conexão com o servidor.";
+      const msg = error.response?.data?.error || "Erro crítico ao registrar a agência.";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -39,19 +37,18 @@ export default function Register() {
     <Container>
       <LeftPanel>
         <h1>Junte-se ao Business<span>Flow</span></h1>
-        <p>A plataforma definitiva para BPO Financeiro e Gestão Contábil. Modernize o seu escritório hoje mesmo.</p>
+        <p>Eleve o seu escritório de contabilidade para o próximo nível com o nosso ecossistema integrado.</p>
       </LeftPanel>
 
       <RightPanel>
-        <FormContainer style={{ marginTop: 20 }}>
-          <h2>Cadastre o seu Escritório</h2>
-          <p>Preencha os dados abaixo para configurar o seu ambiente.</p>
+        <FormContainer style={{ maxWidth: 450 }}>
+          <h2>Criar Nova Conta</h2>
+          <p>Configure o ambiente inicial do seu escritório.</p>
 
           <Form onSubmit={handleRegister}>
-            
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <InputGroup>
-                <label>Seu Nome (Gestor)</label>
+                <label>Seu Nome (Sócio/Gestor)</label>
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: João Silva" />
               </InputGroup>
 
@@ -67,20 +64,20 @@ export default function Register() {
             </InputGroup>
 
             <InputGroup>
-              <label>Senha de Acesso</label>
+              <label>Senha Mestre de Acesso</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
             </InputGroup>
 
             <Button type="submit" disabled={loading} style={{ marginTop: 8 }}>
-              {loading ? 'A configurar ambiente...' : 'Criar Conta Gratuita'}
+              {loading ? 'A configurar ambiente de dados...' : 'Criar Conta Gratuita'}
             </Button>
           </Form>
 
           <FooterActions>
-            <span>Já possui uma conta?</span>
-            <Link to="/" className="bold">Fazer Login</Link>
+            <span style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+              Já possui uma conta ativa? <Link to="/">Fazer Login</Link>
+            </span>
           </FooterActions>
-
         </FormContainer>
       </RightPanel>
     </Container>
