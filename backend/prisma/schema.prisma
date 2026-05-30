@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// O Contador / Consultor (Dono do Sistema)
+// 👤 O Contador / Consultor (Dono do Escritório)
 model User {
   id              String         @id @default(uuid())
   name            String
@@ -15,7 +15,7 @@ model User {
   email           String         @unique
   password        String
   avatarUrl       String?
-  role            String         @default("ADMIN") 
+  role            String         @default("ADMIN") // ADMIN ou CLIENT
   companyAccessId String?        
   
   companies       Company[]      
@@ -31,173 +31,134 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// 🏢 A Agência Contábil / Unidade de Negócio
 model Company {
   id           String        @id @default(uuid())
   name         String
   document     String?       // CNPJ da Empresa
-  userId       String        // O contador dono desta empresa
+  userId       String        
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   clients      Client[]
   transactions Transaction[]
-  products     Product[]
-  appointments Appointment[]
-  tickets Ticket[]
-  documents Document[]
-  tasks Task[]
+  tickets      Ticket[]
+  documents    Document[]
+  tasks        Task[]
   
   createdAt    DateTime      @default(now())
 }
 
+// 💼 CRM: O Dossiê do Cliente do Escritório
 model Client {
-  id                String   @id @default(uuid())
+  id                String        @id @default(uuid())
   fullName          String
-  document          String?
-  taxRegime         String?
-  monthlyFee        Float?
-  email             String?
-  phone             String?
-  status            String   @default("ATIVO")
-
-  billingDay        String?
-  certificateExpiry DateTime?
-  notes             String?
-
+  document          String?       // CNPJ do Cliente
+  taxRegime         String?       // Simples Nacional, Lucro Presumido, etc
+  monthlyFee        Float         @default(0)
+  status            String        @default("ATIVO") // ATIVO, INADIMPLENTE, SUSPENSO
+  email             String?       
+  phone             String?       
+  certificateExpiry DateTime?     // Vencimento do e-CNPJ (Usado no Robô de Prazos)
+  
   companyId         String
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
   transactions      Transaction[]
-  appointments      Appointment[]
-  tickets Ticket[]
-  tasks Task[]
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  documents Document[]
+  tickets           Ticket[]
+  documents         Document[]
+  tasks             Task[]
+  
+  createdAt         DateTime      @default(now())
 }
 
+// 💰 BPO FINANCEIRO: Fluxo de Caixa e Lançamentos
 model Transaction {
   id            String   @id @default(uuid())
-  title         String
-  description   String?
+  title         String   
+  description   String?  
   amount        Float
-  type          String   
-  category      String?
-  
-  status        String   @default("PAGO") 
-  paymentMethod String? 
-  fileUrl       String?  
+  type          String   // entrada (income) ou saida (outcome)
+  category      String   // Honorários, Impostos, Folha, etc
   date          DateTime
+  status        String   @default("PAGO") // PAGO, PENDENTE, ATRASADO
+  paymentMethod String?  // PIX, Boleto, etc
+  fileUrl       String?  // Link do comprovativo ou NF (PDF/Imagem)
   
-  clientId      String?
-  client        Client?  @relation(fields: [clientId], references: [id])
+  clientId      String?  
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
-  companyId     String   
+  companyId     String
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt     DateTime @default(now())
 }
 
-model Product {
+// 🗄️ COFRE DIGITAL (GED): Documentos Partilhados
+model Document {
   id          String   @id @default(uuid())
-  name        String
-  category    String?
-  price       Float
-  stock       Int      @default(0)
+  name        String   
+  category    String   // Societário, Fiscal, Trabalhista, Alvarás
+  fileUrl     String   
+  
+  clientId    String   
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
   companyId   String   
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  images      Image[]
   createdAt   DateTime @default(now())
 }
 
-model Image {
-  id        String   @id @default(uuid())
-  url       String
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-}
-
-model Appointment {
-  id        String   @id @default(uuid())
-  title     String   @default("Compromisso") 
-  type      String   @default("REUNIAO")     
-  date      DateTime
-  notes     String?
-  status    String   @default("pendente") 
-  
-  clientId  String?  
-  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  companyId String   
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-}
-
-model Ticket {
-  id          String          @id @default(uuid())
-  subject     String          // Assunto do chamado (Ex: Admissão de Funcionário)
-  department  String          // Departamento (Ex: Fiscal, RH, Contábil)
-  description String          // A mensagem de abertura do cliente
-  status      String          @default("ABERTO") // ABERTO, EM_ANDAMENTO, RESOLVIDO
-  priority    String          @default("NORMAL") // BAIXA, NORMAL, ALTA, URGENTE
-  
-  messages    TicketMessage[] // 🔥 Ligação com a thread histórica de mensagens
-
-  clientId    String          // O cliente que abriu o chamado
-  client      Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
-  companyId   String          // A agência contábil dona do chamado
-  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  hasUnreadAdmin  Boolean @default(false)
-  hasUnreadClient Boolean @default(false)
-}
-
-model TicketMessage {
-  id          String   @id @default(uuid())
-  message     String   // Texto da mensagem enviada
-  senderRole  String   // Quem enviou: "ADMIN" (Escritório) ou "CLIENT" (Cliente)
-  senderName  String   // Nome da pessoa que digitou
-
-  ticketId    String
-  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime @default(now())
-}
-
-model Document {
-  id          String   @id @default(uuid())
-  name        String   // Nome do arquivo (Ex: Contrato Social Atualizado)
-  category    String   // Pasta/Categoria (Ex: Societário, Fiscal, Trabalhista, Alvarás)
-  fileUrl     String   // O caminho onde o PDF está guardado
-  
-  clientId    String   // De qual cliente é este documento
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
-  companyId   String   // Agência dona do documento
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-}
-
+// 📋 KANBAN FISCAL: Obrigações e Prazos Operacionais
 model Task {
   id          String   @id @default(uuid())
-  title       String   // Título (Ex: Apurar Simples Nacional, Renovar e-CNPJ)
-  description String?  // Instruções ou observações
-  status      String   @default("A_FAZER") // A_FAZER, EM_ANDAMENTO, AGUARDANDO, CONCLUIDO
+  title       String   
+  description String?  
+  status      String   @default("A_FAZER") // A_FAZER, EM_ANDAMENTO, CONCLUIDO
   priority    String   @default("NORMAL")  // BAIXA, NORMAL, ALTA, URGENTE
-  dueDate     DateTime // Prazo limite (Data de Vencimento)
+  dueDate     DateTime 
 
-  clientId    String?  // Opcional: A qual cliente pertence esta obrigação?
+  clientId    String?  
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  companyId   String   // A agência contábil responsável
+  companyId   String   
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// 💬 HELPDESK: Central de Atendimento e Tickets
+model Ticket {
+  id              String          @id @default(uuid())
+  subject         String
+  department      String          // Fiscal, Contábil, DP/RH, Legal
+  description     String
+  status          String          @default("ABERTO") // ABERTO, EM_ANDAMENTO, RESOLVIDO
+  priority        String          @default("NORMAL")
+  hasUnreadAdmin  Boolean         @default(false)
+  hasUnreadClient Boolean         @default(false)
+  
+  clientId        String
+  client          Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  messages        TicketMessage[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model TicketMessage {
+  id         String   @id @default(uuid())
+  message    String
+  senderRole String   // ADMIN ou CLIENT
+  senderName String
+  
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
 }
