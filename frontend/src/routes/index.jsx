@@ -73,7 +73,6 @@ const AppRoutes = () => {
            <Route index element={<Dashboard />} />
            <Route path="clientes" element={<Customers />} />
            <Route path="servicos" element={<Services />} />
-           <Route path="agenda" element={<Appointments />} />
            <Route path="financeiro" element={<Financial />} />
            <Route path="perfil" element={<Profile />} />
            <Route path="helpdesk" element={<Helpdesk />} />
