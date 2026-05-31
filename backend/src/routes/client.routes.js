@@ -1,20 +1,28 @@
 import { Router } from "express";
 import * as clientController from "../controllers/client.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
-import { companyMiddleware } from "../middlewares/company.js"; // 🔥 O novo Segurança!
+import { companyMiddleware } from "../middlewares/company.js";
 
 const router = Router();
 
-// Todas as rotas agora exigem o ID da empresa
-router.post("/", authMiddleware, companyMiddleware, clientController.create);
-router.get("/", authMiddleware, companyMiddleware, clientController.getAll);
-router.get("/:id", authMiddleware, companyMiddleware, clientController.getById);
-router.put("/:id", authMiddleware, companyMiddleware, clientController.update);
-router.delete(
-  "/:id",
-  authMiddleware,
-  companyMiddleware,
-  clientController.remove,
-);
+// 🔥 INTERCEPTOR ZERO TRUST: Bloqueia utilizadores com o cargo "CLIENT"
+const requireAdmin = (req, res, next) => {
+  const role = req.user?.role || req.query.role;
+  if (role === "CLIENT") {
+    return res
+      .status(403)
+      .json({ error: "Acesso restrito à gestão do escritório." });
+  }
+  next();
+};
+
+// Todas as rotas de CRM passam pela tranca do Escritório (Admin)
+router.use(authMiddleware, companyMiddleware, requireAdmin);
+
+router.post("/", clientController.create);
+router.get("/", clientController.getAll);
+router.get("/:id", clientController.getById);
+router.put("/:id", clientController.update);
+router.delete("/:id", clientController.remove);
 
 export default router;

@@ -11,15 +11,16 @@ export async function createClient(companyId, data) {
       status: data.status || "ATIVO",
       email: data.email || null,
       phone: data.phone || null,
+      certificateExpiry: data.certificateExpiry || null, // 🔥 AQUI ESTÁ A CORREÇÃO!
       companyId,
     },
   });
 }
 
 export async function getAllClients(companyId) {
-  return prisma.client.findMany({ 
-    where: { companyId }, 
-    orderBy: { fullName: "asc" } 
+  return prisma.client.findMany({
+    where: { companyId },
+    orderBy: { fullName: "asc" },
   });
 }
 
@@ -43,6 +44,7 @@ export async function updateClient(companyId, id, data) {
       status: data.status,
       email: data.email,
       phone: data.phone,
+      certificateExpiry: data.certificateExpiry || null, // 🔥 AQUI TAMBÉM!
     },
   });
 }
