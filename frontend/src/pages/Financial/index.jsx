@@ -8,7 +8,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip,
   CheckCircle, Clock, CalendarClock, AlertTriangle, Repeat, User,
-  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert
+  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2 
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -22,7 +22,6 @@ const shimmer = keyframes`0% { background-position: -1000px 0; } 100% { backgrou
 const SkeletonRow = styled.div`height: 60px; width: 100%; border-radius: 8px; margin-bottom: 12px; background: #f0f0f0; background-image: linear-gradient(90deg, #f0f0f0 0px, #fafafa 150px, #f0f0f0 300px); background-size: 1000px 100%; animation: ${shimmer} 2s infinite linear;`;
 
 const MONTHS_BR = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Financial() {
@@ -32,6 +31,7 @@ export default function Financial() {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false); // Trava Anti Duplo-Clique
 
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -39,7 +39,7 @@ export default function Financial() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('Todos');
-    const [clientFilter, setClientFilter] = useState(''); // Filtro exclusivo do Admin
+    const [clientFilter, setClientFilter] = useState(''); 
 
     // Estados do Formulário
     const [title, setTitle] = useState('');
@@ -54,19 +54,17 @@ export default function Financial() {
     const [isRecurring, setIsRecurring] = useState(false);
     const [installments, setInstallments] = useState(1);
 
-    // Estados do OFX
+    // Estados do OFX e do Robô de Auto-Match
     const [isOfxModalOpen, setIsOfxModalOpen] = useState(false);
     const [bankTransactions, setBankTransactions] = useState([]);
     const [selectedBankTx, setSelectedBankTx] = useState(null);
     const [selectedSystemTx, setSelectedSystemTx] = useState(null);
+    const [autoMatches, setAutoMatches] = useState([]); // 🔥 O Cérebro do Robô armazena os pares aqui
 
-    // 🔥 URL Segura e Otimizada: Apenas enviamos o companyId. O Back-end valida a identidade pelo Token.
     const timeQuery = showAllTime ? '' : `&month=${currentMonth}&year=${currentYear}`;
     const queryParams = queryCompany ? `?companyId=${queryCompany}${timeQuery}` : null;
     
     const { data: transactions, error, mutate } = useSWR(queryParams ? `/transactions${queryParams}` : null, fetcher);
-    
-    // O Cliente não precisa buscar a lista de clientes do escritório
     const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
 
     const myClientRecord = useMemo(() => {
@@ -83,19 +81,16 @@ export default function Financial() {
     function handlePreviousMonth() { if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
     function handleNextMonth() { if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
 
-const filteredTransactions = useMemo(() => {
+    const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
         let filtered = transactions;
 
         if (!isClient) {
             if (clientFilter === "") {
-                // 🔥 Separação de escopo: Por padrão, mostra apenas dados operacionais de CLIENTES
-                filtered = filtered.filter(t => t.clientId !== null);
+                filtered = filtered.filter(t => t.clientId !== null); // Apenas BPO
             } else if (clientFilter === "INTERNO") {
-                // Mostra apenas os custos/receitas da própria agência contábil
-                filtered = filtered.filter(t => t.clientId === null);
+                filtered = filtered.filter(t => t.clientId === null); // Caixa Interno
             } else {
-                // Filtra um cliente específico do CRM
                 filtered = filtered.filter(t => t.clientId === clientFilter);
             }
         }
@@ -104,7 +99,7 @@ const filteredTransactions = useMemo(() => {
             const titleMatch = t.title ? t.title.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const clientMatch = t.client?.fullName ? t.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const matchesSearch = searchTerm === '' || titleMatch || clientMatch;
-            const matchesCategory = filterCategory === 'Tomados' || filterCategory === 'Todos' || t.category === filterCategory;
+            const matchesCategory = filterCategory === 'Todos' || t.category === filterCategory;
             return matchesSearch && matchesCategory;
         });
     }, [transactions, searchTerm, filterCategory, clientFilter, isClient]);
@@ -127,7 +122,6 @@ const filteredTransactions = useMemo(() => {
         return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
     }
 
-    // 🔥 Função de Exportar PDF Restaurada e Melhorada!
     function handleExportPDF() {
         if (!transactions) return;
         const doc = new jsPDF();
@@ -142,9 +136,11 @@ const filteredTransactions = useMemo(() => {
         doc.setFontSize(11); doc.setFont("helvetica", "normal");
         
         let clientName = isClient ? user.name : (selectedCompany?.name || 'Visão Geral (Escritório)');
-        if (!isClient && clientFilter && clients) {
+        if (!isClient && clientFilter && clients && clientFilter !== "INTERNO") {
            const c = clients.find(cl => cl.id === clientFilter);
            if (c) clientName = c.fullName;
+        } else if (clientFilter === "INTERNO") {
+           clientName = "Caixa Interno da Agência";
         }
 
         doc.text(`Relatório de Lançamentos: ${clientName}`, 14, 28);
@@ -189,8 +185,7 @@ const filteredTransactions = useMemo(() => {
 
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.setFont("helvetica", "normal");
-            doc.text(`Gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
+            doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); doc.text(`Gerado por ${brandingName} em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
         }
         doc.save(`Extrato_${clientName.replace(/\s/g, '_')}.pdf`); 
         toast.success("PDF exportado com sucesso!");
@@ -212,14 +207,12 @@ const filteredTransactions = useMemo(() => {
         setStatus(t.status || 'PAGO'); 
         setPaymentMethod(t.paymentMethod || ''); 
         setClientId(t.clientId || ''); 
-        setFile(null); 
-        setIsRecurring(false); 
-        setInstallments(1); 
+        setFile(null); setIsRecurring(false); setInstallments(1); 
         setIsModalOpen(true);
     }
 
     async function handleDelete(id) {
-        if (window.confirm("Excluir esta transação?")) {
+        if (window.confirm("Deseja excluir esta transação permanentemente?")) {
             try { 
                 await api.delete(`/transactions/${id}`); 
                 mutate(); 
@@ -229,20 +222,11 @@ const filteredTransactions = useMemo(() => {
     }
 
     async function handleMarkAsPaid(t) {
-        if (!window.confirm(`Dar baixa em: ${t.title || t.description}? O valor entrará no Dashboard.`)) return;
+        if (!window.confirm(`Dar baixa em: ${t.title || t.description}?`)) return;
         const toastId = toast.loading('A processar baixa...');
         try {
             const formData = new FormData();
-            formData.append('title', t.title || t.description); 
-            formData.append('description', t.description || t.title);
-            formData.append('amount', t.amount || t.price); 
-            formData.append('category', t.category);
-            formData.append('type', t.type); 
-            formData.append('date', new Date(t.date).toISOString());
             formData.append('status', 'PAGO'); 
-            if(t.paymentMethod) formData.append('paymentMethod', t.paymentMethod); 
-            if(t.clientId) formData.append('clientId', t.clientId);
-
             await api.put(`/transactions/${t.id}`, formData);
             mutate(); 
             toast.success("Baixa realizada com sucesso!", { id: toastId });
@@ -251,18 +235,26 @@ const filteredTransactions = useMemo(() => {
 
     async function handleSave(e) {
         e.preventDefault();
+        if (isSubmitting) return;
+
+        // 🔥 Bloqueador de Arquivo Pesado (Máx 5MB)
+        if (file && file.size > 5242880) {
+            return toast.error("O comprovante é muito pesado! O limite máximo é de 5MB.");
+        }
+
+        setIsSubmitting(true);
         const toastId = toast.loading('A guardar transação...');
         try {
             const apiType = type === 'income' ? 'entrada' : 'saida';
             const formData = new FormData();
             formData.append('title', title); 
-            formData.append('description', title); 
             formData.append('amount', price);
             formData.append('category', category || 'Geral'); 
             formData.append('type', apiType); 
-            formData.append('date', new Date(date).toISOString());
+            formData.append('date', new Date(`${date}T12:00:00Z`).toISOString()); // Trava de Fuso Horário
             formData.append('status', status); 
             formData.append('companyId', queryCompany);
+            
             if (paymentMethod) formData.append('paymentMethod', paymentMethod); 
             if (clientId) formData.append('clientId', clientId); 
             if (!editingId && isRecurring) formData.append('installments', installments);
@@ -271,27 +263,88 @@ const filteredTransactions = useMemo(() => {
             if (editingId) await api.put(`/transactions/${editingId}`, formData);
             else await api.post('/transactions', formData);
             
-            setIsModalOpen(false); 
-            mutate(); 
+            setIsModalOpen(false); mutate(); 
             toast.success("Lançamento guardado com sucesso!", { id: toastId });
         } catch { toast.error("Erro ao salvar dados.", { id: toastId }); }
+        finally { setIsSubmitting(false); }
     }
 
     async function handleOfxUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
-        const tId = toast.loading("A analisar extrato bancário...");
+        const tId = toast.loading("A ler e interpretar ficheiro OFX...");
         try {
             const formData = new FormData();
             formData.append('file', file);
             const { data } = await api.post('/ofx/parse', formData);
             setBankTransactions(data);
-            toast.success(`${data.length} transações importadas com sucesso!`, { id: tId });
+            toast.success(`Leitura concluída: ${data.length} movimentos encontrados no banco!`, { id: tId });
         } catch (error) {
-            toast.error("Erro ao ler o ficheiro OFX. Certifique-se que o formato está correto.", { id: tId });
+            toast.error("Erro ao ler o ficheiro. Certifique-se que é um formato .OFX válido.", { id: tId });
         }
     }
 
+    // 🔥 O ALGORITMO MÁGICO DE AUTO-MATCH 
+    function handleRunAutoMatch() {
+      if (!bankTransactions.length || !pendingTransactions.length) return;
+
+      const matches = [];
+      const bankUnmatched = [];
+      const sysAvailable = [...pendingTransactions];
+
+      bankTransactions.forEach(bt => {
+          const btDate = new Date(bt.date);
+          const btAmount = Math.abs(parseFloat(bt.amount));
+
+          // Procura na nossa base um valor igual e data próxima (até 3 dias)
+          const matchIdx = sysAvailable.findIndex(st => {
+              const stAmount = Math.abs(parseFloat(st.amount || st.price || 0));
+              const stDate = new Date(st.date);
+
+              const diffTime = Math.abs(btDate.getTime() - stDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              return stAmount === btAmount && diffDays <= 3;
+          });
+
+          if (matchIdx !== -1) {
+              matches.push({ bankTx: bt, systemTx: sysAvailable[matchIdx] });
+              sysAvailable.splice(matchIdx, 1); // Remove da lista de pendentes para não dar duplo match
+          } else {
+              bankUnmatched.push(bt);
+          }
+      });
+
+      setAutoMatches(prev => [...prev, ...matches]);
+      setBankTransactions(bankUnmatched);
+
+      if (matches.length > 0) {
+          toast.success(`A IA encontrou ${matches.length} correspondências exatas! ✨`);
+      } else {
+          toast.error("Nenhuma correspondência exata encontrada automaticamente.");
+      }
+    }
+
+    // Aprova todas as combinações da IA de uma vez só!
+    async function handleConfirmAutoMatches() {
+      if(isSubmitting) return;
+      setIsSubmitting(true);
+      const tId = toast.loading(`A processar ${autoMatches.length} conciliações em lote...`);
+      try {
+          await Promise.all(autoMatches.map(m => {
+              const formData = new FormData();
+              formData.append('status', 'PAGO');
+              return api.put(`/transactions/${m.systemTx.id}`, formData);
+          }));
+          toast.success("Conciliação Mágica concluída com sucesso!", { id: tId });
+          setAutoMatches([]);
+          mutate();
+      } catch(err) {
+          toast.error("Ocorreu um erro a processar o lote.", { id: tId });
+      } finally { setIsSubmitting(false); }
+    }
+
+    // Conciliação Manual Antiga (1 a 1)
     async function handleConciliate() {
         if (!selectedBankTx || !selectedSystemTx) return toast.error("Selecione uma conta do banco e uma do sistema!");
         
@@ -306,13 +359,11 @@ const filteredTransactions = useMemo(() => {
             setSelectedSystemTx(null);
 
             mutate(); 
-            toast.success("Match perfeito! Conta conciliada e marcada como Paga.", { id: tId });
+            toast.success("Match manual perfeito! Conta conciliada.", { id: tId });
         } catch (error) { toast.error("Falha ao conciliar conta.", { id: tId }); }
     }
 
-    function openAttachment(fileUrl) { 
-        window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); 
-    }
+    function openAttachment(fileUrl) { window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); }
 
     const renderStatusBadge = (statusValue) => {
       switch(statusValue) {
@@ -328,13 +379,12 @@ const filteredTransactions = useMemo(() => {
 
     const pendingTransactions = transactions ? transactions.filter(t => t.status !== 'PAGO') : [];
 
-    // 🔥 Proteção visual final
     if (isClient && clients && !myClientRecord && !transactions) {
         return (
           <Container style={{ textAlign: 'center', padding: 60 }}>
             <ShieldAlert size={48} color="#e53e3e" style={{ marginBottom: 16 }} />
             <h2>Acesso Pendente</h2>
-            <p>Os seus dados financeiros estão sendo configurados. Tente novamente mais tarde.</p>
+            <p>Os seus dados financeiros estão a ser configurados. Fale com o seu contador.</p>
           </Container>
         );
     }
@@ -345,10 +395,9 @@ const filteredTransactions = useMemo(() => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
                     <ButtonGroup>
-                        {/* Apenas Administradores podem conciliar OFX e criar novas transações */}
                         {!isClient && (
-                          <button className="secondary" onClick={() => setIsOfxModalOpen(true)} style={{ background: '#ebf8ff', color: '#3182ce', borderColor: '#bee3f8' }}>
-                            <LinkIcon size={18} /> Conciliar OFX
+                          <button className="secondary" onClick={() => { setIsOfxModalOpen(true); setAutoMatches([]); setBankTransactions([]); }} style={{ background: '#ebf8ff', color: '#3182ce', borderColor: '#bee3f8' }}>
+                            <LinkIcon size={18} /> Conciliar Extrato (OFX)
                           </button>
                         )}
                         <button className="secondary" onClick={handleExportPDF} disabled={!transactions}>
@@ -365,17 +414,17 @@ const filteredTransactions = useMemo(() => {
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%', marginBottom: 16 }}>
                     <SearchContainer style={{ flex: '1 1 250px', maxWidth: 'none', margin: 0 }}>
                       <Search size={20} color="#a0aec0" />
-                      <input placeholder="Buscar por descrição ou cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={!transactions} />
+                      <input placeholder="Procurar por descrição ou cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={!transactions} />
                     </SearchContainer>
                     
-                    {/* 🔥 CAIXA DE FILTRO EXCLUSIVA DO GESTOR */}
                     {!isClient && (
                       <select 
                         value={clientFilter} 
                         onChange={e => setClientFilter(e.target.value)} 
                         style={{ padding: '0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', background: 'white', fontWeight: 600, color: '#4a5568', height: 48 }}
                       >
-                        <option value="">Todas as Empresas</option>
+                        <option value="">Consolidado de Clientes (BPO)</option>
+                        <option value="INTERNO">Caixa Interno do Escritório</option>
                         {clients?.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
                       </select>
                     )}
@@ -436,9 +485,8 @@ const filteredTransactions = useMemo(() => {
                                                   {t.paymentMethod && <div style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}><CreditCard size={12}/> {t.paymentMethod}</div>}
                                                 </td>
                                                 
-                                                {/* 🔥 Cliente não vê a coluna Cliente */}
                                                 {!isClient && (
-                                                    <td>{t.client ? (<span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}><User size={14} color="#a0aec0" /> {t.client.fullName}</span>) : (<span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Geral (Agência)</span>)}</td>
+                                                    <td>{t.client ? (<span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}><User size={14} color="#a0aec0" /> {t.client.fullName}</span>) : (<span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>)}</td>
                                                 )}
 
                                                 <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
@@ -453,7 +501,6 @@ const filteredTransactions = useMemo(() => {
                                                   ) : (<span style={{ color: '#cbd5e0', fontSize: 12 }}>-</span>)}
                                                 </td>
                                                 
-                                                {/* 🔥 Cliente não vê os botões de editar e apagar */}
                                                 {!isClient && (
                                                     <td style={{ textAlign: 'right' }}>
                                                         {isNotPaid && ( <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa" style={{ marginRight: 8 }}><CheckCircle size={18} /></ActionButton>)}
@@ -471,20 +518,36 @@ const filteredTransactions = useMemo(() => {
                 </>
             )}
 
-            {/* MODAL DE CONCILIAÇÃO OFX (Exclusivo Admin) */}
+            {/* 🔥 MODAL DE CONCILIAÇÃO BANCÁRIA OFX */}
             {isOfxModalOpen && !isClient && (
                 <ModalOverlay>
                     <ModalContent style={{ maxWidth: 1000, background: '#f8fafc', padding: '32px 40px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
                                 <h2 style={{ margin: '0 0 4px 0', color: '#1a202c', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <LinkIcon color="#3182ce" /> Conciliação Bancária
+                                  <LinkIcon color="#3182ce" /> Conciliação Bancária OFX
                                 </h2>
-                                <p style={{ margin: 0, color: '#718096', fontSize: 14 }}>Importe o extrato do banco (.OFX) e faça o cruzamento com as contas pendentes.</p>
+                                <p style={{ margin: 0, color: '#718096', fontSize: 14 }}>Cruze o extrato do banco com as contas pendentes de todos os clientes.</p>
                             </div>
                             <button onClick={() => { setIsOfxModalOpen(false); setBankTransactions([]); }} style={{ background: '#edf2f7', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Fechar</button>
                         </div>
-                        {bankTransactions.length === 0 ? (
+
+                        {/* 🔥 PAINEL DO ROBÔ AUTO-MATCH */}
+                        {autoMatches.length > 0 && (
+                          <div style={{ background: '#f0fff4', border: '1px solid #c6f6d5', padding: '16px 20px', borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                             <div>
+                                <h4 style={{ color: '#22543d', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                                  <Wand2 size={20} color="#38a169"/> Auto-Match Concluído!
+                                </h4>
+                                <p style={{ color: '#276749', margin: 0, fontSize: 14 }}>A Inteligência cruzou <strong>{autoMatches.length}</strong> transações perfeitas (Data e Valor iguais).</p>
+                             </div>
+                             <button onClick={handleConfirmAutoMatches} disabled={isSubmitting} style={{ background: '#38a169', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 800, cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(56, 161, 105, 0.3)' }}>
+                                {isSubmitting ? 'A aprovar...' : `Aprovar as ${autoMatches.length} em Lote`}
+                             </button>
+                          </div>
+                        )}
+
+                        {bankTransactions.length === 0 && autoMatches.length === 0 ? (
                             <div style={{ border: '2px dashed #cbd5e0', padding: '60px 20px', borderRadius: '16px', textAlign: 'center', background: 'white', position: 'relative' }}>
                                 <input type="file" onChange={handleOfxUpload} accept=".ofx" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} />
                                 <UploadCloud size={48} color="#3182ce" style={{ marginBottom: 16 }} />
@@ -492,67 +555,78 @@ const filteredTransactions = useMemo(() => {
                                 <p style={{ margin: 0, color: '#a0aec0' }}>Ou clique para procurar no computador.</p>
                             </div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, height: '60vh' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                                    <div style={{ padding: 16, background: '#edf2f7', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#2d3748' }}>
-                                      🏦 Extrato do Banco ({bankTransactions.length})
-                                    </div>
-                                    <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {bankTransactions.map(bt => (
-                                            <div key={bt.id} onClick={() => setSelectedBankTx(bt)} style={{ padding: 16, borderRadius: 8, border: `2px solid ${selectedBankTx?.id === bt.id ? '#3182ce' : '#e2e8f0'}`, background: selectedBankTx?.id === bt.id ? '#ebf8ff' : 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                  <span style={{ fontSize: 14, fontWeight: 700, color: '#2d3748' }}>{bt.description}</span>
-                                                  <span style={{ fontWeight: 800, color: bt.type === 'entrada' ? '#12a454' : '#e53e3e' }}>{bt.type === 'saida' && '- '}{formatCurrency(bt.amount)}</span>
-                                                </div>
-                                                <span style={{ fontSize: 12, color: '#a0aec0' }}>Data: {formatDateDisplay(bt.date)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                                    <div style={{ padding: 16, background: '#fefcbf', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#975a16' }}>
-                                      ⏳ Pendentes no BusinessFlow
-                                    </div>
-                                    <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {pendingTransactions.length === 0 ? (<div style={{ textAlign: 'center', padding: 40, color: '#a0aec0' }}>Nenhuma conta pendente para conciliar!</div>) : (
-                                            pendingTransactions.map(pt => (
-                                                <div key={pt.id} onClick={() => setSelectedSystemTx(pt)} style={{ padding: 16, borderRadius: 8, border: `2px solid ${selectedSystemTx?.id === pt.id ? '#d69e2e' : '#e2e8f0'}`, background: selectedSystemTx?.id === pt.id ? '#fffff0' : 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                      <span style={{ fontSize: 14, fontWeight: 700, color: '#2d3748' }}>{pt.title}</span>
-                                                      <span style={{ fontWeight: 800, color: (pt.type === 'entrada' || pt.type === 'income') ? '#12a454' : '#e53e3e' }}>{formatCurrency(pt.amount || pt.price)}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                      <span style={{ fontSize: 12, color: '#a0aec0' }}>Vence: {formatDateDisplay(pt.date)}</span>
-                                                      {pt.client && <span style={{ fontSize: 11, background: '#edf2f7', padding: '2px 6px', borderRadius: 4, color: '#4a5568' }}>{pt.client.fullName}</span>}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                                <div style={{ gridColumn: '1 / -1', background: 'white', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <div style={{ textAlign: 'center' }}>
-                                          <div style={{ fontSize: 12, color: '#718096', fontWeight: 600, textTransform: 'uppercase' }}>Selecionado (Banco)</div>
-                                          <div style={{ fontSize: 18, fontWeight: 800, color: selectedBankTx ? (selectedBankTx.type === 'entrada' ? '#12a454' : '#e53e3e') : '#a0aec0' }}>{selectedBankTx ? formatCurrency(selectedBankTx.amount) : 'R$ 0,00'}</div>
-                                        </div>
-                                        <LinkIcon size={24} color="#cbd5e0" />
-                                        <div style={{ textAlign: 'center' }}>
-                                          <div style={{ fontSize: 12, color: '#718096', fontWeight: 600, textTransform: 'uppercase' }}>Selecionado (Sistema)</div>
-                                          <div style={{ fontSize: 18, fontWeight: 800, color: selectedSystemTx ? ((selectedSystemTx.type === 'entrada' || selectedSystemTx.type === 'income') ? '#12a454' : '#e53e3e') : '#a0aec0' }}>{selectedSystemTx ? formatCurrency(selectedSystemTx.amount || selectedSystemTx.price) : 'R$ 0,00'}</div>
-                                        </div>
-                                    </div>
-                                    <button onClick={handleConciliate} disabled={!selectedBankTx || !selectedSystemTx} style={{ background: (!selectedBankTx || !selectedSystemTx) ? '#cbd5e0' : '#3182ce', color: 'white', border: 'none', padding: '16px 32px', borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: (!selectedBankTx || !selectedSystemTx) ? 'not-allowed' : 'pointer', transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
-                                      Conciliar Transações
-                                    </button>
-                                </div>
-                            </div>
+                            <>
+                              {/* Botão para invocar a magia se houver extrato lido */}
+                              {bankTransactions.length > 0 && pendingTransactions.length > 0 && autoMatches.length === 0 && (
+                                <button onClick={handleRunAutoMatch} style={{ width: '100%', marginBottom: 24, padding: 16, background: 'linear-gradient(90deg, #3182ce 0%, #805ad5 100%)', color: 'white', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, boxShadow: '0 4px 15px rgba(128, 90, 213, 0.3)' }}>
+                                  <Wand2 size={20} /> Executar Robô de Auto-Match (Procurar Pares)
+                                </button>
+                              )}
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, height: '50vh' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                      <div style={{ padding: 16, background: '#edf2f7', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#2d3748' }}>
+                                        🏦 Restantes no Banco ({bankTransactions.length})
+                                      </div>
+                                      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                          {bankTransactions.map(bt => (
+                                              <div key={bt.id} onClick={() => setSelectedBankTx(bt)} style={{ padding: 16, borderRadius: 8, border: `2px solid ${selectedBankTx?.id === bt.id ? '#3182ce' : '#e2e8f0'}`, background: selectedBankTx?.id === bt.id ? '#ebf8ff' : 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                    <span style={{ fontSize: 14, fontWeight: 700, color: '#2d3748' }}>{bt.description}</span>
+                                                    <span style={{ fontWeight: 800, color: bt.type === 'entrada' ? '#12a454' : '#e53e3e' }}>{bt.type === 'saida' && '- '}{formatCurrency(bt.amount)}</span>
+                                                  </div>
+                                                  <span style={{ fontSize: 12, color: '#a0aec0' }}>Data: {formatDateDisplay(bt.date)}</span>
+                                              </div>
+                                          ))}
+                                      </div>
+                                  </div>
+                                  
+                                  <div style={{ display: 'flex', flexDirection: 'column', background: 'white', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                                      <div style={{ padding: 16, background: '#fefcbf', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#975a16' }}>
+                                        ⏳ Pendentes no BusinessFlow
+                                      </div>
+                                      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                          {pendingTransactions.length === 0 ? (<div style={{ textAlign: 'center', padding: 40, color: '#a0aec0' }}>Nenhuma conta pendente para conciliar!</div>) : (
+                                              pendingTransactions.map(pt => (
+                                                  <div key={pt.id} onClick={() => setSelectedSystemTx(pt)} style={{ padding: 16, borderRadius: 8, border: `2px solid ${selectedSystemTx?.id === pt.id ? '#d69e2e' : '#e2e8f0'}`, background: selectedSystemTx?.id === pt.id ? '#fffff0' : 'white', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <span style={{ fontSize: 14, fontWeight: 700, color: '#2d3748' }}>{pt.title}</span>
+                                                        <span style={{ fontWeight: 800, color: (pt.type === 'entrada' || pt.type === 'income') ? '#12a454' : '#e53e3e' }}>{formatCurrency(pt.amount || pt.price)}</span>
+                                                      </div>
+                                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: 12, color: '#a0aec0' }}>Vence: {formatDateDisplay(pt.date)}</span>
+                                                        {pt.client && <span style={{ fontSize: 11, background: '#edf2f7', padding: '2px 6px', borderRadius: 4, color: '#4a5568' }}>{pt.client.fullName}</span>}
+                                                      </div>
+                                                  </div>
+                                              ))
+                                          )}
+                                      </div>
+                                  </div>
+
+                                  <div style={{ gridColumn: '1 / -1', background: 'white', padding: 20, borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                          <div style={{ textAlign: 'center' }}>
+                                            <div style={{ fontSize: 12, color: '#718096', fontWeight: 600, textTransform: 'uppercase' }}>Selecionado (Banco)</div>
+                                            <div style={{ fontSize: 18, fontWeight: 800, color: selectedBankTx ? (selectedBankTx.type === 'entrada' ? '#12a454' : '#e53e3e') : '#a0aec0' }}>{selectedBankTx ? formatCurrency(selectedBankTx.amount) : 'R$ 0,00'}</div>
+                                          </div>
+                                          <LinkIcon size={24} color="#cbd5e0" />
+                                          <div style={{ textAlign: 'center' }}>
+                                            <div style={{ fontSize: 12, color: '#718096', fontWeight: 600, textTransform: 'uppercase' }}>Selecionado (Sistema)</div>
+                                            <div style={{ fontSize: 18, fontWeight: 800, color: selectedSystemTx ? ((selectedSystemTx.type === 'entrada' || selectedSystemTx.type === 'income') ? '#12a454' : '#e53e3e') : '#a0aec0' }}>{selectedSystemTx ? formatCurrency(selectedSystemTx.amount || selectedSystemTx.price) : 'R$ 0,00'}</div>
+                                          </div>
+                                      </div>
+                                      <button onClick={handleConciliate} disabled={!selectedBankTx || !selectedSystemTx} style={{ background: (!selectedBankTx || !selectedSystemTx) ? '#cbd5e0' : '#3182ce', color: 'white', border: 'none', padding: '16px 32px', borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: (!selectedBankTx || !selectedSystemTx) ? 'not-allowed' : 'pointer', transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
+                                        Conciliar Par Manualmente
+                                      </button>
+                                  </div>
+                              </div>
+                            </>
                         )}
                     </ModalContent>
                 </ModalOverlay>
             )}
 
-            {/* MODAL DE CRIAÇÃO / EDIÇÃO (Exclusivo Admin) */}
+            {/* MODAL DE CRIAÇÃO / EDIÇÃO */}
             {isModalOpen && !isClient && (
                 <ModalOverlay>
                     <ModalContent style={{ maxWidth: 650 }}>
@@ -568,24 +642,24 @@ const filteredTransactions = useMemo(() => {
                             </TransactionTypeContainer>
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
                               <FormGroup>
-                                <label>Descrição do Lançamento</label>
+                                <label>Descrição do Lançamento *</label>
                                 <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: Honorários Mensais" />
                               </FormGroup>
                               <FormGroup>
-                                <label>Valor (R$)</label>
+                                <label>Valor (R$) *</label>
                                 <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
                               </FormGroup>
                             </div>
                             <FormGroup>
-                              <label>Vincular a um Cliente do CRM (Opcional)</label>
+                              <label>Vincular a um Cliente (BPO / Honorário)</label>
                               <select value={clientId} onChange={e => setClientId(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc' }}>
-                                <option value="">Não vincular (Despesa Interna/Geral)</option>
-                                {clients?.map(c => (<option key={c.id} value={c.id}>{c.fullName} - (CNPJ: {c.document || 'N/A'})</option>))}
+                                <option value="">Não vincular (Despesa Interna do Escritório)</option>
+                                {clients?.map(c => (<option key={c.id} value={c.id}>{c.fullName}</option>))}
                               </select>
                             </FormGroup>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
-                                <label>Categoria</label>
+                                <label>Categoria *</label>
                                 <select value={category} onChange={e => setCategory(e.target.value)} required style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                   <option value="">Selecione a conta...</option>
                                   {(type === 'income' || type === 'entrada') ? (
@@ -603,7 +677,7 @@ const filteredTransactions = useMemo(() => {
                                 </select>
                               </FormGroup>
                               <FormGroup>
-                                <label>Data de Vencimento</label>
+                                <label>Data de Vencimento *</label>
                                 <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
                               </FormGroup>
                             </div>
@@ -648,8 +722,8 @@ const filteredTransactions = useMemo(() => {
                             </FormGroup>
 
                             <ModalActions>
-                              <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                              <button type="submit" className="save">Confirmar Lançamento</button>
+                              <button type="button" className="cancel" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancelar</button>
+                              <button type="submit" className="save" disabled={isSubmitting}>{isSubmitting ? 'A salvar...' : 'Confirmar Lançamento'}</button>
                             </ModalActions>
                         </form>
                     </ModalContent>
