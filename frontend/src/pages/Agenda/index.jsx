@@ -71,6 +71,8 @@ export default function Agenda() {
     }
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   async function handleCreateTask(e) {
     e.preventDefault();
     const tId = toast.loading("A criar prazo...");
@@ -314,10 +316,16 @@ export default function Agenda() {
               </FormGroup>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FormGroup>
-                  <label>Data de Vencimento</label>
-                  <input type="date" value={form.dueDate} onChange={e => setForm({...form, dueDate: e.target.value})} required />
-                </FormGroup>
+<FormGroup>
+  <label>Data de Vencimento</label>
+  <input 
+    type="date" 
+    min={todayStr} /* 🔥 IMPEDE PRAZOS RETROATIVOS */
+    value={form.dueDate} 
+    onChange={e => setForm({...form, dueDate: e.target.value})} 
+    required 
+  />
+</FormGroup>
                 <FormGroup>
                   <label>Prioridade</label>
                   <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>

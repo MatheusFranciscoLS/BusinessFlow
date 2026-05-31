@@ -12,7 +12,7 @@ import {
   Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions
 } from './styles';
 
-// 🔥 IMPORTAMOS AS MÁSCARAS DE UX!
+// 🔥 AS SUAS MÁSCARAS DE UX ESTÃO AQUI!
 import { maskCPFOrCNPJ, maskPhone, maskCurrency, unmaskCurrency } from '../../utils/masks';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -25,7 +25,6 @@ export default function Clients() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  // O monthlyFee agora é String para suportar a máscara "1.500,00"
   const [form, setForm] = useState({
     fullName: '', document: '', taxRegime: '', monthlyFee: '', 
     status: 'ATIVO', email: '', phone: '', certificateExpiry: ''
@@ -46,6 +45,9 @@ export default function Clients() {
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
+  // 🔥 GERA A DATA DE HOJE PARA BLOQUEAR O PASSADO
+  const todayStr = new Date().toISOString().split('T')[0];
+
   function handleOpenNew() {
     setEditingId(null);
     setForm({ fullName: '', document: '', taxRegime: 'Simples Nacional', monthlyFee: '', status: 'ATIVO', email: '', phone: '', certificateExpiry: '' });
@@ -54,11 +56,7 @@ export default function Clients() {
 
   function handleEdit(client) {
     setEditingId(client.id);
-    
-    // Tratamento impecável para a máscara de moeda receber o valor do banco de dados
     const feeString = client.monthlyFee ? (client.monthlyFee).toFixed(2).replace('.', '') : '0';
-    
-    // Extrai o YYYY-MM-DD da data de forma segura, ignorando Timezones
     const safeDate = client.certificateExpiry ? client.certificateExpiry.substring(0, 10) : '';
 
     setForm({
@@ -88,17 +86,15 @@ export default function Clients() {
     e.preventDefault();
     const tId = toast.loading('A guardar dossiê...');
     
-    // 🔥 Tratamento final para enviar ao Banco de Dados
-    // Se existir data, converte-a forçando o início do dia para evitar que retroceda 1 dia por causa do fuso horário
     let parsedDate = null;
     if (form.certificateExpiry) {
-      parsedDate = new Date(`${form.certificateExpiry}T00:00:00`).toISOString();
+      parsedDate = new Date(`${form.certificateExpiry}T12:00:00Z`).toISOString();
     }
 
     const payload = { 
       ...form, 
       companyId: selectedCompany.id,
-      monthlyFee: unmaskCurrency(form.monthlyFee), // Volta de "1.500,00" para 1500.00
+      monthlyFee: unmaskCurrency(form.monthlyFee), 
       certificateExpiry: parsedDate
     };
 
@@ -198,7 +194,6 @@ export default function Clients() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>CNPJ / CPF</label>
-                  {/* 🔥 Máscara a atuar em tempo real! */}
                   <input value={form.document} onChange={e => setForm({...form, document: maskCPFOrCNPJ(e.target.value)})} placeholder="00.000.000/0001-00" maxLength={18} />
                 </FormGroup>
                 <FormGroup>
@@ -215,7 +210,6 @@ export default function Clients() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>Honorário Mensal (R$)</label>
-                  {/* 🔥 Mudei de type="number" para "text" para suportar a máscara e não bloquear vírgulas */}
                   <input type="text" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: maskCurrency(e.target.value)})} placeholder="Ex: 1.500,00" />
                 </FormGroup>
                 <FormGroup>
@@ -235,7 +229,6 @@ export default function Clients() {
                 </FormGroup>
                 <FormGroup>
                   <label>Telefone / WhatsApp</label>
-                  {/* 🔥 Máscara de Telefone em tempo real! */}
                   <input value={form.phone} onChange={e => setForm({...form, phone: maskPhone(e.target.value)})} placeholder="(11) 90000-0000" maxLength={15} />
                 </FormGroup>
               </div>
@@ -246,6 +239,7 @@ export default function Clients() {
                 </label>
                 <input 
                   type="date" 
+                  min={todayStr} /* 🔥 AQUI ESTÁ A PROTEÇÃO CONTRA O PASSADO */
                   value={form.certificateExpiry} 
                   onChange={e => setForm({...form, certificateExpiry: e.target.value})} 
                   style={{ width: '100%', maxWidth: 200 }}
