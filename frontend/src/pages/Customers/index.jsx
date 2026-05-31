@@ -12,23 +12,25 @@ import {
   Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions
 } from './styles';
 
+// 🔥 IMPORTAMOS AS MÁSCARAS DE UX!
+import { maskCPFOrCNPJ, maskPhone, maskCurrency, unmaskCurrency } from '../../utils/masks';
+
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Clients() {
   const { user, selectedCompany } = useAuth();
-  
-  // 🔥 PROTEÇÃO FRONT-END: Se for cliente, bloqueia o ecrã instantaneamente
   const isClient = user?.role === 'CLIENT';
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  
+  // O monthlyFee agora é String para suportar a máscara "1.500,00"
   const [form, setForm] = useState({
     fullName: '', document: '', taxRegime: '', monthlyFee: '', 
     status: 'ATIVO', email: '', phone: '', certificateExpiry: ''
   });
 
-  // Fetch protegido para o Escritório
   const { data: clients, mutate } = useSWR(
     !isClient && selectedCompany ? `/clients?companyId=${selectedCompany.id}` : null, 
     fetcher
@@ -52,16 +54,22 @@ export default function Clients() {
 
   function handleEdit(client) {
     setEditingId(client.id);
+    
+    // Tratamento impecável para a máscara de moeda receber o valor do banco de dados
+    const feeString = client.monthlyFee ? (client.monthlyFee).toFixed(2).replace('.', '') : '0';
+    
+    // Extrai o YYYY-MM-DD da data de forma segura, ignorando Timezones
+    const safeDate = client.certificateExpiry ? client.certificateExpiry.substring(0, 10) : '';
+
     setForm({
       fullName: client.fullName,
-      document: client.document || '',
+      document: maskCPFOrCNPJ(client.document || ''),
       taxRegime: client.taxRegime || 'Simples Nacional',
-      monthlyFee: client.monthlyFee || '',
+      monthlyFee: maskCurrency(feeString), 
       status: client.status,
       email: client.email || '',
-      phone: client.phone || '',
-      // Formata a data para exibir no input type="date"
-      certificateExpiry: client.certificateExpiry ? new Date(client.certificateExpiry).toISOString().split('T')[0] : ''
+      phone: maskPhone(client.phone || ''),
+      certificateExpiry: safeDate
     });
     setIsModalOpen(true);
   }
@@ -80,12 +88,18 @@ export default function Clients() {
     e.preventDefault();
     const tId = toast.loading('A guardar dossiê...');
     
-    // Tratamento de dados antes de enviar ao servidor
+    // 🔥 Tratamento final para enviar ao Banco de Dados
+    // Se existir data, converte-a forçando o início do dia para evitar que retroceda 1 dia por causa do fuso horário
+    let parsedDate = null;
+    if (form.certificateExpiry) {
+      parsedDate = new Date(`${form.certificateExpiry}T00:00:00`).toISOString();
+    }
+
     const payload = { 
       ...form, 
       companyId: selectedCompany.id,
-      monthlyFee: parseFloat(form.monthlyFee) || 0,
-      certificateExpiry: form.certificateExpiry ? new Date(`${form.certificateExpiry}T12:00:00Z`).toISOString() : null
+      monthlyFee: unmaskCurrency(form.monthlyFee), // Volta de "1.500,00" para 1500.00
+      certificateExpiry: parsedDate
     };
 
     try {
@@ -101,7 +115,6 @@ export default function Clients() {
     } catch (err) { toast.error('Erro ao salvar.', { id: tId }); }
   }
 
-  // 🔥 TELA DE BLOQUEIO PARA O CLIENTE
   if (isClient) {
     return (
       <Container style={{ textAlign: 'center', padding: 60 }}>
@@ -141,7 +154,7 @@ export default function Clients() {
               <div className="card-header">
                 <div>
                   <div className="client-name">{client.fullName}</div>
-                  <div className="client-doc"><Building2 size={14} /> {client.document || 'Sem CNPJ'}</div>
+                  <div className="client-doc"><Building2 size={14} /> {maskCPFOrCNPJ(client.document) || 'Sem CNPJ'}</div>
                 </div>
                 <Badge $status={client.status}>{client.status}</Badge>
               </div>
@@ -150,7 +163,7 @@ export default function Clients() {
                 <div className="info-row"><Briefcase size={16} color="#718096" /> {client.taxRegime || 'Não Informado'}</div>
                 <div className="info-row"><DollarSign size={16} color="#38a169" /> Honorários: <strong>{formatCurrency(client.monthlyFee)}</strong></div>
                 <div className="info-row"><Mail size={16} color="#718096" /> {client.email || '-'}</div>
-                <div className="info-row"><Phone size={16} color="#718096" /> {client.phone || '-'}</div>
+                <div className="info-row"><Phone size={16} color="#718096" /> {maskPhone(client.phone) || '-'}</div>
                 
                 {client.certificateExpiry && (
                   <div className="info-row" style={{ color: '#d69e2e', fontWeight: 600, background: '#fffff0', padding: '6px 8px', borderRadius: 6 }}>
@@ -168,7 +181,6 @@ export default function Clients() {
         </Grid>
       )}
 
-      {/* 🔥 MODAL DE CADASTRO/EDIÇÃO */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
@@ -186,7 +198,8 @@ export default function Clients() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>CNPJ / CPF</label>
-                  <input value={form.document} onChange={e => setForm({...form, document: e.target.value})} placeholder="00.000.000/0001-00" />
+                  {/* 🔥 Máscara a atuar em tempo real! */}
+                  <input value={form.document} onChange={e => setForm({...form, document: maskCPFOrCNPJ(e.target.value)})} placeholder="00.000.000/0001-00" maxLength={18} />
                 </FormGroup>
                 <FormGroup>
                   <label>Regime Tributário</label>
@@ -202,7 +215,8 @@ export default function Clients() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>Honorário Mensal (R$)</label>
-                  <input type="number" step="0.01" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} placeholder="Ex: 1500.00" />
+                  {/* 🔥 Mudei de type="number" para "text" para suportar a máscara e não bloquear vírgulas */}
+                  <input type="text" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: maskCurrency(e.target.value)})} placeholder="Ex: 1.500,00" />
                 </FormGroup>
                 <FormGroup>
                   <label>Status do Cliente</label>
@@ -221,11 +235,11 @@ export default function Clients() {
                 </FormGroup>
                 <FormGroup>
                   <label>Telefone / WhatsApp</label>
-                  <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="(11) 90000-0000" />
+                  {/* 🔥 Máscara de Telefone em tempo real! */}
+                  <input value={form.phone} onChange={e => setForm({...form, phone: maskPhone(e.target.value)})} placeholder="(11) 90000-0000" maxLength={15} />
                 </FormGroup>
               </div>
 
-              {/* 🔥 O GATILHO DA AUTOMAÇÃO (Vencimento do e-CNPJ) */}
               <FormGroup style={{ marginTop: 8, background: '#f7fafc', padding: 16, borderRadius: 8, border: '1px dashed #cbd5e0' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#dd6b20' }}>
                   <CalendarClock size={16} /> Vencimento do Certificado (e-CNPJ)
