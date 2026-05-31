@@ -269,18 +269,26 @@ export default function Financial() {
         finally { setIsSubmitting(false); }
     }
 
-    async function handleOfxUpload(e) {
+async function handleOfxUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
+        
         const tId = toast.loading("A ler e interpretar ficheiro OFX...");
         try {
             const formData = new FormData();
             formData.append('file', file);
+            
             const { data } = await api.post('/ofx/parse', formData);
             setBankTransactions(data);
             toast.success(`Leitura concluída: ${data.length} movimentos encontrados no banco!`, { id: tId });
+            
         } catch (error) {
-            toast.error("Erro ao ler o ficheiro. Certifique-se que é um formato .OFX válido.", { id: tId });
+            // 🔥 AGORA MOSTRAMOS O ERRO REAL QUE VEM DO SERVIDOR
+            const msg = error.response?.data?.error || "Erro de conexão com o servidor na leitura do OFX.";
+            toast.error(msg, { id: tId, duration: 5000 });
+        } finally {
+            // 🔥 LIMPA O INPUT PARA PERMITIR REENVIAR O MESMO FICHEIRO SE NECESSÁRIO
+            e.target.value = null; 
         }
     }
 

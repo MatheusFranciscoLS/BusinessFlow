@@ -1,53 +1,64 @@
 export async function parse(req, res) {
   try {
-    // 1. Verifica se o ficheiro chegou
-    if (!req.file) {
+    if (!req.file || !req.file.buffer) {
       return res
         .status(400)
-        .json({ error: "Nenhum ficheiro recebido pelo servidor." });
+        .json({ error: "Ficheiro OFX não recebido na memória do servidor." });
     }
 
-    // 🔥 A MÁGICA CLOUD-FRIENDLY: Lemos diretamente da Memória RAM (Buffer)
-    const content = req.file.buffer.toString("utf8");
-
+    // 🔥 Bancos no Brasil usam frequentemente o formato Latin1 (ISO-8859-1)
+    const content = req.file.buffer.toString("latin1");
     const transactions = [];
 
-    // Expressão Regular para capturar os blocos <STMTTRN> ... </STMTTRN>
-    const regex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/g;
-    let match;
+    // A forma mais segura de ler OFX sem bibliotecas: Quebrar o texto por blocos brutos
+    const blocks = content.split(/<STMTTRN>/i);
 
-    while ((match = regex.exec(content)) !== null) {
-      const block = match[1];
+    // O índice 0 é o cabeçalho do banco, iteramos a partir do índice 1
+    for (let i = 1; i < blocks.length; i++) {
+      const block = blocks[i];
 
-      const typeMatch = block.match(/<TRNTYPE>(.*)/);
-      const dateMatch = block.match(/<DTPOSTED>(\d{8})/); // Pega apenas YYYYMMDD
-      const amountMatch = block.match(/<TRNAMT>(.*)/);
-      const memoMatch = block.match(/<MEMO>(.*)/);
+      // Função auxiliar super resiliente: extrai as tags independentemente da quebra de linha
+      const extract = (tag) => {
+        const match = block.match(new RegExp(`<${tag}>([^<\\r\\n]+)`, "i"));
+        return match ? match[1].trim() : null;
+      };
 
-      if (dateMatch && amountMatch) {
-        const rawDate = dateMatch[1];
-        const year = rawDate.substring(0, 4);
-        const month = rawDate.substring(4, 6);
-        const day = rawDate.substring(6, 8);
+      const dateRaw = extract("DTPOSTED");
+      const amountRaw = extract("TRNAMT");
+      const memo = extract("MEMO");
 
-        const amount = parseFloat(amountMatch[1].trim());
+      if (dateRaw && amountRaw) {
+        const year = dateRaw.substring(0, 4);
+        const month = dateRaw.substring(4, 6);
+        const day = dateRaw.substring(6, 8);
+
+        // Garante que a vírgula vira ponto antes de converter para número
+        const amount = parseFloat(amountRaw.replace(",", "."));
 
         transactions.push({
-          id: Math.random().toString(36).substring(7),
+          id: "tx-" + Math.random().toString(36).substr(2, 9),
           type: amount >= 0 ? "entrada" : "saida",
-          date: new Date(`${year}-${month}-${day}T12:00:00Z`), // Trava o Fuso Horário
+          date: new Date(`${year}-${month}-${day}T12:00:00Z`), // Meio-dia UTC para evitar bug de fuso
           amount: Math.abs(amount),
-          description: memoMatch ? memoMatch[1].trim() : "Transação Bancária",
+          description: memo || "Movimento Bancário",
         });
       }
     }
 
-    // Devolve os dados instantaneamente para o Front-end
+    if (transactions.length === 0) {
+      return res
+        .status(400)
+        .json({
+          error: "Nenhuma transação financeira encontrada neste ficheiro.",
+        });
+    }
+
     return res.json(transactions);
   } catch (error) {
-    console.error("Erro interno ao ler OFX:", error);
+    console.error("ERRO CRÍTICO NO OFX:", error);
+    // 🔥 Devolve o erro EXATO para o Front-end para sabermos o que partiu
     return res
       .status(500)
-      .json({ error: "Falha crítica ao processar o ficheiro OFX." });
+      .json({ error: "Falha no motor de leitura: " + error.message });
   }
 }
