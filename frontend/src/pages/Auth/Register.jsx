@@ -60,7 +60,12 @@ export default function Register() {
 
             <InputGroup>
               <label>E-mail Corporativo</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@escritorio.com" />
+              <input 
+  type="email" 
+  value={email} 
+  onChange={e => setEmail(e.target.value.trim().toLowerCase())} 
+  placeholder="contato@empresa.com" 
+/>
             </InputGroup>
 
             <InputGroup>

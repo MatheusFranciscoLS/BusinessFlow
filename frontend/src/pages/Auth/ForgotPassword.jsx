@@ -42,7 +42,12 @@ export default function ForgotPassword() {
           <Form onSubmit={handleRecover}>
             <InputGroup>
               <label>E-mail cadastrado</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" autoFocus />
+              <input 
+  type="email" 
+  value={email} 
+  onChange={e => setEmail(e.target.value.trim().toLowerCase())} 
+  placeholder="contato@empresa.com" 
+/>
             </InputGroup>
 
             <Button type="submit" disabled={loading}>

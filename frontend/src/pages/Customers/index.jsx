@@ -12,7 +12,7 @@ import {
   Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions
 } from './styles';
 
-// 🔥 AS SUAS MÁSCARAS DE UX ESTÃO AQUI!
+// 🔥 IMPORTAMOS AS MÁSCARAS DE UX!
 import { maskCPFOrCNPJ, maskPhone, maskCurrency, unmaskCurrency } from '../../utils/masks';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -24,6 +24,9 @@ export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  
+  // 🔥 PROTEÇÃO ANTI-DUPLO CLIQUE
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [form, setForm] = useState({
     fullName: '', document: '', taxRegime: '', monthlyFee: '', 
@@ -45,7 +48,7 @@ export default function Clients() {
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
-  // 🔥 GERA A DATA DE HOJE PARA BLOQUEAR O PASSADO
+  // 🔥 GERA A DATA DE HOJE PARA BLOQUEAR O PASSADO NO INPUT
   const todayStr = new Date().toISOString().split('T')[0];
 
   function handleOpenNew() {
@@ -56,6 +59,7 @@ export default function Clients() {
 
   function handleEdit(client) {
     setEditingId(client.id);
+    
     const feeString = client.monthlyFee ? (client.monthlyFee).toFixed(2).replace('.', '') : '0';
     const safeDate = client.certificateExpiry ? client.certificateExpiry.substring(0, 10) : '';
 
@@ -84,8 +88,12 @@ export default function Clients() {
 
   async function handleSave(e) {
     e.preventDefault();
+    if (isSubmitting) return; // Bloqueia se já estiver a enviar
+    
+    setIsSubmitting(true);
     const tId = toast.loading('A guardar dossiê...');
     
+    // Converte a data assegurando o meio-dia (UTC) para evitar bugs de fuso horário
     let parsedDate = null;
     if (form.certificateExpiry) {
       parsedDate = new Date(`${form.certificateExpiry}T12:00:00Z`).toISOString();
@@ -108,9 +116,14 @@ export default function Clients() {
       }
       setIsModalOpen(false);
       mutate();
-    } catch (err) { toast.error('Erro ao salvar.', { id: tId }); }
+    } catch (err) { 
+      toast.error('Erro ao salvar.', { id: tId }); 
+    } finally {
+      setIsSubmitting(false); // Liberta o botão independentemente de sucesso ou erro
+    }
   }
 
+  // TELA DE BLOQUEIO PARA CLIENTES
   if (isClient) {
     return (
       <Container style={{ textAlign: 'center', padding: 60 }}>
@@ -225,7 +238,8 @@ export default function Clients() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <FormGroup>
                   <label>E-mail Principal</label>
-                  <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="contato@empresa.com" />
+                  {/* 🔥 HIGIENIZAÇÃO DE E-MAIL EM TEMPO REAL */}
+                  <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value.trim().toLowerCase()})} placeholder="contato@empresa.com" />
                 </FormGroup>
                 <FormGroup>
                   <label>Telefone / WhatsApp</label>
@@ -250,8 +264,10 @@ export default function Clients() {
               </FormGroup>
 
               <ModalActions>
-                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="save">Salvar Dossiê</button>
+                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancelar</button>
+                <button type="submit" className="save" disabled={isSubmitting}>
+                  {isSubmitting ? 'A salvar...' : 'Salvar Dossiê'}
+                </button>
               </ModalActions>
             </form>
           </ModalContent>

@@ -50,7 +50,12 @@ export default function Login() {
           <Form onSubmit={handleLogin}>
             <InputGroup>
               <label>E-mail Corporativo</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus placeholder="exemplo@email.com" />
+              <input 
+  type="email" 
+  value={email} 
+  onChange={e => setEmail(e.target.value.trim().toLowerCase())} 
+  placeholder="contato@empresa.com" 
+/>
             </InputGroup>
 
             <InputGroup>

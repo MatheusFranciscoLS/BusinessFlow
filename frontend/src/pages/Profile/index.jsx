@@ -10,6 +10,7 @@ import {
   Container, Header, ProfileCard, AvatarSection, FormGrid, FormGroup, ActionButton,
   SectionTitle, CompanyList, CompanyItem, AddButton, ModalOverlay, ModalContent, ModalActions
 } from './styles';
+import { maskCPFOrCNPJ } from '../../utils/masks';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -326,10 +327,15 @@ export default function Profile() {
                   <label>Razão Social / Nome de Exibição</label>
                   <input value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Ex: BusinessFlow Consultoria" />
                 </FormGroup>
-                <FormGroup>
-                  <label>CNPJ</label>
-                  <input value={companyDocument} onChange={e => setCompanyDocument(e.target.value)} placeholder="00.000.000/0001-00" />
-                </FormGroup>
+<FormGroup>
+  <label>CNPJ</label>
+  <input 
+    value={companyDocument} 
+    onChange={e => setCompanyDocument(maskCPFOrCNPJ(e.target.value))} 
+    placeholder="00.000.000/0001-00" 
+    maxLength={18}
+  />
+</FormGroup>
               </FormGrid>
               <ModalActions style={{ marginTop: 32 }}>
                 <button type="button" className="cancel" onClick={() => setIsCompanyModalOpen(false)}>Cancelar</button>

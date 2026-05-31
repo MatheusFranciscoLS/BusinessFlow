@@ -51,6 +51,12 @@ export default function Documents() {
   }, [documents, searchTerm, filterCategory]);
 
   async function handleUpload(e) {
+
+    // Limite de 5MB (5 * 1024 * 1024 bytes)
+if (form.file && form.file.size > 5242880) {
+  return toast.error("O ficheiro é muito pesado! O limite máximo é de 5MB.");
+}
+
     e.preventDefault();
     if (!form.file) return toast.error("Anexe um ficheiro.");
     if (!isClient && !form.clientId) return toast.error("Selecione o cliente dono deste documento.");
