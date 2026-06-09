@@ -175,6 +175,30 @@ function toggleSelectAll() {
         }
     }
 
+    // --- FUNÇÃO DO CLIENTE: ENVIAR COMPROVATIVO PIX ---
+    async function handleUploadPixReceipt(e) {
+        const uploadedFile = e.target.files[0];
+        if (!uploadedFile) return;
+        if (uploadedFile.size > 5242880) return toast.error("O comprovante é muito pesado! (Máx: 5MB)");
+
+        setIsSubmitting(true);
+        const toastId = toast.loading('A enviar comprovante...');
+        try {
+            const formData = new FormData();
+            formData.append('file', uploadedFile);
+            // Anexa o ficheiro à transação existente
+            await api.put(`/transactions/${pixTransaction.id}`, formData);
+            
+            toast.success("Comprovante enviado! O escritório irá analisar.", { id: toastId });
+            setPixTransaction(null); // Fecha a janela do PIX
+            mutate(); // Atualiza a tabela (agora vai aparecer o clipe de papel)
+        } catch {
+            toast.error("Erro ao enviar comprovante.", { id: toastId });
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
     // --- FUNÇÕES DE CRUD MANUAIS ---
     function handleOpenNew() { 
         setEditingId(null); 
@@ -639,10 +663,21 @@ function toggleSelectAll() {
                 {/* 4. As Colunas de Valores, Data e Status */}
                 <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
                 <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
-                <td>{formatDateDisplay(t.date)}</td>
+                {/* 5. Coluna da Data com Ícone de Recorrência Inteligente */}
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {formatDateDisplay(t.date)}
+                    {/* Se tiver parcelas ou "Mês" no título, mostra que é recorrente */}
+                    {(t.installments > 1 || t.title?.includes('(Mês') || t.description?.includes('(Mês')) && (
+                      <span title="Lançamento Recorrente (Mensalidade)">
+                        <Repeat size={14} color="#3182ce" />
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td>{renderStatusBadge(t.status || 'PAGO')}</td>
                 
-                {/* 5. A Coluna de Ações (PIX para Cliente, ou Botões de Editar para Gestor) */}
+                {/* 6. A Coluna de Ações (PIX para Cliente, ou Botões de Editar para Gestor) */}
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {isClient ? (
                         (isNotPaid && isIncome) ? (
@@ -657,15 +692,32 @@ function toggleSelectAll() {
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
                         )
                     ) : (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                            {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
+<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            {/* Só mostra o botão de dar baixa se NÃO estiver pago */}
+                            {isNotPaid && (
+                                <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual">
+                                    <CheckCircle size={18} />
+                                </ActionButton>
+                            )}
+                            
+                            {/* O clipe de papel aparece se a Dona Ana anexar o comprovativo */}
                             {t.fileUrl && (
-                              <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo">
+                              <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante">
                                 <Paperclip size={18} />
                               </ActionButton>
                             )}
-                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
-                            <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
+                            
+                            {/* Editar muda para "Visualizar" se já estiver pago */}
+                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title={isNotPaid ? "Editar" : "Visualizar"}>
+                                <Edit size={18} />
+                            </ActionButton>
+                            
+                            {/* 🔥 TRAVA DE AUDITORIA: A Lixeira DESAPARECE se a conta já foi paga */}
+                            {isNotPaid && (
+                                <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir Transação">
+                                    <Trash2 size={18} />
+                                </ActionButton>
+                            )}
                         </div>
                     )}
                 </td>
@@ -703,7 +755,19 @@ function toggleSelectAll() {
                   </div>
 
                   <h3 style={{ fontSize: 28, color: '#2d3748', marginBottom: 32, fontWeight: 800 }}>{formatCurrency(pixTransaction.amount || pixTransaction.price)}</h3>
-                  
+                  {/* 🔥 CAIXA DE UPLOAD DO COMPROVANTE PARA A DONA ANA */}
+                  <div style={{ padding: '16px', background: '#f7fafc', borderRadius: '12px', border: '1px dashed #cbd5e0', marginBottom: 24, textAlign: 'left' }}>
+                    <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#4a5568', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <UploadCloud size={16} color="#3182ce"/> Já pagou? Envie o comprovante:
+                    </p>
+                    <input 
+                      type="file" 
+                      onChange={handleUploadPixReceipt} 
+                      accept="image/*,application/pdf" 
+                      disabled={isSubmitting} 
+                      style={{ width: '100%', fontSize: 12, cursor: isSubmitting ? 'not-allowed' : 'pointer' }} 
+                    />
+                  </div>
                   <button onClick={() => setPixTransaction(null)} style={{ background: '#edf2f7', color: '#4a5568', padding: '14px 24px', borderRadius: 12, border: 'none', fontWeight: 700, cursor: 'pointer', width: '100%', transition: '0.2s' }}>
                     Fechar Janela
                   </button>
