@@ -40,6 +40,7 @@ export default function Financial() {
     const [showAllTime, setShowAllTime] = useState(false); 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('Todos');
+    const [statusFilter, setStatusFilter] = useState('Todos');
     const [clientFilter, setClientFilter] = useState(''); 
 
     // --- ESTADOS DE AÇÕES EM MASSA E PIX ---
@@ -107,14 +108,21 @@ export default function Financial() {
             }
         }
 
-        return filtered.filter(t => {
+return filtered.filter(t => {
             const titleMatch = t.title ? t.title.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const clientMatch = t.client?.fullName ? t.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             const matchesSearch = searchTerm === '' || titleMatch || clientMatch;
             const matchesCategory = filterCategory === 'Todos' || t.category === filterCategory;
-            return matchesSearch && matchesCategory;
+            
+            // 🔥 A LÓGICA DO NOVO FILTRO DE STATUS
+            const matchesStatus = statusFilter === 'Todos' || 
+                                 (statusFilter === 'Pendentes' && t.status !== 'PAGO') || 
+                                 (statusFilter === 'Pagos' && t.status === 'PAGO');
+                                 
+            return matchesSearch && matchesCategory && matchesStatus;
         });
-    }, [transactions, searchTerm, filterCategory, clientFilter, isClient]);
+    // 🔥 CORREÇÃO: statusFilter adicionado na lista abaixo!
+    }, [transactions, searchTerm, filterCategory, clientFilter, isClient, statusFilter]);
 
 const filteredSummary = useMemo(() => {
         return filteredTransactions.reduce((acc, transaction) => {
@@ -577,7 +585,22 @@ const renderStatusBadge = (statusValue) => {
                       <select 
                         value={clientFilter} 
                         onChange={e => setClientFilter(e.target.value)} 
-                        style={{ padding: '0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', background: 'white', fontWeight: 600, color: '#4a5568', height: 48 }}
+                        style={{ 
+                            padding: '0 40px 0 16px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #e2e8f0', 
+                            outline: 'none', 
+                            /* 🔥 MÁGICA: Seta customizada e remoção do estilo antigo do Windows/Mac */
+                            background: 'white url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', 
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                            appearance: 'none',
+                            fontWeight: 600, 
+                            color: '#4a5568', 
+                            height: 48,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                        }}
                       >
                         <option value="">Consolidado de Clientes (BPO)</option>
                         <option value="INTERNO">Caixa Interno do Escritório</option>
@@ -597,7 +620,21 @@ const renderStatusBadge = (statusValue) => {
                     </div>
                 </div>
 
-                <FilterPillsContainer>
+<FilterPillsContainer style={{ marginTop: 16, borderTop: '1px solid #edf2f7', paddingTop: 16 }}>
+                  {/* 🔥 BOTÕES DE AUDITORIA: Encontrar quem não pagou */}
+                  <div style={{ display: 'flex', gap: 8, marginRight: 24, paddingRight: 24, borderRight: '2px solid #edf2f7' }}>
+                    <FilterPill $active={statusFilter === 'Todos'} onClick={() => setStatusFilter('Todos')}>
+                      Todas as Situações
+                    </FilterPill>
+                    <FilterPill $active={statusFilter === 'Pendentes'} onClick={() => setStatusFilter('Pendentes')} style={{ color: statusFilter === 'Pendentes' ? 'white' : '#d69e2e', background: statusFilter === 'Pendentes' ? '#d69e2e' : '#fffff0', border: '1px solid #fbd38d' }}>
+                      Apenas Pendentes
+                    </FilterPill>
+                    <FilterPill $active={statusFilter === 'Pagos'} onClick={() => setStatusFilter('Pagos')} style={{ color: statusFilter === 'Pagos' ? 'white' : '#38a169', background: statusFilter === 'Pagos' ? '#38a169' : '#f0fff4', border: '1px solid #9ae6b4' }}>
+                      Apenas Pagos
+                    </FilterPill>
+                  </div>
+                  
+                  {/* Categorias Antigas */}
                   {categories.map(cat => (
                     <FilterPill key={cat} $active={filterCategory === cat} onClick={() => setFilterCategory(cat)}>{cat}</FilterPill>
                   ))}
@@ -614,35 +651,37 @@ const renderStatusBadge = (statusValue) => {
                         <SummaryCard $highlight={true}><header><span>Saldo Disponível</span><DollarSign size={24} color="white" /></header><strong>{formatCurrency(filteredSummary.total)}</strong></SummaryCard>
                     </SummaryContainer>
 
-                    {/* 🔥 MINI-GRÁFICO DE FLUXO DE CAIXA */}
+{/* 🔥 MINI-GRÁFICO DE FLUXO DE CAIXA (DESIGN PREMIUM) */}
                     {filteredTransactions.length > 0 && (
-                        <div style={{ background: 'white', padding: 24, borderRadius: 16, border: '1px solid #edf2f7', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <div style={{ background: 'white', padding: '20px 24px', borderRadius: 16, border: '1px solid #edf2f7', marginBottom: 32, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                                 <span style={{ fontWeight: 800, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
                                     Fluxo de Caixa (Visão do Período)
                                 </span>
-                                <span style={{ fontSize: 14, color: '#718096', fontWeight: 600 }}>
-                                    Volume Movimentado: {formatCurrency(filteredSummary.entradas + filteredSummary.saidas)}
+                                <span style={{ fontSize: 13, color: '#718096', fontWeight: 600, background: '#f7fafc', padding: '4px 12px', borderRadius: 20 }}>
+                                    Volume: {formatCurrency(filteredSummary.entradas + filteredSummary.saidas)}
                                 </span>
                             </div>
                             
-                            {/* Barra de Progresso Inteligente */}
-                            <div style={{ display: 'flex', height: 24, borderRadius: 12, overflow: 'hidden', gap: 4, background: '#edf2f7' }}>
+                            {/* Barra de Progresso Slim e Arredondada */}
+                            <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', gap: 4, background: '#edf2f7' }}>
                                 <div 
-                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.entradas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#48bb78', transition: 'width 0.8s ease' }} 
+                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.entradas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#48bb78', transition: 'width 0.8s ease', borderRadius: '6px 0 0 6px' }} 
                                   title="Proporção de Entradas" 
                                 />
                                 <div 
-                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.saidas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#f56565', transition: 'width 0.8s ease' }} 
+                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.saidas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#f56565', transition: 'width 0.8s ease', borderRadius: '0 6px 6px 0' }} 
                                   title="Proporção de Saídas" 
                                 />
                             </div>
                             
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 13, fontWeight: 700 }}>
-                                <span style={{ color: '#38a169' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 12, fontWeight: 700 }}>
+                                <span style={{ color: '#38a169', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{width: 8, height: 8, borderRadius: 4, background: '#48bb78'}}></div>
                                   {((filteredSummary.entradas + filteredSummary.saidas) === 0 ? 0 : Math.round((filteredSummary.entradas / (filteredSummary.entradas + filteredSummary.saidas)) * 100))}% Receitas
                                 </span>
-                                <span style={{ color: '#e53e3e' }}>
+                                <span style={{ color: '#e53e3e', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{width: 8, height: 8, borderRadius: 4, background: '#f56565'}}></div>
                                   {((filteredSummary.entradas + filteredSummary.saidas) === 0 ? 0 : Math.round((filteredSummary.saidas / (filteredSummary.entradas + filteredSummary.saidas)) * 100))}% Despesas
                                 </span>
                             </div>
@@ -693,7 +732,7 @@ const renderStatusBadge = (statusValue) => {
         const isNotPaid = t.status !== 'PAGO'; 
         
         return (
-            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
+            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent',borderLeft: t.status === 'ATRASADO' ? '4px solid #e53e3e' : '4px solid transparent' }}>
                 
                 {/* 1. A Coluna do Checkbox Transparente (UX Premium) */}
                 {!isClient && (
