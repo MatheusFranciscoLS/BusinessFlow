@@ -554,11 +554,15 @@ function toggleSelectAll() {
     <input 
       type="checkbox" 
       onChange={toggleSelectAll} 
-      // Fica marcado se a quantidade selecionada for igual à quantidade de pendentes
       checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.filter(t => t.status !== 'PAGO').length} 
-      // Desativa o checkbox geral se não houver nada para pagar na tela
       disabled={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0}
-      style={{ cursor: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 'not-allowed' : 'pointer', width: 16, height: 16 }} 
+      title={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? "Todas as contas já estão pagas" : "Selecionar todas as pendentes"}
+      style={{ 
+        cursor: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 'not-allowed' : 'pointer', 
+        width: 16, 
+        height: 16,
+        opacity: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 0.4 : 1 // 🔥 Fica meio transparente se não houver pendentes
+      }} 
     />
   </th>
 )}
@@ -572,18 +576,23 @@ function toggleSelectAll() {
                                         return (
 <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
     {/* CHECKBOX DE AÇÕES EM LOTE */}
-    {!isClient && (
+{!isClient && (
   <td>
     {isNotPaid ? (
       <input 
         type="checkbox" 
         checked={selectedIds.includes(t.id)} 
         onChange={() => toggleSelect(t.id)} 
+        title="Selecionar para dar baixa"
         style={{ cursor: 'pointer', width: 16, height: 16 }} 
       />
     ) : (
-      // Mantém o alinhamento visual, mas sem a caixinha
-      <span style={{ display: 'inline-block', width: 16 }}></span>
+      <input 
+        type="checkbox" 
+        disabled 
+        title="Esta transação já está liquidada"
+        style={{ cursor: 'not-allowed', width: 16, height: 16, opacity: 0.3 }} 
+      />
     )}
   </td>
 )}
