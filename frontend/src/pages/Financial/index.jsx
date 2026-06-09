@@ -180,7 +180,7 @@ function toggleSelectAll() {
         }
     }
 
-    // --- FUNÇÃO DO CLIENTE: ENVIAR COMPROVATIVO PIX ---
+// --- FUNÇÃO DO CLIENTE: ENVIAR COMPROVATIVO PIX ---
     async function handleUploadPixReceipt(e) {
         const uploadedFile = e.target.files[0];
         if (!uploadedFile) return;
@@ -191,12 +191,22 @@ function toggleSelectAll() {
         try {
             const formData = new FormData();
             formData.append('file', uploadedFile);
-            // Anexa o ficheiro à transação existente
+            
+            // 🔥 CORREÇÃO: Reenviamos os dados básicos para o Back-end aceitar a atualização sem perder nada
+            formData.append('title', pixTransaction.title || pixTransaction.description);
+            formData.append('amount', pixTransaction.amount || pixTransaction.price);
+            formData.append('category', pixTransaction.category || 'Geral');
+            formData.append('type', pixTransaction.type === 'income' || pixTransaction.type === 'entrada' ? 'entrada' : 'saida');
+            formData.append('date', new Date(pixTransaction.date).toISOString());
+            
+            // 🔥 MÁGICA DE UX: Muda o status para avisar o Gestor que o cliente já pagou!
+            formData.append('status', 'EM ANÁLISE'); 
+
             await api.put(`/transactions/${pixTransaction.id}`, formData);
             
             toast.success("Comprovante enviado! O escritório irá analisar.", { id: toastId });
-            setPixTransaction(null); // Fecha a janela do PIX
-            mutate(); // Atualiza a tabela (agora vai aparecer o clipe de papel)
+            setPixTransaction(null); 
+            mutate(); 
         } catch {
             toast.error("Erro ao enviar comprovante.", { id: toastId });
         } finally {
@@ -480,10 +490,11 @@ function toggleSelectAll() {
         window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); 
     }
 
-    const renderStatusBadge = (statusValue) => {
+const renderStatusBadge = (statusValue) => {
       switch(statusValue) {
         case 'PAGO': return <span style={{ background: '#C6F6D5', color: '#22543D', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} /> PAGO</span>;
         case 'PENDENTE': return <span style={{ background: '#FEFCBF', color: '#B7791F', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Clock size={12} /> PENDENTE</span>;
+        case 'EM ANÁLISE': return <span style={{ background: '#EBF8FF', color: '#2B6CB0', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Search size={12} /> EM ANÁLISE</span>;
         case 'AGENDADO': return <span style={{ background: '#EBF8FF', color: '#2B6CB0', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CalendarClock size={12} /> AGENDADO</span>;
         case 'ATRASADO': return <span style={{ background: '#FED7D7', color: '#9B2C2C', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><AlertTriangle size={12} /> ATRASADO</span>;
         default: return <span style={{ background: '#EDF2F7', color: '#4A5568', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold' }}>{statusValue}</span>;
