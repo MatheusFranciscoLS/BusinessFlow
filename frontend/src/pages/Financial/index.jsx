@@ -116,11 +116,16 @@ export default function Financial() {
         });
     }, [transactions, searchTerm, filterCategory, clientFilter, isClient]);
 
-    const filteredSummary = useMemo(() => {
+const filteredSummary = useMemo(() => {
         return filteredTransactions.reduce((acc, transaction) => {
             const amount = transaction.amount || transaction.price || 0;
             if (transaction.status === 'PAGO') {
-                if (transaction.type === 'income' || transaction.type === 'entrada') { 
+                // Descobre a perspectiva real
+                const isFirmIncome = transaction.type === 'income' || transaction.type === 'entrada';
+                // 🔥 A MÁGICA DA PERSPECTIVA: Se for o cliente a ver, invertemos a lógica!
+                const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
+
+                if (displayAsIncome) { 
                     acc.entradas += amount; acc.total += amount; 
                 } else { 
                     acc.saidas += amount; acc.total -= amount; 
@@ -128,7 +133,7 @@ export default function Financial() {
             }
             return acc;
         }, { entradas: 0, saidas: 0, total: 0 });
-    }, [filteredTransactions]);
+    }, [filteredTransactions, isClient]);
 
     function formatCurrency(value) { 
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0); 
@@ -605,8 +610,12 @@ function toggleSelectAll() {
 <tbody>
     {filteredTransactions.map(t => {
         const amount = t.amount || t.price || 0;
-        const isIncome = t.type === 'income' || t.type === 'entrada';
+        
+        // 🔥 1. A MÁGICA DA PERSPECTIVA (Inverte para o cliente)
+        const isFirmIncome = t.type === 'income' || t.type === 'entrada';
+        const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
         const isNotPaid = t.status !== 'PAGO'; 
+        
         return (
             <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
                 
@@ -635,7 +644,8 @@ function toggleSelectAll() {
                 {/* 2. A Coluna de Descrição com o Ícone do Cartão de Crédito */}
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {isIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
+                    {/* 🔥 2. USA A PERSPECTIVA (displayAsIncome) EM VEZ DE isIncome PARA A COR DA SETA */}
+                    {displayAsIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
                         {t.paymentMethod && (
@@ -660,9 +670,10 @@ function toggleSelectAll() {
                     </td>
                 )}
 
-                {/* 4. As Colunas de Valores, Data e Status */}
-                <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
+                {/* 4. As Colunas de Valores (COM SINAL NEGATIVO CORRETO), Data e Status */}
+                <td><span style={{ color: displayAsIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!displayAsIncome && '- '} {formatCurrency(amount)}</span></td>
                 <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
+                
                 {/* 5. Coluna da Data com Ícone de Recorrência Inteligente */}
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -675,12 +686,14 @@ function toggleSelectAll() {
                     )}
                   </div>
                 </td>
+                
                 <td>{renderStatusBadge(t.status || 'PAGO')}</td>
                 
                 {/* 6. A Coluna de Ações (PIX para Cliente, ou Botões de Editar para Gestor) */}
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {isClient ? (
-                        (isNotPaid && isIncome) ? (
+                        // 🔥 3. O CLIENTE SÓ PAGA O QUE FOR DESPESA PARA ELE (!displayAsIncome)
+                        (isNotPaid && !displayAsIncome) ? (
                             <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                                 <QrCode size={16} /> Pagar PIX
                             </ActionButton>
@@ -692,7 +705,7 @@ function toggleSelectAll() {
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
                         )
                     ) : (
-<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             {/* Só mostra o botão de dar baixa se NÃO estiver pago */}
                             {isNotPaid && (
                                 <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual">
@@ -700,7 +713,7 @@ function toggleSelectAll() {
                                 </ActionButton>
                             )}
                             
-                            {/* O clipe de papel aparece se a Dona Ana anexar o comprovativo */}
+                            {/* O clipe de papel aparece se tiver comprovativo/anexo */}
                             {t.fileUrl && (
                               <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante">
                                 <Paperclip size={18} />
@@ -712,7 +725,7 @@ function toggleSelectAll() {
                                 <Edit size={18} />
                             </ActionButton>
                             
-                            {/* 🔥 TRAVA DE AUDITORIA: A Lixeira DESAPARECE se a conta já foi paga */}
+                            {/* 🔥 4. TRAVA DE AUDITORIA: A Lixeira DESAPARECE se a conta já foi paga */}
                             {isNotPaid && (
                                 <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir Transação">
                                     <Trash2 size={18} />
