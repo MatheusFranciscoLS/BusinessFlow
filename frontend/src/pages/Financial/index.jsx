@@ -8,7 +8,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip,
   CheckCircle, Clock, CalendarClock, AlertTriangle, Repeat, User,
-  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2, QrCode
+  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2, QrCode, Download
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -486,6 +486,33 @@ function toggleSelectAll() {
         toast.success("PDF exportado com sucesso!");
     }
 
+    // --- EXPORTAR PARA EXCEL (CSV) ---
+    function handleExportCSV() {
+        if (!transactions || transactions.length === 0) return toast.error("Sem dados para exportar.");
+        
+        let csv = 'Data,Descricao,Cliente,Categoria,Valor,Tipo,Situacao\n';
+        
+        filteredTransactions.forEach(t => {
+            const amount = t.amount || t.price || 0;
+            const isIncome = t.type === 'income' || t.type === 'entrada';
+            const clientInfo = isClient ? 'Cliente' : (t.client ? t.client.fullName : 'Caixa Interno');
+            const dateStr = new Date(t.date).toLocaleDateString('pt-BR');
+            
+            // Colocamos aspas para evitar que vírgulas no texto quebrem a planilha
+            csv += `"${dateStr}","${t.title || t.description}","${clientInfo}","${t.category || 'Geral'}",${amount},"${isIncome ? 'Entrada' : 'Saida'}","${t.status || 'PAGO'}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'Relatorio_Financeiro.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Excel (CSV) gerado com sucesso!");
+    }
+
     function openAttachment(fileUrl) { 
         window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); 
     }
@@ -520,12 +547,15 @@ const renderStatusBadge = (statusValue) => {
             <Header style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
                     <h1 style={{ margin: 0, fontSize: 26, color: '#1a202c', fontWeight: 800 }}>Financeiro</h1>
-                    <ButtonGroup>
+<ButtonGroup>
                         {!isClient && (
                           <button className="secondary" onClick={() => { setIsOfxModalOpen(true); setAutoMatches([]); setBankTransactions([]); }} style={{ background: '#ebf8ff', color: '#3182ce', borderColor: '#bee3f8' }}>
                             <LinkIcon size={18} /> Conciliar Extrato (OFX)
                           </button>
                         )}
+                        <button className="secondary" onClick={handleExportCSV} disabled={!transactions}>
+                          <Download size={18} /> Excel (CSV)
+                        </button>
                         <button className="secondary" onClick={handleExportPDF} disabled={!transactions}>
                           <FileText size={18} /> Relatório PDF
                         </button>
@@ -583,6 +613,41 @@ const renderStatusBadge = (statusValue) => {
                         <SummaryCard><header><span>Saídas (Realizado)</span><ArrowDownCircle size={24} color="#e52e4d" /></header><strong style={{ color: '#e52e4d' }}>{formatCurrency(filteredSummary.saidas)}</strong></SummaryCard>
                         <SummaryCard $highlight={true}><header><span>Saldo Disponível</span><DollarSign size={24} color="white" /></header><strong>{formatCurrency(filteredSummary.total)}</strong></SummaryCard>
                     </SummaryContainer>
+
+                    {/* 🔥 MINI-GRÁFICO DE FLUXO DE CAIXA */}
+                    {filteredTransactions.length > 0 && (
+                        <div style={{ background: 'white', padding: 24, borderRadius: 16, border: '1px solid #edf2f7', marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                <span style={{ fontWeight: 800, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    Fluxo de Caixa (Visão do Período)
+                                </span>
+                                <span style={{ fontSize: 14, color: '#718096', fontWeight: 600 }}>
+                                    Volume Movimentado: {formatCurrency(filteredSummary.entradas + filteredSummary.saidas)}
+                                </span>
+                            </div>
+                            
+                            {/* Barra de Progresso Inteligente */}
+                            <div style={{ display: 'flex', height: 24, borderRadius: 12, overflow: 'hidden', gap: 4, background: '#edf2f7' }}>
+                                <div 
+                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.entradas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#48bb78', transition: 'width 0.8s ease' }} 
+                                  title="Proporção de Entradas" 
+                                />
+                                <div 
+                                  style={{ width: `${(filteredSummary.entradas + filteredSummary.saidas) === 0 ? 50 : (filteredSummary.saidas / (filteredSummary.entradas + filteredSummary.saidas)) * 100}%`, background: '#f56565', transition: 'width 0.8s ease' }} 
+                                  title="Proporção de Saídas" 
+                                />
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 13, fontWeight: 700 }}>
+                                <span style={{ color: '#38a169' }}>
+                                  {((filteredSummary.entradas + filteredSummary.saidas) === 0 ? 0 : Math.round((filteredSummary.entradas / (filteredSummary.entradas + filteredSummary.saidas)) * 100))}% Receitas
+                                </span>
+                                <span style={{ color: '#e53e3e' }}>
+                                  {((filteredSummary.entradas + filteredSummary.saidas) === 0 ? 0 : Math.round((filteredSummary.saidas / (filteredSummary.entradas + filteredSummary.saidas)) * 100))}% Despesas
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     {filteredTransactions.length === 0 ? (<p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>Nenhuma movimentação encontrada neste período.</p>) : (
                         <TableContainer>
@@ -941,23 +1006,28 @@ const renderStatusBadge = (statusValue) => {
                             </FormGroup>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                              <FormGroup>
-                                <label>Categoria *</label>
-                                <select value={category} onChange={e => setCategory(e.target.value)} required style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                  <option value="">Selecione a conta...</option>
+<FormGroup>
+                                <label>Categoria (Selecione ou digite uma nova) *</label>
+                                <input 
+                                  list="categorias-dinamicas"
+                                  value={category} 
+                                  onChange={e => setCategory(e.target.value)} 
+                                  required 
+                                  placeholder="Ex: Software, Impostos, Material..."
+                                  style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}
+                                />
+                                <datalist id="categorias-dinamicas">
+                                  {/* Puxa as categorias que já existem no banco */}
+                                  {categories.filter(c => c !== 'Todos').map(c => (
+                                      <option key={c} value={c} />
+                                  ))}
+                                  {/* Sugestões base */}
                                   {(type === 'income' || type === 'entrada') ? (
-                                    <optgroup label="RECEITAS">
-                                      <option value="Honorários Contábeis">Honorários Mensais</option>
-                                      <option value="Serviços Extras">Serviços Extras</option>
-                                    </optgroup>
+                                      <><option value="Honorários Contábeis" /><option value="Serviços Extras" /></>
                                   ) : (
-                                    <optgroup label="CUSTOS">
-                                      <option value="Folha de Pagamento">Folha de Pagamento</option>
-                                      <option value="Impostos">Impostos (Simples, DARF)</option>
-                                      <option value="Despesas Fixas">Despesas Fixas (Software, Aluguel)</option>
-                                    </optgroup>
+                                      <><option value="Folha de Pagamento" /><option value="Impostos" /><option value="Despesas Fixas" /></>
                                   )}
-                                </select>
+                                </datalist>
                               </FormGroup>
                               <FormGroup>
                                 <label>Data de Vencimento *</label>
