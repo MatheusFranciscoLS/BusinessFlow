@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Calendar, Plus, Clock, AlertTriangle, Zap, Building2, 
-  CheckCircle, ListTodo, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt
+  CheckCircle, ListTodo, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt,Repeat
 } from 'lucide-react';
 
 import {
@@ -45,6 +45,8 @@ export default function Agenda() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', priority: 'NORMAL', dueDate: '', clientId: '' });
   const [isScanning, setIsScanning] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [installments, setInstallments] = useState(1);
 
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
@@ -73,11 +75,12 @@ export default function Agenda() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  async function handleCreateTask(e) {
+async function handleCreateTask(e) {
     e.preventDefault();
     const tId = toast.loading("A criar prazo...");
     try {
-      await api.post('/tasks', { ...form, companyId: queryCompany });
+      // 🔥 AQUI ENVIAMOS A ORDEM DE REPETIÇÃO PARA O SERVIDOR!
+      await api.post('/tasks', { ...form, companyId: queryCompany, installments: isRecurring ? installments : 1 });
       toast.success("Obrigação criada!", { id: tId });
       setIsModalOpen(false);
       setForm({ title: '', description: '', priority: 'NORMAL', dueDate: '', clientId: '' });
@@ -326,6 +329,19 @@ export default function Agenda() {
     required 
   />
 </FormGroup>
+<div style={{ background: '#f7fafc', border: '1px solid #edf2f7', padding: '16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: '#2d3748' }}>
+    <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+    <Repeat size={18} color="#3182ce" /> Tornar esta obrigação recorrente (Mensal)
+  </label>
+  {isRecurring && (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '26px' }}>
+      <span style={{ fontSize: '13px', color: '#4a5568' }}>Gerar prazos para os próximos</span>
+      <input type="number" min="2" max="60" value={installments} onChange={(e) => setInstallments(e.target.value)} style={{ width: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
+      <span style={{ fontSize: '13px', color: '#4a5568' }}>meses</span>
+    </div>
+  )}
+</div>
                 <FormGroup>
                   <label>Prioridade</label>
                   <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>

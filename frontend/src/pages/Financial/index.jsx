@@ -8,7 +8,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip,
   CheckCircle, Clock, CalendarClock, AlertTriangle, Repeat, User,
-  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2 
+  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2, QrCode
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -29,19 +29,24 @@ export default function Financial() {
     const isClient = user?.role === 'CLIENT';
     const queryCompany = isClient ? user?.companyAccessId : selectedCompany?.id;
 
+    // --- ESTADOS GERAIS ---
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false); // Trava Anti Duplo-Clique
+    const [isSubmitting, setIsSubmitting] = useState(false); 
 
+    // --- FILTROS ---
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
     const [showAllTime, setShowAllTime] = useState(false); 
-
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('Todos');
     const [clientFilter, setClientFilter] = useState(''); 
 
-    // Estados do Formulário
+    // --- ESTADOS DE AÇÕES EM MASSA E PIX ---
+    const [selectedIds, setSelectedIds] = useState([]); 
+    const [pixTransaction, setPixTransaction] = useState(null); 
+
+    // --- ESTADOS DO FORMULÁRIO ---
     const [title, setTitle] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
@@ -54,12 +59,12 @@ export default function Financial() {
     const [isRecurring, setIsRecurring] = useState(false);
     const [installments, setInstallments] = useState(1);
 
-    // Estados do OFX e do Robô de Auto-Match
+    // --- ESTADOS DA CONCILIAÇÃO OFX ---
     const [isOfxModalOpen, setIsOfxModalOpen] = useState(false);
     const [bankTransactions, setBankTransactions] = useState([]);
     const [selectedBankTx, setSelectedBankTx] = useState(null);
     const [selectedSystemTx, setSelectedSystemTx] = useState(null);
-    const [autoMatches, setAutoMatches] = useState([]); // 🔥 O Cérebro do Robô armazena os pares aqui
+    const [autoMatches, setAutoMatches] = useState([]); 
 
     const timeQuery = showAllTime ? '' : `&month=${currentMonth}&year=${currentYear}`;
     const queryParams = queryCompany ? `?companyId=${queryCompany}${timeQuery}` : null;
@@ -78,8 +83,15 @@ export default function Financial() {
         return ['Todos', ...uniqueCats];
     }, [transactions]);
 
-    function handlePreviousMonth() { if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } else { setCurrentMonth(m => m - 1); } }
-    function handleNextMonth() { if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } else { setCurrentMonth(m => m + 1); } }
+    function handlePreviousMonth() { 
+        if (currentMonth === 1) { setCurrentMonth(12); setCurrentYear(y => y - 1); } 
+        else { setCurrentMonth(m => m - 1); } 
+    }
+    
+    function handleNextMonth() { 
+        if (currentMonth === 12) { setCurrentMonth(1); setCurrentYear(y => y + 1); } 
+        else { setCurrentMonth(m => m + 1); } 
+    }
 
     const filteredTransactions = useMemo(() => {
         if (!transactions) return [];
@@ -87,9 +99,9 @@ export default function Financial() {
 
         if (!isClient) {
             if (clientFilter === "") {
-                filtered = filtered.filter(t => t.clientId !== null); // Apenas BPO
+                filtered = filtered.filter(t => t.clientId !== null); 
             } else if (clientFilter === "INTERNO") {
-                filtered = filtered.filter(t => t.clientId === null); // Caixa Interno
+                filtered = filtered.filter(t => t.clientId === null); 
             } else {
                 filtered = filtered.filter(t => t.clientId === clientFilter);
             }
@@ -108,20 +120,262 @@ export default function Financial() {
         return filteredTransactions.reduce((acc, transaction) => {
             const amount = transaction.amount || transaction.price || 0;
             if (transaction.status === 'PAGO') {
-                if (transaction.type === 'income' || transaction.type === 'entrada') { acc.entradas += amount; acc.total += amount; } 
-                else { acc.saidas += amount; acc.total -= amount; }
+                if (transaction.type === 'income' || transaction.type === 'entrada') { 
+                    acc.entradas += amount; acc.total += amount; 
+                } else { 
+                    acc.saidas += amount; acc.total -= amount; 
+                }
             }
             return acc;
         }, { entradas: 0, saidas: 0, total: 0 });
     }, [filteredTransactions]);
 
-    function formatCurrency(value) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0); }
+    function formatCurrency(value) { 
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0); 
+    }
+    
     function formatDateDisplay(dateString) {
         if (!dateString) return '-';
         const d = new Date(dateString);
         return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
     }
 
+    // --- FUNÇÕES EM MASSA (BULK ACTIONS) ---
+    function toggleSelect(id) {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    }
+
+    function toggleSelectAll() {
+        if (selectedIds.length === filteredTransactions.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredTransactions.map(t => t.id));
+        }
+    }
+
+    async function handleBulkPay() {
+        if (!window.confirm(`Dar baixa oficial em ${selectedIds.length} transações simultaneamente?`)) return;
+        setIsSubmitting(true);
+        const tId = toast.loading(`A liquidar ${selectedIds.length} faturas...`);
+        try {
+            await Promise.all(selectedIds.map(id => {
+                const formData = new FormData();
+                formData.append('status', 'PAGO');
+                return api.put(`/transactions/${id}`, formData);
+            }));
+            toast.success("Baixas em lote realizadas com sucesso!", { id: tId });
+            setSelectedIds([]); 
+            mutate();
+        } catch { 
+            toast.error("Erro no processamento em lote.", { id: tId }); 
+        } finally { 
+            setIsSubmitting(false); 
+        }
+    }
+
+    // --- FUNÇÕES DE CRUD MANUAIS ---
+    function handleOpenNew() { 
+        setEditingId(null); 
+        setTitle(''); 
+        setPrice(''); 
+        setCategory(''); 
+        setType('income'); 
+        setDate(''); 
+        setFile(null); 
+        setStatus('PAGO'); 
+        setPaymentMethod(''); 
+        setClientId(''); 
+        setIsRecurring(false); 
+        setInstallments(1); 
+        setIsModalOpen(true); 
+    }
+
+    function handleEdit(t) { 
+        setEditingId(t.id); 
+        setTitle(t.title || t.description); 
+        setPrice(t.amount || t.price || 0); 
+        setCategory(t.category || ''); 
+        setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type); 
+        setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : ''); 
+        setStatus(t.status || 'PAGO'); 
+        setPaymentMethod(t.paymentMethod || ''); 
+        setClientId(t.clientId || ''); 
+        setFile(null); 
+        setIsRecurring(false); 
+        setInstallments(1); 
+        setIsModalOpen(true); 
+    }
+
+    async function handleDelete(id) { 
+        if (window.confirm("Deseja excluir esta transação permanentemente?")) { 
+            try { 
+                await api.delete(`/transactions/${id}`); 
+                mutate(); 
+                toast.success("Removido com sucesso!"); 
+            } catch { 
+                toast.error("Erro ao eliminar transação."); 
+            } 
+        } 
+    }
+
+    async function handleMarkAsPaid(t) { 
+        if (!window.confirm(`Dar baixa em: ${t.title || t.description}?`)) return; 
+        const toastId = toast.loading('A processar baixa...'); 
+        try { 
+            const formData = new FormData(); 
+            formData.append('status', 'PAGO'); 
+            await api.put(`/transactions/${t.id}`, formData); 
+            mutate(); 
+            toast.success("Baixa realizada com sucesso!", { id: toastId }); 
+        } catch { 
+            toast.error("Erro ao dar baixa.", { id: toastId }); 
+        } 
+    }
+
+    async function handleSave(e) {
+        e.preventDefault();
+        if (isSubmitting) return;
+
+        // Bloqueador de Arquivo Pesado (Máx 5MB)
+        if (file && file.size > 5242880) {
+            return toast.error("O comprovante é muito pesado! O limite máximo é de 5MB.");
+        }
+
+        setIsSubmitting(true);
+        const toastId = toast.loading('A guardar transação...');
+        try {
+            const apiType = type === 'income' ? 'entrada' : 'saida';
+            const formData = new FormData();
+            formData.append('title', title); 
+            formData.append('amount', price);
+            formData.append('category', category || 'Geral'); 
+            formData.append('type', apiType); 
+            
+            // Trava de Fuso Horário para a Data
+            formData.append('date', new Date(`${date}T12:00:00Z`).toISOString()); 
+            formData.append('status', status); 
+            formData.append('companyId', queryCompany);
+            
+            if (paymentMethod) formData.append('paymentMethod', paymentMethod); 
+            if (clientId) formData.append('clientId', clientId); 
+            if (!editingId && isRecurring) formData.append('installments', installments);
+            if (file) formData.append('file', file);
+
+            if (editingId) {
+                await api.put(`/transactions/${editingId}`, formData);
+            } else {
+                await api.post('/transactions', formData);
+            }
+            
+            setIsModalOpen(false); 
+            mutate(); 
+            toast.success("Lançamento guardado com sucesso!", { id: toastId });
+        } catch { 
+            toast.error("Erro ao salvar dados.", { id: toastId }); 
+        } finally { 
+            setIsSubmitting(false); 
+        }
+    }
+
+    // --- LÓGICA DO EXTRATO OFX E ROBÔ ---
+    async function handleOfxUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const tId = toast.loading("A ler e interpretar ficheiro OFX...");
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const { data } = await api.post('/ofx/parse', formData);
+            setBankTransactions(data);
+            toast.success(`Leitura concluída: ${data.length} movimentos encontrados no banco!`, { id: tId });
+            
+        } catch (error) {
+            const msg = error.response?.data?.error || "Erro de conexão com o servidor na leitura do OFX.";
+            toast.error(msg, { id: tId, duration: 5000 });
+        } finally {
+            e.target.value = null; 
+        }
+    }
+
+    function handleRunAutoMatch() {
+      if (!bankTransactions.length || !pendingTransactions.length) return;
+
+      const matches = [];
+      const bankUnmatched = [];
+      const sysAvailable = [...pendingTransactions];
+
+      bankTransactions.forEach(bt => {
+          const btDate = new Date(bt.date);
+          const btAmount = Math.abs(parseFloat(bt.amount));
+
+          // A Inteligência de Auto-Match: Procura valor exato e data com margem de 3 dias
+          const matchIdx = sysAvailable.findIndex(st => {
+              const stAmount = Math.abs(parseFloat(st.amount || st.price || 0));
+              const stDate = new Date(st.date);
+
+              const diffTime = Math.abs(btDate.getTime() - stDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              return stAmount === btAmount && diffDays <= 3;
+          });
+
+          if (matchIdx !== -1) {
+              matches.push({ bankTx: bt, systemTx: sysAvailable[matchIdx] });
+              sysAvailable.splice(matchIdx, 1); 
+          } else {
+              bankUnmatched.push(bt);
+          }
+      });
+
+      setAutoMatches(prev => [...prev, ...matches]);
+      setBankTransactions(bankUnmatched);
+
+      if (matches.length > 0) {
+          toast.success(`A IA encontrou ${matches.length} correspondências exatas! ✨`);
+      } else {
+          toast.error("Nenhuma correspondência exata encontrada automaticamente.");
+      }
+    }
+
+    async function handleConfirmAutoMatches() {
+      if(isSubmitting) return;
+      setIsSubmitting(true);
+      const tId = toast.loading(`A processar ${autoMatches.length} conciliações em lote...`);
+      try {
+          await Promise.all(autoMatches.map(m => {
+              const formData = new FormData();
+              formData.append('status', 'PAGO');
+              return api.put(`/transactions/${m.systemTx.id}`, formData);
+          }));
+          toast.success("Conciliação Mágica concluída com sucesso!", { id: tId });
+          setAutoMatches([]);
+          mutate();
+      } catch(err) {
+          toast.error("Ocorreu um erro a processar o lote.", { id: tId });
+      } finally { setIsSubmitting(false); }
+    }
+
+    async function handleConciliate() {
+        if (!selectedBankTx || !selectedSystemTx) return toast.error("Selecione uma conta do banco e uma do sistema!");
+        
+        const tId = toast.loading("A conciliar valores...");
+        try {
+            const formData = new FormData();
+            formData.append('status', 'PAGO');
+            await api.put(`/transactions/${selectedSystemTx.id}`, formData);
+
+            setBankTransactions(prev => prev.filter(t => t.id !== selectedBankTx.id));
+            setSelectedBankTx(null);
+            setSelectedSystemTx(null);
+
+            mutate(); 
+            toast.success("Match manual perfeito! Conta conciliada.", { id: tId });
+        } catch (error) { toast.error("Falha ao conciliar conta.", { id: tId }); }
+    }
+
+    // --- PDF E UTILITÁRIOS ---
     function handleExportPDF() {
         if (!transactions) return;
         const doc = new jsPDF();
@@ -191,187 +445,9 @@ export default function Financial() {
         toast.success("PDF exportado com sucesso!");
     }
 
-    function handleOpenNew() {
-        setEditingId(null); setTitle(''); setPrice(''); setCategory(''); setType('income'); setDate(''); setFile(null); 
-        setStatus('PAGO'); setPaymentMethod(''); setClientId(''); setIsRecurring(false); setInstallments(1);
-        setIsModalOpen(true);
+    function openAttachment(fileUrl) { 
+        window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); 
     }
-
-    function handleEdit(t) {
-        setEditingId(t.id); 
-        setTitle(t.title || t.description); 
-        setPrice(t.amount || t.price || 0); 
-        setCategory(t.category || '');
-        setType(t.type === 'entrada' ? 'income' : t.type === 'saida' ? 'outcome' : t.type);
-        setDate(t.date ? new Date(t.date).toISOString().split('T')[0] : '');
-        setStatus(t.status || 'PAGO'); 
-        setPaymentMethod(t.paymentMethod || ''); 
-        setClientId(t.clientId || ''); 
-        setFile(null); setIsRecurring(false); setInstallments(1); 
-        setIsModalOpen(true);
-    }
-
-    async function handleDelete(id) {
-        if (window.confirm("Deseja excluir esta transação permanentemente?")) {
-            try { 
-                await api.delete(`/transactions/${id}`); 
-                mutate(); 
-                toast.success("Removido!"); 
-            } catch { toast.error("Erro ao eliminar transação."); }
-        }
-    }
-
-    async function handleMarkAsPaid(t) {
-        if (!window.confirm(`Dar baixa em: ${t.title || t.description}?`)) return;
-        const toastId = toast.loading('A processar baixa...');
-        try {
-            const formData = new FormData();
-            formData.append('status', 'PAGO'); 
-            await api.put(`/transactions/${t.id}`, formData);
-            mutate(); 
-            toast.success("Baixa realizada com sucesso!", { id: toastId });
-        } catch { toast.error("Erro ao dar baixa.", { id: toastId }); }
-    }
-
-    async function handleSave(e) {
-        e.preventDefault();
-        if (isSubmitting) return;
-
-        // 🔥 Bloqueador de Arquivo Pesado (Máx 5MB)
-        if (file && file.size > 5242880) {
-            return toast.error("O comprovante é muito pesado! O limite máximo é de 5MB.");
-        }
-
-        setIsSubmitting(true);
-        const toastId = toast.loading('A guardar transação...');
-        try {
-            const apiType = type === 'income' ? 'entrada' : 'saida';
-            const formData = new FormData();
-            formData.append('title', title); 
-            formData.append('amount', price);
-            formData.append('category', category || 'Geral'); 
-            formData.append('type', apiType); 
-            formData.append('date', new Date(`${date}T12:00:00Z`).toISOString()); // Trava de Fuso Horário
-            formData.append('status', status); 
-            formData.append('companyId', queryCompany);
-            
-            if (paymentMethod) formData.append('paymentMethod', paymentMethod); 
-            if (clientId) formData.append('clientId', clientId); 
-            if (!editingId && isRecurring) formData.append('installments', installments);
-            if (file) formData.append('file', file);
-
-            if (editingId) await api.put(`/transactions/${editingId}`, formData);
-            else await api.post('/transactions', formData);
-            
-            setIsModalOpen(false); mutate(); 
-            toast.success("Lançamento guardado com sucesso!", { id: toastId });
-        } catch { toast.error("Erro ao salvar dados.", { id: toastId }); }
-        finally { setIsSubmitting(false); }
-    }
-
-async function handleOfxUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const tId = toast.loading("A ler e interpretar ficheiro OFX...");
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            const { data } = await api.post('/ofx/parse', formData);
-            setBankTransactions(data);
-            toast.success(`Leitura concluída: ${data.length} movimentos encontrados no banco!`, { id: tId });
-            
-        } catch (error) {
-            // 🔥 AGORA MOSTRAMOS O ERRO REAL QUE VEM DO SERVIDOR
-            const msg = error.response?.data?.error || "Erro de conexão com o servidor na leitura do OFX.";
-            toast.error(msg, { id: tId, duration: 5000 });
-        } finally {
-            // 🔥 LIMPA O INPUT PARA PERMITIR REENVIAR O MESMO FICHEIRO SE NECESSÁRIO
-            e.target.value = null; 
-        }
-    }
-
-    // 🔥 O ALGORITMO MÁGICO DE AUTO-MATCH 
-    function handleRunAutoMatch() {
-      if (!bankTransactions.length || !pendingTransactions.length) return;
-
-      const matches = [];
-      const bankUnmatched = [];
-      const sysAvailable = [...pendingTransactions];
-
-      bankTransactions.forEach(bt => {
-          const btDate = new Date(bt.date);
-          const btAmount = Math.abs(parseFloat(bt.amount));
-
-          // Procura na nossa base um valor igual e data próxima (até 3 dias)
-          const matchIdx = sysAvailable.findIndex(st => {
-              const stAmount = Math.abs(parseFloat(st.amount || st.price || 0));
-              const stDate = new Date(st.date);
-
-              const diffTime = Math.abs(btDate.getTime() - stDate.getTime());
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-              return stAmount === btAmount && diffDays <= 3;
-          });
-
-          if (matchIdx !== -1) {
-              matches.push({ bankTx: bt, systemTx: sysAvailable[matchIdx] });
-              sysAvailable.splice(matchIdx, 1); // Remove da lista de pendentes para não dar duplo match
-          } else {
-              bankUnmatched.push(bt);
-          }
-      });
-
-      setAutoMatches(prev => [...prev, ...matches]);
-      setBankTransactions(bankUnmatched);
-
-      if (matches.length > 0) {
-          toast.success(`A IA encontrou ${matches.length} correspondências exatas! ✨`);
-      } else {
-          toast.error("Nenhuma correspondência exata encontrada automaticamente.");
-      }
-    }
-
-    // Aprova todas as combinações da IA de uma vez só!
-    async function handleConfirmAutoMatches() {
-      if(isSubmitting) return;
-      setIsSubmitting(true);
-      const tId = toast.loading(`A processar ${autoMatches.length} conciliações em lote...`);
-      try {
-          await Promise.all(autoMatches.map(m => {
-              const formData = new FormData();
-              formData.append('status', 'PAGO');
-              return api.put(`/transactions/${m.systemTx.id}`, formData);
-          }));
-          toast.success("Conciliação Mágica concluída com sucesso!", { id: tId });
-          setAutoMatches([]);
-          mutate();
-      } catch(err) {
-          toast.error("Ocorreu um erro a processar o lote.", { id: tId });
-      } finally { setIsSubmitting(false); }
-    }
-
-    // Conciliação Manual Antiga (1 a 1)
-    async function handleConciliate() {
-        if (!selectedBankTx || !selectedSystemTx) return toast.error("Selecione uma conta do banco e uma do sistema!");
-        
-        const tId = toast.loading("A conciliar valores...");
-        try {
-            const formData = new FormData();
-            formData.append('status', 'PAGO');
-            await api.put(`/transactions/${selectedSystemTx.id}`, formData);
-
-            setBankTransactions(prev => prev.filter(t => t.id !== selectedBankTx.id));
-            setSelectedBankTx(null);
-            setSelectedSystemTx(null);
-
-            mutate(); 
-            toast.success("Match manual perfeito! Conta conciliada.", { id: tId });
-        } catch (error) { toast.error("Falha ao conciliar conta.", { id: tId }); }
-    }
-
-    function openAttachment(fileUrl) { window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); }
 
     const renderStatusBadge = (statusValue) => {
       switch(statusValue) {
@@ -471,14 +547,14 @@ async function handleOfxUpload(e) {
                             <Table>
                                 <thead>
                                   <tr>
+                                    {!isClient && <th style={{ width: 40 }}><input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.length} style={{ cursor: 'pointer', width: 16, height: 16 }} /></th>}
                                     <th>Descrição / Conta</th>
                                     {!isClient && <th>Cliente Vinculado</th>}
                                     <th>Valor</th>
                                     <th>Categoria</th>
                                     <th>Data</th>
                                     <th>Situação</th>
-                                    <th style={{ textAlign: 'center' }}>Anexo</th>
-                                    {!isClient && <th style={{ textAlign: 'right' }}>Ações</th>}
+                                    <th style={{ textAlign: 'right' }}>{isClient ? 'Pagamento' : 'Ações'}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -487,36 +563,71 @@ async function handleOfxUpload(e) {
                                         const isIncome = t.type === 'income' || t.type === 'entrada';
                                         const isNotPaid = t.status !== 'PAGO'; 
                                         return (
-                                            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : 'transparent' }}>
-                                                <td>
-                                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{isIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}<div style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</div></div>
-                                                  {t.paymentMethod && <div style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}><CreditCard size={12}/> {t.paymentMethod}</div>}
-                                                </td>
-                                                
-                                                {!isClient && (
-                                                    <td>{t.client ? (<span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}><User size={14} color="#a0aec0" /> {t.client.fullName}</span>) : (<span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>)}</td>
-                                                )}
+<tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
+    {/* CHECKBOX DE AÇÕES EM LOTE */}
+    {!isClient && <td><input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} style={{ cursor: 'pointer', width: 16, height: 16 }} /></td>}
+    
+    {/* COLUNA: DESCRIÇÃO E CARTÃO DE CRÉDITO */}
+    <td>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {isIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
+            {t.paymentMethod && (
+                <span style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <CreditCard size={12}/> {t.paymentMethod}
+                </span>
+            )}
+        </div>
+      </div>
+    </td>
+    
+    {/* COLUNA: CLIENTE VINCULADO E USER ICON */}
+    {!isClient && (
+        <td>
+            {t.client ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}>
+                    <User size={14} color="#a0aec0" /> {t.client.fullName}
+                </span>
+            ) : (
+                <span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>
+            )}
+        </td>
+    )}
 
-                                                <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
-                                                <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
-                                                <td>{formatDateDisplay(t.date)}</td>
-                                                <td>{renderStatusBadge(t.status || 'PAGO')}</td>
-                                                <td style={{ textAlign: 'center' }}>
-                                                  {t.fileUrl ? (
-                                                    <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                      <Paperclip size={18} />
-                                                    </button>
-                                                  ) : (<span style={{ color: '#cbd5e0', fontSize: 12 }}>-</span>)}
-                                                </td>
-                                                
-                                                {!isClient && (
-                                                    <td style={{ textAlign: 'right' }}>
-                                                        {isNotPaid && ( <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa" style={{ marginRight: 8 }}><CheckCircle size={18} /></ActionButton>)}
-                                                        <ActionButton onClick={() => handleEdit(t)} color="#3182ce" style={{ marginRight: 8 }}><Edit size={18} /></ActionButton>
-                                                        <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e"><Trash2 size={18} /></ActionButton>
-                                                    </td>
-                                                )}
-                                            </tr>
+    <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
+    <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
+    <td>{formatDateDisplay(t.date)}</td>
+    <td>{renderStatusBadge(t.status || 'PAGO')}</td>
+    
+    {/* COLUNA: AÇÕES E PAGAMENTO PIX */}
+    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+        {isClient ? (
+            (isNotPaid && isIncome) ? (
+                <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                    <QrCode size={16} /> Pagar PIX
+                </ActionButton>
+            ) : (
+                t.fileUrl ? (
+                  <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Paperclip size={18} />
+                  </button>
+                ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
+            )
+        ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
+                {t.fileUrl && (
+                  <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo">
+                    <Paperclip size={18} />
+                  </ActionButton>
+                )}
+                <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
+                <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
+            </div>
+        )}
+    </td>
+</tr>
                                         );
                                     })}
                                 </tbody>
@@ -526,7 +637,39 @@ async function handleOfxUpload(e) {
                 </>
             )}
 
-            {/* 🔥 MODAL DE CONCILIAÇÃO BANCÁRIA OFX */}
+            {/* BARRA FLUTUANTE DE AÇÕES EM MASSA */}
+            {selectedIds.length > 0 && !isClient && (
+              <div style={{ position: 'fixed', bottom: 40, left: '50%', transform: 'translateX(-50%)', background: '#2d3748', color: 'white', padding: '16px 32px', borderRadius: 50, display: 'flex', gap: 24, alignItems: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', zIndex: 1000 }}>
+                <span style={{ fontWeight: 600, fontSize: 16 }}>{selectedIds.length} transações selecionadas</span>
+                <button onClick={handleBulkPay} disabled={isSubmitting} style={{ background: '#38a169', color: 'white', border: 'none', padding: '10px 20px', borderRadius: 24, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s' }}>
+                  {isSubmitting ? 'A processar...' : <><CheckCircle size={18} /> Dar Baixa em Todas</>}
+                </button>
+              </div>
+            )}
+
+            {/* MODAL DE PAGAMENTO PIX (A JORNADA DO CLIENTE) */}
+            {pixTransaction && (
+              <ModalOverlay>
+                <ModalContent style={{ textAlign: 'center', maxWidth: 400 }}>
+                  <div style={{ background: '#f0fff4', color: '#22543d', padding: 16, borderRadius: 12, marginBottom: 24, display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                    <QrCode size={24} /> Pagamento Rápido via PIX
+                  </div>
+                  <p style={{ color: '#718096', marginBottom: 24, fontSize: 14 }}>Abra a app do seu banco e escaneie o código abaixo para liquidar o documento <strong>{pixTransaction.title || pixTransaction.description}</strong>.</p>
+                  
+                  <div style={{ background: 'white', padding: 16, borderRadius: 16, display: 'inline-block', border: '2px solid #e2e8f0', marginBottom: 24, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=00020126580014BR.GOV.BCB.PIX0136financeiro@businessflow.com5204000053039865405${pixTransaction.amount || pixTransaction.price}5802BR5913BusinessFlow6009SAO%20PAULO62070503***63048593`} alt="QR Code PIX" style={{ width: 200, height: 200 }} />
+                  </div>
+
+                  <h3 style={{ fontSize: 28, color: '#2d3748', marginBottom: 32, fontWeight: 800 }}>{formatCurrency(pixTransaction.amount || pixTransaction.price)}</h3>
+                  
+                  <button onClick={() => setPixTransaction(null)} style={{ background: '#edf2f7', color: '#4a5568', padding: '14px 24px', borderRadius: 12, border: 'none', fontWeight: 700, cursor: 'pointer', width: '100%', transition: '0.2s' }}>
+                    Fechar Janela
+                  </button>
+                </ModalContent>
+              </ModalOverlay>
+            )}
+
+            {/* MODAL DE CONCILIAÇÃO BANCÁRIA OFX */}
             {isOfxModalOpen && !isClient && (
                 <ModalOverlay>
                     <ModalContent style={{ maxWidth: 1000, background: '#f8fafc', padding: '32px 40px' }}>
@@ -540,7 +683,6 @@ async function handleOfxUpload(e) {
                             <button onClick={() => { setIsOfxModalOpen(false); setBankTransactions([]); }} style={{ background: '#edf2f7', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Fechar</button>
                         </div>
 
-                        {/* 🔥 PAINEL DO ROBÔ AUTO-MATCH */}
                         {autoMatches.length > 0 && (
                           <div style={{ background: '#f0fff4', border: '1px solid #c6f6d5', padding: '16px 20px', borderRadius: 12, marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                              <div>
@@ -564,7 +706,6 @@ async function handleOfxUpload(e) {
                             </div>
                         ) : (
                             <>
-                              {/* Botão para invocar a magia se houver extrato lido */}
                               {bankTransactions.length > 0 && pendingTransactions.length > 0 && autoMatches.length === 0 && (
                                 <button onClick={handleRunAutoMatch} style={{ width: '100%', marginBottom: 24, padding: 16, background: 'linear-gradient(90deg, #3182ce 0%, #805ad5 100%)', color: 'white', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, boxShadow: '0 4px 15px rgba(128, 90, 213, 0.3)' }}>
                                   <Wand2 size={20} /> Executar Robô de Auto-Match (Procurar Pares)
@@ -648,6 +789,7 @@ async function handleOfxUpload(e) {
                                   <ArrowDownCircle size={24} color="#e52e4d" /> <span>Saída / Despesa</span>
                                 </RadioBox>
                             </TransactionTypeContainer>
+                            
                             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
                               <FormGroup>
                                 <label>Descrição do Lançamento *</label>
@@ -655,9 +797,11 @@ async function handleOfxUpload(e) {
                               </FormGroup>
                               <FormGroup>
                                 <label>Valor (R$) *</label>
+                                {/* Foi mantido tipo Number nativo para evitar conflito de importação de máscaras nesta página */}
                                 <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
                               </FormGroup>
                             </div>
+
                             <FormGroup>
                               <label>Vincular a um Cliente (BPO / Honorário)</label>
                               <select value={clientId} onChange={e => setClientId(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc' }}>
@@ -665,6 +809,7 @@ async function handleOfxUpload(e) {
                                 {clients?.map(c => (<option key={c.id} value={c.id}>{c.fullName}</option>))}
                               </select>
                             </FormGroup>
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
                                 <label>Categoria *</label>

@@ -29,25 +29,48 @@ router.use(async (req, res, next) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { title, description, status, priority, dueDate, clientId } =
-      req.body;
+    const {
+      title,
+      description,
+      status,
+      priority,
+      dueDate,
+      clientId,
+      installments = 1,
+    } = req.body;
     if (!title || !dueDate)
       return res
         .status(400)
         .json({ error: "Preencha o título e o prazo limite." });
 
-    const task = await prisma.task.create({
-      data: {
-        title,
-        description,
-        status,
-        priority,
-        dueDate: new Date(dueDate),
-        clientId,
-        companyId: req.companyId,
-      },
-    });
-    return res.status(201).json(task);
+    const baseDate = new Date(dueDate);
+    const tasks = [];
+    const numInstallments = parseInt(installments) || 1;
+
+    // 🔥 O LOOP DE CRIAÇÃO AUTOMÁTICA!
+    for (let i = 0; i < numInstallments; i++) {
+      const currentDate = new Date(baseDate);
+      currentDate.setMonth(currentDate.getMonth() + i); // Avança 1 mês por cada repetição
+
+      let taskTitle = title;
+      if (numInstallments > 1) {
+        taskTitle = `${title} (Mês ${i + 1}/${numInstallments})`;
+      }
+
+      const t = await prisma.task.create({
+        data: {
+          title: taskTitle,
+          description,
+          status: i === 0 ? status || "A_FAZER" : "A_FAZER",
+          priority,
+          dueDate: currentDate,
+          clientId: clientId || null,
+          companyId: req.companyId,
+        },
+      });
+      tasks.push(t);
+    }
+    return res.status(201).json(tasks[0]);
   } catch (err) {
     return res.status(500).json({ error: "Erro ao criar a tarefa." });
   }
