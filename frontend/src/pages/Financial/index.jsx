@@ -145,11 +145,13 @@ export default function Financial() {
         setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     }
 
-    function toggleSelectAll() {
-        if (selectedIds.length === filteredTransactions.length) {
-            setSelectedIds([]);
+function toggleSelectAll() {
+        const pendentes = filteredTransactions.filter(t => t.status !== 'PAGO');
+        
+        if (selectedIds.length === pendentes.length && pendentes.length > 0) {
+            setSelectedIds([]); // Se já estiverem todas selecionadas, limpa
         } else {
-            setSelectedIds(filteredTransactions.map(t => t.id));
+            setSelectedIds(pendentes.map(t => t.id)); // Seleciona APENAS as pendentes
         }
     }
 
@@ -547,14 +549,19 @@ export default function Financial() {
                             <Table>
                                 <thead>
                                   <tr>
-                                    {!isClient && <th style={{ width: 40 }}><input type="checkbox" onChange={toggleSelectAll} checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.length} style={{ cursor: 'pointer', width: 16, height: 16 }} /></th>}
-                                    <th>Descrição / Conta</th>
-                                    {!isClient && <th>Cliente Vinculado</th>}
-                                    <th>Valor</th>
-                                    <th>Categoria</th>
-                                    <th>Data</th>
-                                    <th>Situação</th>
-                                    <th style={{ textAlign: 'right' }}>{isClient ? 'Pagamento' : 'Ações'}</th>
+{!isClient && (
+  <th style={{ width: 40 }}>
+    <input 
+      type="checkbox" 
+      onChange={toggleSelectAll} 
+      // Fica marcado se a quantidade selecionada for igual à quantidade de pendentes
+      checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.filter(t => t.status !== 'PAGO').length} 
+      // Desativa o checkbox geral se não houver nada para pagar na tela
+      disabled={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0}
+      style={{ cursor: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 'not-allowed' : 'pointer', width: 16, height: 16 }} 
+    />
+  </th>
+)}
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -565,7 +572,21 @@ export default function Financial() {
                                         return (
 <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
     {/* CHECKBOX DE AÇÕES EM LOTE */}
-    {!isClient && <td><input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} style={{ cursor: 'pointer', width: 16, height: 16 }} /></td>}
+    {!isClient && (
+  <td>
+    {isNotPaid ? (
+      <input 
+        type="checkbox" 
+        checked={selectedIds.includes(t.id)} 
+        onChange={() => toggleSelect(t.id)} 
+        style={{ cursor: 'pointer', width: 16, height: 16 }} 
+      />
+    ) : (
+      // Mantém o alinhamento visual, mas sem a caixinha
+      <span style={{ display: 'inline-block', width: 16 }}></span>
+    )}
+  </td>
+)}
     
     {/* COLUNA: DESCRIÇÃO E CARTÃO DE CRÉDITO */}
     <td>
