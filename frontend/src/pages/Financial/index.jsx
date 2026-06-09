@@ -547,120 +547,132 @@ function toggleSelectAll() {
                     {filteredTransactions.length === 0 ? (<p style={{textAlign: 'center', marginTop: 40, color: '#a0aec0'}}>Nenhuma movimentação encontrada neste período.</p>) : (
                         <TableContainer>
                             <Table>
-                                <thead>
-                                  <tr>
-{!isClient && (
-  <th style={{ width: 40 }}>
-    <input 
-      type="checkbox" 
-      onChange={toggleSelectAll} 
-      checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.filter(t => t.status !== 'PAGO').length} 
-      disabled={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0}
-      title={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? "Todas as contas já estão pagas" : "Selecionar todas as pendentes"}
-      style={{ 
-        cursor: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 'not-allowed' : 'pointer', 
-        width: 16, 
-        height: 16,
-        opacity: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 0.4 : 1 // 🔥 Fica meio transparente se não houver pendentes
-      }} 
-    />
-  </th>
-)}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredTransactions.map(t => {
-                                        const amount = t.amount || t.price || 0;
-                                        const isIncome = t.type === 'income' || t.type === 'entrada';
-                                        const isNotPaid = t.status !== 'PAGO'; 
-                                        return (
-<tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
-    {/* CHECKBOX DE AÇÕES EM LOTE */}
-{!isClient && (
-  <td>
-    {isNotPaid ? (
-      <input 
-        type="checkbox" 
-        checked={selectedIds.includes(t.id)} 
-        onChange={() => toggleSelect(t.id)} 
-        title="Selecionar para dar baixa"
-        style={{ cursor: 'pointer', width: 16, height: 16 }} 
-      />
-    ) : (
-      <input 
-        type="checkbox" 
-        disabled 
-        title="Esta transação já está liquidada"
-        style={{ cursor: 'not-allowed', width: 16, height: 16, opacity: 0.3 }} 
-      />
-    )}
-  </td>
-)}
-    
-    {/* COLUNA: DESCRIÇÃO E CARTÃO DE CRÉDITO */}
-    <td>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {isIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
-            {t.paymentMethod && (
-                <span style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                  <CreditCard size={12}/> {t.paymentMethod}
-                </span>
-            )}
-        </div>
-      </div>
-    </td>
-    
-    {/* COLUNA: CLIENTE VINCULADO E USER ICON */}
+<thead>
+  <tr>
+    {/* 1. O Master Checkbox Inteligente */}
     {!isClient && (
-        <td>
-            {t.client ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}>
-                    <User size={14} color="#a0aec0" /> {t.client.fullName}
-                </span>
-            ) : (
-                <span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>
-            )}
-        </td>
+      <th style={{ width: 40 }}>
+        <input 
+          type="checkbox" 
+          onChange={toggleSelectAll} 
+          checked={selectedIds.length > 0 && selectedIds.length === filteredTransactions.filter(t => t.status !== 'PAGO').length} 
+          disabled={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0}
+          title={filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? "Todas as contas já estão pagas" : "Selecionar todas as pendentes"}
+          style={{ 
+            cursor: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 'not-allowed' : 'pointer', 
+            width: 16, 
+            height: 16,
+            opacity: filteredTransactions.filter(t => t.status !== 'PAGO').length === 0 ? 0.4 : 1 
+          }} 
+        />
+      </th>
     )}
 
-    <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
-    <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
-    <td>{formatDateDisplay(t.date)}</td>
-    <td>{renderStatusBadge(t.status || 'PAGO')}</td>
-    
-    {/* COLUNA: AÇÕES E PAGAMENTO PIX */}
-    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-        {isClient ? (
-            (isNotPaid && isIncome) ? (
-                <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-                    <QrCode size={16} /> Pagar PIX
-                </ActionButton>
-            ) : (
-                t.fileUrl ? (
-                  <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Paperclip size={18} />
-                  </button>
-                ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
-            )
-        ) : (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
-                {t.fileUrl && (
-                  <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo">
-                    <Paperclip size={18} />
-                  </ActionButton>
+    {/* 2. As colunas originais que NÃO podem sumir! */}
+    <th>Descrição / Conta</th>
+    {!isClient && <th>Cliente Vinculado</th>}
+    <th>Valor</th>
+    <th>Categoria</th>
+    <th>Data</th>
+    <th>Situação</th>
+    <th style={{ textAlign: 'right' }}>{isClient ? 'Pagamento' : 'Ações'}</th>
+  </tr>
+</thead>
+<tbody>
+    {filteredTransactions.map(t => {
+        const amount = t.amount || t.price || 0;
+        const isIncome = t.type === 'income' || t.type === 'entrada';
+        const isNotPaid = t.status !== 'PAGO'; 
+        return (
+            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent' }}>
+                
+                {/* 1. A Coluna do Checkbox Transparente (UX Premium) */}
+                {!isClient && (
+                  <td>
+                    {isNotPaid ? (
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(t.id)} 
+                        onChange={() => toggleSelect(t.id)} 
+                        title="Selecionar para dar baixa"
+                        style={{ cursor: 'pointer', width: 16, height: 16 }} 
+                      />
+                    ) : (
+                      <input 
+                        type="checkbox" 
+                        disabled 
+                        title="Esta transação já está liquidada"
+                        style={{ cursor: 'not-allowed', width: 16, height: 16, opacity: 0.3 }} 
+                      />
+                    )}
+                  </td>
                 )}
-                <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
-                <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
-            </div>
-        )}
-    </td>
-</tr>
-                                        );
-                                    })}
-                                </tbody>
+
+                {/* 2. A Coluna de Descrição com o Ícone do Cartão de Crédito */}
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
+                        {t.paymentMethod && (
+                            <span style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                              <CreditCard size={12}/> {t.paymentMethod}
+                            </span>
+                        )}
+                    </div>
+                  </div>
+                </td>
+
+                {/* 3. A Coluna do Cliente Vinculado com o Ícone User */}
+                {!isClient && (
+                    <td>
+                        {t.client ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}>
+                                <User size={14} color="#a0aec0" /> {t.client.fullName}
+                            </span>
+                        ) : (
+                            <span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>
+                        )}
+                    </td>
+                )}
+
+                {/* 4. As Colunas de Valores, Data e Status */}
+                <td><span style={{ color: isIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!isIncome && '- '} {formatCurrency(amount)}</span></td>
+                <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
+                <td>{formatDateDisplay(t.date)}</td>
+                <td>{renderStatusBadge(t.status || 'PAGO')}</td>
+                
+                {/* 5. A Coluna de Ações (PIX para Cliente, ou Botões de Editar para Gestor) */}
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {isClient ? (
+                        (isNotPaid && isIncome) ? (
+                            <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                                <QrCode size={16} /> Pagar PIX
+                            </ActionButton>
+                        ) : (
+                            t.fileUrl ? (
+                              <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Paperclip size={18} />
+                              </button>
+                            ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
+                        )
+                    ) : (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
+                            {t.fileUrl && (
+                              <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo">
+                                <Paperclip size={18} />
+                              </ActionButton>
+                            )}
+                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
+                            <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>
+                        </div>
+                    )}
+                </td>
+            </tr>
+        );
+    })}
+</tbody>
                             </Table>
                         </TableContainer>
                     )}
