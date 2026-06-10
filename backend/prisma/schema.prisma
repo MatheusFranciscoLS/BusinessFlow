@@ -107,6 +107,7 @@ model Document {
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime @default(now())
+  readAt    DateTime?
 }
 
 // 📋 KANBAN FISCAL: Obrigações e Prazos Operacionais
