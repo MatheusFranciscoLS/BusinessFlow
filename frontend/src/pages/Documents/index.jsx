@@ -3,9 +3,9 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  FolderLock, UploadCloud, FileText, Download, Trash2, 
-  Search, Filter, Folder, Building2
+import {
+  FolderLock, UploadCloud, FileText, Download, Trash2,
+  Search, Filter, Folder, Building2, CheckCircle
 } from 'lucide-react';
 
 // 🔥 A MÁGICA DA ORGANIZAÇÃO: Todos os estilos vêm do ficheiro externo!
@@ -80,6 +80,17 @@ if (form.file && form.file.size > 5242880) {
     }
   }
 
+  async function handleConfirmRead(id) {
+    const tId = toast.loading("A confirmar leitura...");
+    try {
+      await api.put(`/documents/${id}/read`); // Rota nova que você criará no back-end
+      toast.success("Leitura confirmada com sucesso!", { id: tId });
+      mutate(); // Recarrega os docs
+    } catch (err) {
+      toast.error("Erro ao confirmar leitura.", { id: tId });
+    }
+  }
+
   async function handleDelete(id) {
     if (!window.confirm("Atenção: Excluir este documento vai removê-lo do portal do cliente. Deseja continuar?")) return;
     const tId = toast.loading("A excluir...");
@@ -145,10 +156,18 @@ if (form.file && form.file.size > 5242880) {
                   {new Date(doc.createdAt).toLocaleDateString('pt-BR')}
                 </div>
                 
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', transition: '0.2s', display: 'flex' }} title="Baixar/Visualizar">
+<div style={{ display: 'flex', gap: 8 }}>
+                  {/* 🔥 BOTÃO DE CONFIRMAR LEITURA (Só aparece para o Cliente) */}
+                  {isClient && !doc.readAt && (
+                    <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer' }} title="Confirmar leitura">
+                      <CheckCircle size={18} />
+                    </button>
+                  )}
+
+                  <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex' }} title="Baixar/Visualizar">
                     <Download size={18} />
                   </a>
+                  
                   {!isClient && (
                     <button onClick={() => handleDelete(doc.id)} style={{ background: '#fff5f5', border: '1px solid #fed7d7', padding: 8, borderRadius: 6, color: '#e53e3e', cursor: 'pointer' }} title="Eliminar">
                       <Trash2 size={18} />
