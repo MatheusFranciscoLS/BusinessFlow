@@ -575,32 +575,29 @@ const renderStatusBadge = (statusValue) => {
                     </ButtonGroup>
                 </div>
 
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%', marginBottom: 16 }}>
+<div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', width: '100%', marginBottom: 16 }}>
                     <SearchContainer style={{ flex: '1 1 250px', maxWidth: 'none', margin: 0 }}>
                       <Search size={20} color="#a0aec0" />
                       <input placeholder="Procurar por descrição ou cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} disabled={!transactions} />
                     </SearchContainer>
                     
+                    {/* 🔥 O NOVO FILTRO DE CATEGORIAS EM FORMATO DROPDOWN */}
+                    <select 
+                      value={filterCategory} 
+                      onChange={e => setFilterCategory(e.target.value)} 
+                      style={{ padding: '0 40px 0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', background: 'white url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', fontWeight: 600, color: '#4a5568', height: 48, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+                    >
+                      {categories.map(cat => (
+                        <option key={cat} value={cat}>{cat === 'Todos' ? 'Todas as Categorias' : cat}</option>
+                      ))}
+                    </select>
+
+                    {/* SELECT DE CLIENTES */}
                     {!isClient && (
                       <select 
                         value={clientFilter} 
                         onChange={e => setClientFilter(e.target.value)} 
-                        style={{ 
-                            padding: '0 40px 0 16px', 
-                            borderRadius: '8px', 
-                            border: '1px solid #e2e8f0', 
-                            outline: 'none', 
-                            /* 🔥 MÁGICA: Seta customizada e remoção do estilo antigo do Windows/Mac */
-                            background: 'white url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', 
-                            WebkitAppearance: 'none',
-                            MozAppearance: 'none',
-                            appearance: 'none',
-                            fontWeight: 600, 
-                            color: '#4a5568', 
-                            height: 48,
-                            cursor: 'pointer',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                        }}
+                        style={{ padding: '0 40px 0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', outline: 'none', background: 'white url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', fontWeight: 600, color: '#4a5568', height: 48, cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
                       >
                         <option value="">Consolidado de Clientes (BPO)</option>
                         <option value="INTERNO">Caixa Interno do Escritório</option>
@@ -620,24 +617,19 @@ const renderStatusBadge = (statusValue) => {
                     </div>
                 </div>
 
-<FilterPillsContainer style={{ marginTop: 16, borderTop: '1px solid #edf2f7', paddingTop: 16 }}>
-                  {/* 🔥 BOTÕES DE AUDITORIA: Encontrar quem não pagou */}
-                  <div style={{ display: 'flex', gap: 8, marginRight: 24, paddingRight: 24, borderRight: '2px solid #edf2f7' }}>
-                    <FilterPill $active={statusFilter === 'Todos'} onClick={() => setStatusFilter('Todos')}>
+<FilterPillsContainer style={{ marginTop: 16, borderTop: '1px solid #edf2f7', paddingTop: 16, marginBottom: 16 }}>
+                  {/* 🔥 BOTÕES DE AUDITORIA: Encontrar quem não pagou (Agora com espaço de sobra!) */}
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <FilterPill $active={statusFilter === 'Todos'} onClick={() => setStatusFilter('Todos')} style={{ padding: '10px 20px' }}>
                       Todas as Situações
                     </FilterPill>
-                    <FilterPill $active={statusFilter === 'Pendentes'} onClick={() => setStatusFilter('Pendentes')} style={{ color: statusFilter === 'Pendentes' ? 'white' : '#d69e2e', background: statusFilter === 'Pendentes' ? '#d69e2e' : '#fffff0', border: '1px solid #fbd38d' }}>
+                    <FilterPill $active={statusFilter === 'Pendentes'} onClick={() => setStatusFilter('Pendentes')} style={{ padding: '10px 20px', color: statusFilter === 'Pendentes' ? 'white' : '#d69e2e', background: statusFilter === 'Pendentes' ? '#d69e2e' : '#fffff0', border: '1px solid #fbd38d' }}>
                       Apenas Pendentes
                     </FilterPill>
-                    <FilterPill $active={statusFilter === 'Pagos'} onClick={() => setStatusFilter('Pagos')} style={{ color: statusFilter === 'Pagos' ? 'white' : '#38a169', background: statusFilter === 'Pagos' ? '#38a169' : '#f0fff4', border: '1px solid #9ae6b4' }}>
+                    <FilterPill $active={statusFilter === 'Pagos'} onClick={() => setStatusFilter('Pagos')} style={{ padding: '10px 20px', color: statusFilter === 'Pagos' ? 'white' : '#38a169', background: statusFilter === 'Pagos' ? '#38a169' : '#f0fff4', border: '1px solid #9ae6b4' }}>
                       Apenas Pagos
                     </FilterPill>
                   </div>
-                  
-                  {/* Categorias Antigas */}
-                  {categories.map(cat => (
-                    <FilterPill key={cat} $active={filterCategory === cat} onClick={() => setFilterCategory(cat)}>{cat}</FilterPill>
-                  ))}
                 </FilterPillsContainer>
             </Header>
 
@@ -1090,17 +1082,17 @@ const renderStatusBadge = (statusValue) => {
                               </div>
                             )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                               <FormGroup>
                                 <label>Situação</label>
-                                <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '0 40px 0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', cursor: 'pointer' }}>
                                   <option value="PAGO">✅ Pago (Em Caixa)</option>
                                   <option value="PENDENTE">⏳ Pendente</option>
                                 </select>
                               </FormGroup>
                               <FormGroup>
                                 <label>Meio de Pagamento</label>
-                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} style={{ padding: '0 40px 0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', cursor: 'pointer' }}>
                                   <option value="">Não informado</option>
                                   <option value="PIX">PIX</option>
                                   <option value="Boleto Bancário">Boleto</option>
