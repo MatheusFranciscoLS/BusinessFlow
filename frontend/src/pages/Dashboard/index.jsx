@@ -5,11 +5,11 @@ import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   TrendingUp, Users, AlertTriangle, CheckCircle, 
-  LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert
+  LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert,
+  MessageCircle, ArrowRight // 🔥 Adicionámos estes dois!
 } from 'lucide-react';
 import {
-  Container, Header, GridTop, StatCard, MainGrid, Panel,
-  ProgressBar, ListItem, ActionGrid, ActionShortcut
+  Container, Header, GridTop, StatCard, MainGrid, Panel,ListItem, ActionGrid, ActionShortcut
 } from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -27,7 +27,16 @@ export default function Dashboard() {
 
   const { data: clients } = useSWR(isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   const { data: summary } = useSWR(secureQuery ? `/dashboard/summary${secureQuery}` : null, fetcher);
-  const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
+const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
+  
+  const { data: transactions } = useSWR(isClient && secureQuery ? `/transactions${secureQuery}` : null, fetcher);
+  
+  const pendingClientBills = useMemo(() => {
+    if (!isClient || !transactions) return [];
+    return transactions.filter(t => t.status !== 'PAGO' && (t.type === 'income' || t.type === 'entrada'));
+  }, [transactions, isClient]);
+
+  const totalPendingAmount = pendingClientBills.reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
 
   const myClientRecord = useMemo(() => {
     if (!isClient || !clients) return null;
@@ -55,7 +64,7 @@ export default function Dashboard() {
     );
   }
 
-  if (isClient) {
+if (isClient) {
     return (
       <Container>
         <Header>
@@ -63,7 +72,23 @@ export default function Dashboard() {
           <p>O seu canal direto e seguro com o seu escritório de contabilidade.</p>
         </Header>
 
-        <Panel style={{ marginBottom: 32, background: 'linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%)', color: 'white', border: 'none' }}>
+        {pendingClientBills?.length > 0 && (
+          <div style={{ background: '#fffaf0', border: '1px solid #fbd38d', padding: '20px 24px', borderRadius: 16, marginBottom: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, boxShadow: '0 4px 15px rgba(221, 107, 32, 0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ background: '#dd6b20', color: 'white', padding: 16, borderRadius: 12 }}><AlertTriangle size={28} /></div>
+              <div>
+                <h3 style={{ margin: '0 0 6px 0', color: '#975a16', fontSize: 18, fontWeight: 800 }}>Atenção: Você tem {pendingClientBills.length} fatura(s) pendente(s).</h3>
+                <p style={{ margin: 0, color: '#b7791f', fontWeight: 600, fontSize: 15 }}>Valor total em aberto: {formatCurrency(totalPendingAmount)}</p>
+              </div>
+            </div>
+            {/* Atalho direto para ela pagar no Financeiro */}
+            <button onClick={() => navigate('/app/financeiro')} style={{ background: '#38a169', color: 'white', border: 'none', padding: '14px 28px', borderRadius: 12, fontWeight: 800, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s', boxShadow: '0 4px 10px rgba(56, 161, 105, 0.3)' }}>
+              Resolver Agora <ArrowRight size={18} />
+            </button>
+          </div>
+        )}
+
+        <Panel style={{ marginBottom: 32, background: 'linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%)', color: 'white', border: 'none', boxShadow: '0 10px 25px rgba(49, 130, 206, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ margin: '0 0 8px 0', fontSize: 22, color: 'white' }}>Precisa de suporte ou esclarecimentos?</h2>
@@ -79,15 +104,15 @@ export default function Dashboard() {
         <ActionGrid>
           <ActionShortcut onClick={() => navigate('/app/documentos')}>
             <div style={{ background: '#ebf8ff', padding: 16, borderRadius: 50, color: '#3182ce' }}><FileText size={28} /></div>
-            Cofre de Documentos e Guias
+            Cofre de Documentos
           </ActionShortcut>
           <ActionShortcut onClick={() => navigate('/app/agenda')}>
             <div style={{ background: '#fffaf0', padding: 16, borderRadius: 50, color: '#dd6b20' }}><Calendar size={28} /></div>
-            Minha Agenda de Obrigações
+            Agenda de Obrigações
           </ActionShortcut>
-          <ActionShortcut onClick={() => navigate('/app/servicos')}>
+          <ActionShortcut onClick={() => navigate('/app/financeiro')}>
             <div style={{ background: '#f0fff4', padding: 16, borderRadius: 50, color: '#38a169' }}><Activity size={28} /></div>
-            Demonstrativos Financeiros (DRE)
+            Extrato Financeiro
           </ActionShortcut>
         </ActionGrid>
       </Container>
@@ -106,37 +131,46 @@ export default function Dashboard() {
       </Header>
 
       <GridTop>
-        {/* 🔥 CLIQUE AQUI VAI PARA O FINANCEIRO */}
         <StatCard onClick={() => navigate('/app/financeiro')} title="Aceder ao Financeiro">
           <div className="header">
-            <span className="title">Receita Mensal Otimizada (MRR)</span>
+            <span className="title">Receita Mensal (MRR)</span>
             <div className="icon-wrap" style={{ background: '#f0fff4', color: '#38a169' }}><TrendingUp size={24} /></div>
           </div>
-          <div className="value">{formatCurrency(summary.entradas)}</div>
-          <div className="subtitle" style={{ color: '#38a169' }}><ArrowUpRight size={16} /> Honorários Contábeis Recebidos</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 8 }}>
+            <div className="value" style={{ marginBottom: 0 }}>{formatCurrency(summary.entradas)}</div>
+            {/* 🔥 BADGE DE CRESCIMENTO */}
+            <span style={{ background: '#c6f6d5', color: '#22543d', padding: '4px 8px', borderRadius: 20, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', marginBottom: 6 }}>+12%</span>
+          </div>
+          <div className="subtitle" style={{ color: '#38a169' }}><ArrowUpRight size={16} /> Honorários Recebidos</div>
         </StatCard>
 
-        {/* 🔥 CLIQUE AQUI VAI PARA O FINANCEIRO */}
         <StatCard onClick={() => navigate('/app/financeiro')} style={{ borderColor: summary.inadimplentes?.length > 0 ? '#fed7d7' : '#edf2f7' }} title="Analisar Inadimplência">
           <div className="header">
             <span className="title">Risco de Inadimplência</span>
             <div className="icon-wrap" style={{ background: '#fff5f5', color: '#e53e3e' }}><AlertTriangle size={24} /></div>
           </div>
           <div className="value">{summary.inadimplentes?.length || 0}</div>
-          <div className="subtitle" style={{ color: '#e53e3e' }}><ArrowDownRight size={16} /> Empresas com pendências de faturamento</div>
+          <div className="subtitle" style={{ color: '#e53e3e' }}><ArrowDownRight size={16} /> Com pendências de faturamento</div>
         </StatCard>
 
-        {/* 🔥 CLIQUE AQUI VAI PARA A AGENDA/KANBAN */}
-        <StatCard onClick={() => navigate('/app/agenda')} title="Aceder ao Quadro Kanban">
-          <div className="header">
-            <span className="title">Vazão do Quadro Fiscal</span>
-            <div className="icon-wrap" style={{ background: '#ebf8ff', color: '#3182ce' }}><CheckCircle size={24} /></div>
+        <StatCard onClick={() => navigate('/app/agenda')} title="Aceder ao Quadro Kanban" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <div className="header" style={{ marginBottom: 16 }}>
+              <span className="title">Vazão do Quadro Fiscal</span>
+            </div>
+            <div className="value" style={{ fontSize: 26, marginBottom: 4 }}>{metrics.productivityPercent}%</div>
+            <div className="subtitle">Obrigações cumpridas</div>
           </div>
-          <div className="value">{metrics.productivityPercent}%</div>
-          <div className="subtitle">Obrigações e prazos cumpridos</div>
-          <ProgressBar $color={metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'}>
-            <div style={{ width: `${metrics.productivityPercent}%` }}></div>
-          </ProgressBar>
+          
+          {/* Mágica do Gráfico em CSS Puro (Conic Gradient) */}
+          <div style={{ 
+            position: 'relative', width: 76, height: 76, borderRadius: '50%', 
+            background: `conic-gradient(${metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} ${metrics.productivityPercent * 3.6}deg, #edf2f7 0deg)`
+          }}>
+            <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle size={22} color={metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} />
+            </div>
+          </div>
         </StatCard>
       </GridTop>
 
@@ -147,11 +181,22 @@ export default function Dashboard() {
             {summary.inadimplentes?.length === 0 ? (
               <p style={{ color: '#718096', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle size={18} color="#38a169"/> Todas as contas recorrentes operam em total conformidade.</p>
             ) : (
-              <div>
+<div>
                 {summary.inadimplentes?.map((c, index) => (
                   <ListItem key={index}>
                     <span className="name">{c.fullName}</span>
-                    <span className="status" style={{ background: '#fff5f5', color: '#e53e3e' }}>Atenção Financeira</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span className="status" style={{ background: '#fff5f5', color: '#e53e3e', fontWeight: 700 }}>Atenção Financeira</span>
+                      
+                      {/* 🔥 O BOTÃO DE COBRANÇA 1-CLICK */}
+                      <button 
+                        onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${c.fullName.split(' ')[0]}, tudo bem? Consta no nosso sistema uma pendência em aberto. Podemos ajudar com a 2ª via ou link do PIX para facilitar?`)}`, '_blank')}
+                        title="Cobrar via WhatsApp"
+                        style={{ background: '#f0fff4', color: '#25D366', border: '1px solid #9ae6b4', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.2)' }}
+                      >
+                        <MessageCircle size={18} />
+                      </button>
+                    </div>
                   </ListItem>
                 ))}
               </div>
