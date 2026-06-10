@@ -3,9 +3,10 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  FolderLock, UploadCloud, FileText, Download, Trash2,
-  Search, Filter, Folder, Building2, CheckCircle
+import { 
+  FolderLock, UploadCloud, FileText, Download, Trash2, 
+  Search, Filter, Folder, Building2, CheckCircle,
+  Image as ImageIcon, Clock
 } from 'lucide-react';
 
 import {
@@ -138,44 +139,74 @@ if (form.file && form.file.size > 5242880) {
           <p style={{ color: '#a0aec0', margin: 0 }}>{isClient ? "O seu contador ainda não partilhou documentos consigo." : "Nenhum documento encontrado. Clique em Novo Documento para começar."}</p>
         </div>
       ) : (
-        <DocsGrid>
-          {filteredDocs.map(doc => (
-            <DocCard key={doc.id}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{ background: '#ebf8ff', padding: 12, borderRadius: 8, color: '#3182ce' }}><FileText size={24} /></div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: '0 0 4px 0', color: '#2d3748', fontSize: 16 }}>{doc.name}</h4>
-                  <span style={{ fontSize: 11, fontWeight: 700, background: '#edf2f7', padding: '2px 8px', borderRadius: 12, color: '#4a5568' }}>{doc.category}</span>
-                </div>
-              </div>
-              
-              <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, color: '#718096' }}>
-                  {!isClient && doc.client && <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}><Building2 size={12} /> {doc.client.fullName}</div>}
-                  {new Date(doc.createdAt).toLocaleDateString('pt-BR')}
+<DocsGrid>
+          {filteredDocs.map(doc => {
+            // 🔥 LÓGICA DE DETEÇÃO DO TIPO DE FICHEIRO
+            const isPdf = doc.fileUrl?.toLowerCase().includes('.pdf') || doc.name.toLowerCase().includes('.pdf');
+            const isImage = doc.fileUrl?.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null || doc.name.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null;
+            
+            // Atribui cores Premium com base no ficheiro
+            const iconBg = isPdf ? '#fff5f5' : isImage ? '#faf5ff' : '#ebf8ff';
+            const iconColor = isPdf ? '#e53e3e' : isImage ? '#805ad5' : '#3182ce';
+            const IconComponent = isImage ? ImageIcon : FileText;
+
+            return (
+              <DocCard key={doc.id}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+                  {/* Ícone Dinâmico e Colorido */}
+                  <div style={{ background: iconBg, padding: 12, borderRadius: 8, color: iconColor }}>
+                    <IconComponent size={24} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: '0 0 4px 0', color: '#2d3748', fontSize: 16 }}>{doc.name}</h4>
+                    <span style={{ fontSize: 11, fontWeight: 700, background: '#edf2f7', padding: '2px 8px', borderRadius: 12, color: '#4a5568' }}>{doc.category}</span>
+                  </div>
                 </div>
                 
-<div style={{ display: 'flex', gap: 8 }}>
-                  {/* 🔥 BOTÃO DE CONFIRMAR LEITURA (Só aparece para o Cliente) */}
-                  {isClient && !doc.readAt && (
-                    <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer' }} title="Confirmar leitura">
-                      <CheckCircle size={18} />
-                    </button>
-                  )}
-
-                  <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex' }} title="Baixar/Visualizar">
-                    <Download size={18} />
-                  </a>
+                <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: 12, color: '#718096' }}>
+                    {!isClient && doc.client && <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><Building2 size={12} /> {doc.client.fullName}</div>}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{new Date(doc.createdAt).toLocaleDateString('pt-BR')}</span>
+                      
+                      {/* 🔥 O "X-9" DO ESCRITÓRIO: Etiqueta de Leitura Exclusiva para o Gestor */}
+                      {!isClient && (
+                        doc.readAt ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fff4', color: '#2f855a', padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 10 }} title={`Lido em ${new Date(doc.readAt).toLocaleString('pt-BR')}`}>
+                            <CheckCircle size={10} /> Lido
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fffff0', color: '#d69e2e', padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 10, border: '1px solid #fbd38d' }} title="O cliente ainda não confirmou leitura">
+                            <Clock size={10} /> Não lido
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
                   
-                  {!isClient && (
-                    <button onClick={() => handleDelete(doc.id)} style={{ background: '#fff5f5', border: '1px solid #fed7d7', padding: 8, borderRadius: 6, color: '#e53e3e', cursor: 'pointer' }} title="Eliminar">
-                      <Trash2 size={18} />
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {/* Botões de Ação */}
+                    {isClient && !doc.readAt && (
+                      <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer', transition: '0.2s' }} title="Confirmar leitura">
+                        <CheckCircle size={18} />
+                      </button>
+                    )}
+
+                    <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex', transition: '0.2s' }} title="Baixar/Visualizar">
+                      <Download size={18} />
+                    </a>
+                    
+                    {!isClient && (
+                      <button onClick={() => handleDelete(doc.id)} style={{ background: '#fff5f5', border: '1px solid #fed7d7', padding: 8, borderRadius: 6, color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }} title="Eliminar Documento">
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </DocCard>
-          ))}
+              </DocCard>
+            );
+          })}
         </DocsGrid>
       )}
 
