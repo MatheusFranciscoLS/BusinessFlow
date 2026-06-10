@@ -8,7 +8,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, DollarSign, Plus, Edit, Trash2, 
   Search, FileText, ChevronLeft, ChevronRight, Paperclip,
   CheckCircle, Clock, CalendarClock, AlertTriangle, Repeat, User,
-  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2, QrCode, Download
+  UploadCloud, Link as LinkIcon, CreditCard, ShieldAlert, Wand2, QrCode, Download, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import {
@@ -127,20 +127,32 @@ return filtered.filter(t => {
 const filteredSummary = useMemo(() => {
         return filteredTransactions.reduce((acc, transaction) => {
             const amount = transaction.amount || transaction.price || 0;
-            if (transaction.status === 'PAGO') {
-                // Descobre a perspectiva real
-                const isFirmIncome = transaction.type === 'income' || transaction.type === 'entrada';
-                // 🔥 A MÁGICA DA PERSPECTIVA: Se for o cliente a ver, invertemos a lógica!
-                const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
+            const isFirmIncome = transaction.type === 'income' || transaction.type === 'entrada';
+            const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
 
+            // 1. CÁLCULO PARA O GESTOR (ESCRITÓRIO) - Apenas o Realizado (PAGO)
+            if (transaction.status === 'PAGO') {
                 if (displayAsIncome) { 
                     acc.entradas += amount; acc.total += amount; 
                 } else { 
                     acc.saidas += amount; acc.total -= amount; 
                 }
             }
+
+            // 2. CÁLCULO PARA A DONA ANA (CLIENTE) - Somamos o que ela TEM A PAGAR (!displayAsIncome = Despesa para ela)
+            if (isClient && !displayAsIncome) {
+                if (transaction.status === 'PAGO') {
+                    acc.clientPago += amount;
+                } else if (transaction.status === 'ATRASADO') {
+                    acc.clientAtrasado += amount;
+                } else {
+                    // PENDENTE, AGENDADO, EM ANÁLISE...
+                    acc.clientPendente += amount;
+                }
+            }
+
             return acc;
-        }, { entradas: 0, saidas: 0, total: 0 });
+        }, { entradas: 0, saidas: 0, total: 0, clientPendente: 0, clientAtrasado: 0, clientPago: 0 });
     }, [filteredTransactions, isClient]);
 
     function formatCurrency(value) { 
@@ -637,10 +649,40 @@ const renderStatusBadge = (statusValue) => {
                <><SummaryContainer><SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} /><SkeletonRow style={{ height: 120 }} /></SummaryContainer><TableContainer style={{ padding: 24 }}><SkeletonRow /><SkeletonRow /><SkeletonRow /><SkeletonRow /></TableContainer></>
             ) : (
                 <>
-                    <SummaryContainer>
-                        <SummaryCard><header><span>Entradas (Realizado)</span><ArrowUpCircle size={24} color="#12a454" /></header><strong style={{ color: '#12a454' }}>{formatCurrency(filteredSummary.entradas)}</strong></SummaryCard>
-                        <SummaryCard><header><span>Saídas (Realizado)</span><ArrowDownCircle size={24} color="#e52e4d" /></header><strong style={{ color: '#e52e4d' }}>{formatCurrency(filteredSummary.saidas)}</strong></SummaryCard>
-                        <SummaryCard $highlight={true}><header><span>Saldo Disponível</span><DollarSign size={24} color="white" /></header><strong>{formatCurrency(filteredSummary.total)}</strong></SummaryCard>
+<SummaryContainer>
+                        {isClient ? (
+                            /* 🔥 OS CARTÕES EXCLUSIVOS PARA O CLIENTE (Painel de Dívidas) */
+                            <>
+                                <SummaryCard>
+                                    <header><span>A Vencer (Pendentes)</span><Clock size={24} color="#d69e2e" /></header>
+                                    <strong style={{ color: '#d69e2e' }}>{formatCurrency(filteredSummary.clientPendente)}</strong>
+                                </SummaryCard>
+                                <SummaryCard>
+                                    <header><span>Em Atraso</span><AlertTriangle size={24} color="#e53e3e" /></header>
+                                    <strong style={{ color: '#e53e3e' }}>{formatCurrency(filteredSummary.clientAtrasado)}</strong>
+                                </SummaryCard>
+                                <SummaryCard $highlight={true}>
+                                    <header><span>Total Pago (Realizado)</span><CheckCircle size={24} color="#48bb78" /></header>
+                                    <strong>{formatCurrency(filteredSummary.clientPago)}</strong>
+                                </SummaryCard>
+                            </>
+                        ) : (
+                            /* OS CARTÕES DE FLUXO DE CAIXA PARA O ESCRITÓRIO */
+                            <>
+                                <SummaryCard>
+                                    <header><span>Entradas (Realizado)</span><ArrowUpCircle size={24} color="#12a454" /></header>
+                                    <strong style={{ color: '#12a454' }}>{formatCurrency(filteredSummary.entradas)}</strong>
+                                </SummaryCard>
+                                <SummaryCard>
+                                    <header><span>Saídas (Realizado)</span><ArrowDownCircle size={24} color="#e52e4d" /></header>
+                                    <strong style={{ color: '#e52e4d' }}>{formatCurrency(filteredSummary.saidas)}</strong>
+                                </SummaryCard>
+                                <SummaryCard $highlight={true}>
+                                    <header><span>Saldo Disponível</span><DollarSign size={24} color="white" /></header>
+                                    <strong>{formatCurrency(filteredSummary.total)}</strong>
+                                </SummaryCard>
+                            </>
+                        )}
                     </SummaryContainer>
 
 {/* 🔥 MINI-GRÁFICO DE FLUXO DE CAIXA (DESIGN PREMIUM) */}
@@ -812,32 +854,24 @@ const renderStatusBadge = (statusValue) => {
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
                         )
                     ) : (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                            {/* Só mostra o botão de dar baixa se NÃO estiver pago */}
-                            {isNotPaid && (
-                                <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual">
-                                    <CheckCircle size={18} />
+<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            {/* 🔥 A MÁGICA: Botão de Cobrança via WhatsApp 1-Click */}
+                            {isNotPaid && t.client && (
+                                <ActionButton 
+                                    onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${t.client.fullName.split(' ')[0]}, tudo bem? Passando para lembrar que o lançamento de *${t.title || t.description}* no valor de *${formatCurrency(amount)}* encontra-se ${t.status === 'ATRASADO' ? 'em atraso' : 'pendente'}. Podemos ajudar com a emissão da 2ª via ou link do PIX?`)}`, '_blank')} 
+                                    color="#25D366" 
+                                    title="Cobrar via WhatsApp"
+                                    style={{ background: '#f0fff4', border: '1px solid #9ae6b4' }}
+                                >
+                                    <MessageCircle size={18} />
                                 </ActionButton>
                             )}
-                            
-                            {/* O clipe de papel aparece se tiver comprovativo/anexo */}
-                            {t.fileUrl && (
-                              <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante">
-                                <Paperclip size={18} />
-                              </ActionButton>
-                            )}
-                            
-                            {/* Editar muda para "Visualizar" se já estiver pago */}
-                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title={isNotPaid ? "Editar" : "Visualizar"}>
-                                <Edit size={18} />
-                            </ActionButton>
-                            
-                            {/* 🔥 4. TRAVA DE AUDITORIA: A Lixeira DESAPARECE se a conta já foi paga */}
-                            {isNotPaid && (
-                                <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir Transação">
-                                    <Trash2 size={18} />
-                                </ActionButton>
-                            )}
+
+                            {/* Restantes Botões Oficiais */}
+                            {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
+                            {t.fileUrl && <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante"><Paperclip size={18} /></ActionButton>}
+                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title={isNotPaid ? "Editar" : "Visualizar"}><Edit size={18} /></ActionButton>
+                            {isNotPaid && <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir Transação"><Trash2 size={18} /></ActionButton>}
                         </div>
                     )}
                 </td>
