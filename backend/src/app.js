@@ -1,4 +1,5 @@
 import express from "express";
+import path from 'path';
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
@@ -25,6 +26,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+app.use("/uploads", express.static(path.resolve("uploads")));
 
 // 🔒 SEGURANÇA: Limita o tamanho do JSON
 app.use(express.json({ limit: "10mb" }));

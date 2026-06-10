@@ -43,6 +43,25 @@ router.use(async (req, res, next) => {
   }
 });
 
+router.put("/:id/read", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Atualiza o documento no banco de dados, gravando a data/hora atual
+    const doc = await prisma.document.update({
+      where: { id },
+      data: { readAt: new Date() },
+    });
+
+    return res.json(doc);
+  } catch (error) {
+    console.error("Erro ao confirmar leitura:", error);
+    return res
+      .status(500)
+      .json({ error: "Erro ao confirmar leitura do documento." });
+  }
+});
+
 router.post("/", upload.single("file"), documentController.create);
 router.get("/", documentController.getAll);
 router.delete("/:id", documentController.remove);

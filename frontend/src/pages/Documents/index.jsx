@@ -8,7 +8,6 @@ import {
   Search, Filter, Folder, Building2, CheckCircle
 } from 'lucide-react';
 
-// 🔥 A MÁGICA DA ORGANIZAÇÃO: Todos os estilos vêm do ficheiro externo!
 import {
   Container, Header, ActionButton, SearchBar, SelectFilter,
   DocsGrid, DocCard, ModalOverlay, ModalContent, FormGroup
