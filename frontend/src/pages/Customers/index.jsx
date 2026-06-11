@@ -198,10 +198,14 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
                 {/* 🔥 AVATAR COM A INICIAL DA EMPRESA */}
                 <Avatar>{client.fullName.charAt(0).toUpperCase()}</Avatar>
 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="client-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client.fullName}</div>
-                  <div className="client-doc" style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Building2 size={14} style={{ flexShrink: 0 }} /> 
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{maskCPFOrCNPJ(client.document) || 'Sem CNPJ'}</span>
+                  <div className="client-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={client.fullName}>
+                    {client.fullName}
+                  </div>
+                  <div className="client-doc" style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    <Building2 size={14} style={{ flexShrink: 0, color: '#a0aec0' }} />
+                    <span style={{ whiteSpace: 'nowrap', fontWeight: 600, color: '#4a5568' }}>
+                      {maskCPFOrCNPJ(client.document) || 'Sem CNPJ'}
+                    </span>
                   </div>
                 </div>
                 <Badge $status={client.status}>{client.status}</Badge>
