@@ -2,10 +2,12 @@ import nodemailer from "nodemailer";
 
 // Motor de ligação ao Gmail (Custo Zero)
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Usa conexão criptografada SSL/TLS
   auth: {
-    user: process.env.EMAIL_USER, // O seu e-mail do Gmail
-    pass: process.env.EMAIL_PASS, // A "Senha de App" gerada no Google
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
