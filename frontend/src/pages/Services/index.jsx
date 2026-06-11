@@ -78,7 +78,7 @@ const receitaLiquida = receitas - impostos;
     return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido, despesasTotais, margemLucro };
   }, [transactions, clientFilter, isClient]);
 
-  function exportDRE() {
+function exportDRE() {
     if (!dre) return;
     const doc = new jsPDF();
     const brandingName = user?.agencyName || user?.name || "Consultoria Financeira";
@@ -90,6 +90,7 @@ const receitaLiquida = receitas - impostos;
         if (c) reportSubject = c.fullName;
     }
 
+    // CABEÇALHO ESCURO (BRANDING)
     doc.setFillColor(26, 32, 44); doc.rect(0, 0, 210, 42, 'F');
     doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
     doc.text(brandingName, 14, 20); 
@@ -97,8 +98,29 @@ const receitaLiquida = receitas - impostos;
     doc.text(`Demonstrativo de Resultados (DRE): ${reportSubject}`, 14, 28);
     doc.text(`Período: ${MONTHS_BR[currentMonth - 1]} de ${currentYear}`, 14, 34);
 
+    // 🔥 NOVO: RESUMO EXECUTIVO NO PDF
+    doc.setTextColor(45, 55, 72); doc.setFontSize(14); doc.setFont("helvetica", "bold");
+    doc.text("Resumo Executivo do Mês", 14, 55);
+
+    doc.setFontSize(11); doc.setFont("helvetica", "normal");
+    doc.text(`Receita Bruta: ${formatCurrency(dre.receitas)}`, 14, 63);
+    doc.text(`Despesas Totais: ${formatCurrency(dre.despesasTotais)}`, 75, 63);
+    
+    // Cor do Lucro/Prejuízo no Resumo
+    const isProfit = dre.lucroLiquido >= 0;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...(isProfit ? [22, 101, 52] : [155, 44, 44])); // Verde Escuro ou Vermelho Escuro
+    doc.text(`Resultado Líquido: ${formatCurrency(dre.lucroLiquido)}`, 145, 63);
+    
+    doc.setFontSize(9);
+    doc.text(`Margem: ${dre.margemLucro.toFixed(1)}%`, 145, 68);
+
+    // Linha divisória
+    doc.setDrawColor(226, 232, 240); doc.line(14, 72, 196, 72);
+
+    // 🔥 TABELA COM A ÚLTIMA LINHA INTELIGENTE (Colorida)
     autoTable(doc, {
-      startY: 50, theme: 'grid', head: [['Estrutura do DRE', 'Valor Computado (R$)']],
+      startY: 80, theme: 'grid', head: [['Estrutura do DRE', 'Valor Computado (R$)']],
       body: [
         ['(+) RECEITA BRUTA DE VENDAS / SERVIÇOS', formatCurrency(dre.receitas)],
         ['(-) Impostos, Taxas e Deduções', formatCurrency(dre.impostos)],
@@ -109,12 +131,30 @@ const receitaLiquida = receitas - impostos;
         ['(-) Distribuição de Lucros aos Sócios', formatCurrency(dre.distribuicao)],
         ['(=) LUCRO / PREJUÍZO LÍQUIDO DO EXERCÍCIO', formatCurrency(dre.lucroLiquido)],
       ],
-      headStyles: { fillColor: [49, 130, 206], fontSize: 11 }, styles: { fontSize: 10, textColor: [45, 55, 72] },
-      willDrawCell: function(data) { if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) doc.setFont("helvetica", "bold"); }
+      headStyles: { fillColor: [49, 130, 206], fontSize: 11 }, 
+      styles: { fontSize: 10, textColor: [45, 55, 72] },
+      willDrawCell: function(data) { 
+        // Negrito para as linhas de totais
+        if (data.row.index === 2 || data.row.index === 5 || data.row.index === 7) {
+            doc.setFont("helvetica", "bold"); 
+        }
+        // 🔥 Cor de fundo para a última linha (Verde clarinho ou Vermelho clarinho)
+        if (data.row.index === 7) {
+            doc.setFillColor(...(isProfit ? [240, 255, 244] : [255, 245, 245]));
+            doc.setTextColor(...(isProfit ? [34, 84, 61] : [116, 42, 42]));
+        }
+      }
     });
 
+    // Rodapé de segurança
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i); doc.setFontSize(8); doc.setTextColor(160, 174, 192); 
+        doc.text(`Gerado via BusinessFlow de forma autenticada em ${new Date().toLocaleString('pt-BR')}`, 14, 290);
+    }
+
     doc.save(`DRE_${reportSubject.replace(/\s/g, '_')}_${MONTHS_BR[currentMonth-1]}.pdf`);
-    toast.success("DRE exportado com sucesso!");
+    toast.success("Relatório Executivo exportado com sucesso!");
   }
 
   if (error) return <div style={{ padding: 40, color: 'red' }}>Erro ao carregar dados financeiros.</div>;
