@@ -194,29 +194,36 @@ export default function Profile() {
 
       <ProfileCard style={{ marginBottom: 40 }}>
         <form onSubmit={handleProfileSubmit}>
-          <AvatarSection style={{ padding: '24px', background: '#f7fafc', borderRadius: 12, marginBottom: 32, border: '1px solid #edf2f7' }}>
-            <div className="avatar-container" style={{ width: 100, height: 100, borderRadius: '50%', overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+<AvatarSection style={{ padding: '32px', background: 'linear-gradient(135deg, #ebf8ff 0%, #f7fafc 100%)', borderRadius: 16, marginBottom: 32, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'row', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Círculo do Avatar Premium */}
+            <div className="avatar-container" style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: '4px solid white', boxShadow: '0 10px 15px -3px rgba(49,130,206,0.2)', flexShrink: 0 }}>
               {preview ? (
                 <img src={preview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <div className="placeholder" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#edf2f7' }}>
-                  <CircleUser size={60} color="#cbd5e0" strokeWidth={1.5} />
+                <div className="placeholder" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
+                  <Building2 size={50} color="#cbd5e0" strokeWidth={1.5} />
                 </div>
               )}
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', marginTop: 16 }}>
-                <label style={{ cursor: 'pointer', background: '#3182ce', color: 'white', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s' }}>
-                  <Upload size={16} /> 
-                  Fazer Upload da Logo
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
-                </label>
+            {/* Controlos de Marca */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                <h3 style={{ margin: 0, color: '#2d3748', fontSize: 20, fontWeight: 800 }}>Identidade Visual (White Label)</h3>
+                <p style={{ margin: 0, color: '#718096', fontSize: 14 }}>Esta é a marca oficial que os seus clientes verão no Portal e impressa nos Relatórios Financeiros (PDF).</p>
                 
-                {preview && (
-                  <button type="button" onClick={handleRemoveAvatar} style={{ background: 'transparent', color: '#e53e3e', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '700', textDecoration: 'underline' }}>
-                    Remover Marca Visual
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                  <label style={{ cursor: 'pointer', background: '#3182ce', color: 'white', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
+                    <Upload size={18} /> Subir Nova Logo
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                  </label>
+                  
+                  {preview && (
+                    <button type="button" onClick={handleRemoveAvatar} style={{ background: '#fff5f5', color: '#e53e3e', border: '1px solid #fed7d7', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', transition: '0.2s' }}>
+                      Remover Marca
+                    </button>
+                  )}
+                </div>
             </div>
           </AvatarSection>
 
@@ -282,34 +289,43 @@ export default function Profile() {
       </SectionTitle>
       
       <ProfileCard style={{ padding: '32px', border: '1px solid #edf2f7', borderRadius: 16 }}>
-        <CompanyList style={{ display: 'grid', gap: 16 }}>
+<CompanyList>
           {!userCompanies ? (
             <p style={{ color: '#a0aec0', padding: 20, textAlign: 'center' }}>A carregar ecossistema...</p>
           ) : userCompanies.map(comp => (
              <CompanyItem key={comp.id}>
-                <div className="info" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <strong style={{ fontSize: 18, color: '#2d3748', fontWeight: 800 }}>{comp.name}</strong>
-                  <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <FileText size={14} /> CNPJ: {comp.document || 'Não Cadastrado'}
+                <div className="info" style={{ marginBottom: 20 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ebf8ff', color: '#3182ce', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <Building2 size={24} />
+                  </div>
+                  <strong style={{ display: 'block', fontSize: 18, color: '#2d3748', fontWeight: 800, marginBottom: 8, lineHeight: 1.2 }}>{comp.name}</strong>
+                  <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafc', padding: '6px 10px', borderRadius: 6, width: 'fit-content' }}>
+                    <FileText size={14} /> {maskCPFOrCNPJ(comp.document) || 'CNPJ Não Cadastrado'}
                   </span>
                 </div>
                 
-                <div className="actions" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                   <button type="button" onClick={() => handleOpenAccess(comp)} title="Gerir Acessos do Portal do Cliente" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, fontWeight: 700, color: '#805ad5', border: '1px solid #e9d8fd', background: '#faf5ff', cursor: 'pointer', transition: '0.2s' }}>
-                     <Users size={18} /> Clientes e Sócios
+                {/* Botões reorganizados no rodapé do cartão */}
+                <div className="actions" style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid #edf2f7', paddingTop: 16 }}>
+                   <button type="button" onClick={() => handleOpenAccess(comp)} title="Gerir Acessos do Portal do Cliente" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px', borderRadius: 8, fontWeight: 700, color: '#805ad5', border: '1px solid #e9d8fd', background: '#faf5ff', cursor: 'pointer', transition: '0.2s' }}>
+                     <Users size={18} /> Acessos
                    </button>
-                   <button type="button" onClick={() => handleEditCompany(comp)} style={{ padding: 10, borderRadius: 8, background: 'white', border: '1px solid #cbd5e0', color: '#4a5568', cursor: 'pointer' }}>
+                   <button type="button" onClick={() => handleEditCompany(comp)} title="Editar Estrutura" style={{ padding: '10px', borderRadius: 8, background: '#f7fafc', border: '1px solid #e2e8f0', color: '#4a5568', cursor: 'pointer', transition: '0.2s' }}>
                      <Edit size={18} />
                    </button>
-                   <button type="button" onClick={() => handleDeleteCompany(comp.id)} style={{ padding: 10, borderRadius: 8, background: '#fff5f5', border: '1px solid #fed7d7', color: '#e53e3e', cursor: 'pointer' }}>
+                   <button type="button" onClick={() => handleDeleteCompany(comp.id)} title="Excluir Definitivamente" style={{ padding: '10px', borderRadius: 8, background: '#fff5f5', border: '1px solid #fed7d7', color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }}>
                      <Trash2 size={18} />
                    </button>
                 </div>
              </CompanyItem>
           ))}
+          
+          {/* O Botão de Nova Empresa agora é um Cartão elegante na Grelha! */}
           <AddButton type="button" onClick={handleOpenNewCompany}>
-            <Plus size={24} color="#3182ce" style={{ marginRight: 8 }} /> 
-            Cadastrar Nova Empresa (Filial ou Matriz)
+            <div style={{ background: 'white', padding: 16, borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', marginBottom: 8 }}>
+              <Plus size={32} color="#3182ce" />
+            </div>
+            Cadastrar Nova Empresa
+            <span style={{ fontSize: 13, color: '#718096', fontWeight: 500 }}>Adicionar Filial ou Matriz</span>
           </AddButton>
         </CompanyList>
       </ProfileCard>

@@ -104,46 +104,44 @@ export const SectionTitle = styled.h2`
 
 export const CompanyList = styled.div`
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
 `;
 
 export const CompanyItem = styled.div`
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #edf2f7;
   transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
 
   &:hover {
     border-color: #cbd5e0;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-  }
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
   }
 `;
 
 export const AddButton = styled.button`
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
-  padding: 16px;
-  background: white;
+  min-height: 180px;
+  background: #f8fafc;
   border: 2px dashed #cbd5e0;
-  border-radius: 12px;
+  border-radius: 16px;
   color: #4a5568;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
-  font-size: 15px;
+  font-size: 16px;
 
   &:hover {
     border-color: #3182ce;
