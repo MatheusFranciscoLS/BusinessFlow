@@ -80,9 +80,10 @@ export default function Layout() {
             </div>
           </div>
 
-          <NavMenu>
+<NavMenu>
+            {/* O "Dashboard" agora é o nosso Início universal */}
             <StyledNavLink to="/app" end onClick={closeMenu}> 
-              <LayoutDashboard size={20} /> Dashboard
+              <LayoutDashboard size={20} /> Início
             </StyledNavLink>
             
             {!isClient && (
@@ -95,20 +96,23 @@ export default function Layout() {
               <FolderLock size={20} /> Cofre Digital
             </StyledNavLink>
 
+            {/* De burocracia para inteligência executiva */}
             <StyledNavLink to="/app/servicos" onClick={closeMenu}>
-              <PieChart size={20} /> Relatórios DRE
+              <PieChart size={20} /> Resultados (DRE)
             </StyledNavLink>
 
+            {/* Clareza na comunicação */}
             <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><LifeBuoy size={20} /> Atendimento</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><LifeBuoy size={20} /> Suporte e Chat</div>
                 {helpdeskCount > 0 && <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.5)' }}>{helpdeskCount}</span>}
               </div>
             </StyledNavLink>
 
+            {/* Foco em execução */}
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={20} /> Agenda e Prazos</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={20} /> Tarefas e Prazos</div>
                 {agendaCount > 0 && <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.5)' }}>{agendaCount}</span>}
               </div>
             </StyledNavLink>
