@@ -1,12 +1,12 @@
 import * as transactionService from "../services/transaction.service.js";
 import { addMonths } from "date-fns";
 import { PrismaClient } from "@prisma/client";
+import { registerLog } from "../services/audit.service.js";
 
 const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {
-    // 1. Recebemos todos os dados do Front-end
     const {
       title,
       amount,
@@ -24,13 +24,14 @@ export async function create(req, res) {
     const baseDate = new Date(date);
     const parsedAmount = parseFloat(amount);
 
-    // O upload do comprovante (se houver)
     const fileUrl = req.file
       ? `/uploads/transactions/${req.file.filename}`
       : null;
 
+    // Objeto genérico para o log (se o seu middleware de Auth enviar o 'req.user', podemos substituir no futuro)
+    const currentUser = { name: "Usuário do Sistema", role: "ADMIN" };
+
     if (numInstallments === 1) {
-      // 🔥 CENÁRIO A: Criação Normal (1 única transação)
       const transaction = await prisma.transaction.create({
         data: {
           title,
@@ -46,37 +47,47 @@ export async function create(req, res) {
           installments: 1,
         },
       });
+
+      // 🔥 2. ESPIÃO: Alarme disparado na criação simples
+      registerLog(
+        companyId,
+        currentUser,
+        "CREATE",
+        "FINANCEIRO",
+        `Registou o lançamento: ${title} no valor de R$ ${parsedAmount}`,
+      );
+
       return res.status(201).json(transaction);
     } else {
-      // 🔥 CENÁRIO B: A MÁQUINA DE MENSALIDADES (Em Lote)
       const transactionsData = [];
 
       for (let i = 0; i < numInstallments; i++) {
-        // O date-fns soma os meses inteligentemente (foge de anos bissextos e fim de mês sozinhos!)
         const nextDate = addMonths(baseDate, i);
-
         transactionsData.push({
-          // Adiciona o contador no título: Ex: "Honorários (1/12)"
           title: `${title} (${i + 1}/${numInstallments})`,
           amount: parsedAmount,
           category,
           type,
           date: nextDate,
-          // Apenas a 1ª parcela herda o status do Front (ex: PAGO). As faturas do futuro nascem como PENDENTE.
           status: i === 0 ? status : "PENDENTE",
           paymentMethod,
           clientId: clientId || null,
           companyId,
-          // Não clonamos o arquivo PDF (comprovante) para as faturas do futuro!
           fileUrl: i === 0 ? fileUrl : null,
           installments: numInstallments,
         });
       }
 
-      // O Prisma cria todas as 12 (ou mais) faturas numa única viagem ao banco de dados (Alta Performance)
-      await prisma.transaction.createMany({
-        data: transactionsData,
-      });
+      await prisma.transaction.createMany({ data: transactionsData });
+
+      // 🔥 2. ESPIÃO: Alarme disparado na criação do contrato em lote
+      registerLog(
+        companyId,
+        currentUser,
+        "CREATE",
+        "FINANCEIRO",
+        `Gerou um contrato recorrente de ${numInstallments} parcelas: ${title}`,
+      );
 
       return res.status(201).json({
         message: `${numInstallments} parcelas geradas no fluxo de caixa com sucesso!`,
@@ -89,7 +100,6 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    // 🔥 Agora o servidor lê o mês e o ano enviados pelo Front-end!
     const { role, userEmail, month, year } = req.query;
     const companyId = req.companyId;
 
@@ -104,20 +114,13 @@ export async function getAll(req, res) {
       whereClause.clientId = client.id;
     }
 
-    // 🔥 O MOTOR DE PERFORMANCE: Filtra o tempo diretamente no Banco de Dados
     if (month && year) {
       const m = parseInt(month);
       const y = parseInt(year);
-
-      // Define o primeiro milissegundo do dia 1º do mês
       const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
-      // Define o último milissegundo do último dia do mês
       const endDate = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
 
-      whereClause.date = {
-        gte: startDate, // gte = Greater than or equal (Maior ou igual)
-        lte: endDate, // lte = Less than or equal (Menor ou igual)
-      };
+      whereClause.date = { gte: startDate, lte: endDate };
     }
 
     const transactions = await prisma.transaction.findMany({
@@ -135,17 +138,14 @@ export async function getAll(req, res) {
 export async function update(req, res) {
   try {
     const transactionId = req.params.id;
-    const companyId = req.companyId; // Pego diretamente do Token JWT, impossível de falsificar
+    const companyId = req.companyId;
 
-    // 🛡️ VERIFICAÇÃO DE PROPRIEDADE: A transação existe e pertence a esta Agência?
     const existingTx = await prisma.transaction.findFirst({
       where: { id: transactionId, companyId: companyId },
     });
 
     if (!existingTx)
-      return res.status(404).json({
-        error: "Transação não encontrada ou pertence a outra agência.",
-      });
+      return res.status(404).json({ error: "Transação não encontrada." });
 
     const fileUrl = req.file
       ? `/uploads/transactions/${req.file.filename}`
@@ -176,6 +176,15 @@ export async function update(req, res) {
       },
     });
 
+    // 🔥 3. ESPIÃO: Regista quem alterou e qual era o título antigo
+    registerLog(
+      companyId,
+      { name: "Usuário do Sistema", role: "ADMIN" },
+      "UPDATE",
+      "FINANCEIRO",
+      `Alterou os dados ou status da fatura: ${existingTx.title}`,
+    );
+
     return res.status(200).json(transaction);
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -187,19 +196,29 @@ export async function remove(req, res) {
     const transactionId = req.params.id;
     const companyId = req.companyId;
 
-    // 🛡️ VERIFICAÇÃO DE PROPRIEDADE PARA EXCLUSÃO
     const existingTx = await prisma.transaction.findFirst({
       where: { id: transactionId, companyId: companyId },
     });
 
     if (!existingTx)
-      return res.status(403).json({
-        error: "Tentativa de exclusão bloqueada por violação de segurança.",
-      });
+      return res
+        .status(403)
+        .json({
+          error: "Tentativa de exclusão bloqueada por violação de segurança.",
+        });
 
     await prisma.transaction.delete({
       where: { id: transactionId },
     });
+
+    // 🔥 4. ESPIÃO: A ação mais perigosa do sistema está agora totalmente blindada!
+    registerLog(
+      companyId,
+      { name: "Usuário do Sistema", role: "ADMIN" },
+      "DELETE",
+      "FINANCEIRO",
+      `Apagou permanentemente o lançamento: ${existingTx.title} (R$ ${existingTx.amount})`,
+    );
 
     return res.status(204).send();
   } catch (err) {
