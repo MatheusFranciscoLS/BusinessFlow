@@ -11,6 +11,7 @@ import taskRoutes from "./task.routes.js"; // 🔥 O Kanban
 import ticketRoutes from "./ticket.routes.js"; // 🔥 O Helpdesk
 import documentRoutes from "./document.routes.js"; // 🔥 O Cofre Digital
 import ofxRoutes from "./ofx.routes.js";
+import auditRoutes from "./audit.routes.js";
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use("/tasks", taskRoutes);
 router.use("/tickets", ticketRoutes);
 router.use("/documents", documentRoutes);
 router.use("/ofx", ofxRoutes);
+routes.use("/audit", auditRoutes);
 
 export default router;
