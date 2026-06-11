@@ -654,7 +654,7 @@ const renderStatusBadge = (statusValue) => {
                             /* 🔥 OS CARTÕES EXCLUSIVOS PARA O CLIENTE (Painel de Dívidas) */
                             <>
                                 <SummaryCard>
-                                    <header><span>A Vencer (Pendentes)</span><Clock size={24} color="#d69e2e" /></header>
+                                    <header><span>A Pagar (Pendentes)</span><Clock size={24} color="#d69e2e" /></header>
                                     <strong style={{ color: '#d69e2e' }}>{formatCurrency(filteredSummary.clientPendente)}</strong>
                                 </SummaryCard>
                                 <SummaryCard>
@@ -1043,10 +1043,10 @@ const renderStatusBadge = (statusValue) => {
                         <form onSubmit={handleSave}>
                             <TransactionTypeContainer style={{ marginBottom: 24 }}>
                                 <RadioBox type="button" onClick={() => setType('income')} $isActive={type === 'income' || type === 'entrada'} $activeColor="green">
-                                  <ArrowUpCircle size={24} color="#12a454" /> <span>Entrada de Receita</span>
+                                  <ArrowUpCircle size={24} color="#12a454" /> <span>Receita (Entrada)</span>
                                 </RadioBox>
                                 <RadioBox type="button" onClick={() => setType('outcome')} $isActive={type === 'outcome' || type === 'saida'} $activeColor="red">
-                                  <ArrowDownCircle size={24} color="#e52e4d" /> <span>Saída / Despesa</span>
+                                  <ArrowDownCircle size={24} color="#e52e4d" /> <span>Despesa (Saída)</span>
                                 </RadioBox>
                             </TransactionTypeContainer>
                             
@@ -1063,7 +1063,7 @@ const renderStatusBadge = (statusValue) => {
                             </div>
 
                             <FormGroup>
-                              <label>Vincular a um Cliente (BPO / Honorário)</label>
+                              <label>Vincular a um Cliente (Opcional)</label>
                               <select value={clientId} onChange={e => setClientId(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc' }}>
                                 <option value="">Não vincular (Despesa Interna do Escritório)</option>
                                 {clients?.map(c => (<option key={c.id} value={c.id}>{c.fullName}</option>))}

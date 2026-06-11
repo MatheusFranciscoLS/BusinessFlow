@@ -92,7 +92,7 @@ if (isClient) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <div>
               <h2 style={{ margin: '0 0 8px 0', fontSize: 22, color: 'white' }}>Precisa de suporte ou esclarecimentos?</h2>
-              <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Abra uma solicitação direta na nossa central técnica.</p>
+              <p style={{ margin: 0, opacity: 0.9, fontSize: 15 }}>Abra uma conversa direta com a nossa equipe.</p>
             </div>
             <button onClick={() => navigate('/app/helpdesk')} style={{ background: 'white', color: '#2b6cb0', padding: '14px 24px', borderRadius: '8px', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               <LifeBuoy size={18} /> Abrir Chamado
@@ -108,7 +108,7 @@ if (isClient) {
           </ActionShortcut>
           <ActionShortcut onClick={() => navigate('/app/agenda')}>
             <div style={{ background: '#fffaf0', padding: 16, borderRadius: 50, color: '#dd6b20' }}><Calendar size={28} /></div>
-            Agenda de Obrigações
+            Tarefas e Prazos
           </ActionShortcut>
           <ActionShortcut onClick={() => navigate('/app/financeiro')}>
             <div style={{ background: '#f0fff4', padding: 16, borderRadius: 50, color: '#38a169' }}><Activity size={28} /></div>
@@ -126,8 +126,8 @@ if (isClient) {
   return (
     <Container>
       <Header>
-        <h1>Centro de Comando Operacional</h1>
-        <p>Acompanhamento analítico da agência, faturamento recorrente e riscos fiscais.</p>
+        <h1>Resumo Executivo</h1>
+        <p>Visão geral do desempenho financeiro e operacional do escritório.</p>
       </Header>
 
       <GridTop>
@@ -156,10 +156,10 @@ if (isClient) {
         <StatCard onClick={() => navigate('/app/agenda')} title="Aceder ao Quadro Kanban" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ flex: 1 }}>
             <div className="header" style={{ marginBottom: 16 }}>
-              <span className="title">Vazão do Quadro Fiscal</span>
+              <span className="title">Produtividade da Equipe</span>
             </div>
             <div className="value" style={{ fontSize: 26, marginBottom: 4 }}>{metrics.productivityPercent}%</div>
-            <div className="subtitle">Obrigações cumpridas</div>
+            <div className="subtitle">Tarefas concluídas no prazo</div>
           </div>
           
           {/* Mágica do Gráfico em CSS Puro (Conic Gradient) */}
@@ -177,7 +177,7 @@ if (isClient) {
       <MainGrid>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <Panel>
-            <h3><Users color="#3182ce" /> Monitoramento de Alertas Ativos</h3>
+            <h3><Users color="#3182ce" /> Atenção: Clientes com Pendências</h3>
             {summary.inadimplentes?.length === 0 ? (
               <p style={{ color: '#718096', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle size={18} color="#38a169"/> Todas as contas recorrentes operam em total conformidade.</p>
             ) : (
@@ -216,12 +216,12 @@ if (isClient) {
                     {new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                   </span>
                 </div>
-                <span style={{ fontSize: 12, color: '#a0aec0', fontWeight: 600 }}>{t.client?.fullName || 'Urgência Interna'}</span>
+                <span style={{ fontSize: 12, color: '#a0aec0', fontWeight: 600 }}>{t.client?.fullName || 'Tarefa Interna do Escritório'}</span>
               </ListItem>
              )
           })}
           <button onClick={() => navigate('/app/agenda')} style={{ width: '100%', background: '#f7fafc', border: '1px solid #e2e8f0', padding: 12, borderRadius: 8, marginTop: 16, color: '#4a5568', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>
-            Acessar Painel Unificado
+            Ver todas as Tarefas
           </button>
         </Panel>
       </MainGrid>
