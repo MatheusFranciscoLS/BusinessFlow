@@ -3,7 +3,7 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
-  CircleUser, Upload, Trash2, Building2, Plus, Edit, Key, X, Shield, Users, FileText 
+  Upload, Trash2, Building2, Plus, Edit, Key, X, Shield, Users, FileText 
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { 

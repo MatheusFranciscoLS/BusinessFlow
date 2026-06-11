@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { 
   Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
 } from './styles';
+import { ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const { signIn } = useAuth(); 
@@ -63,9 +64,13 @@ export default function Login() {
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
             </InputGroup>
 
-            <Button type="submit" disabled={loading}>
+<Button type="submit" disabled={loading}>
               {loading ? 'A entrar no sistema...' : 'Entrar na Plataforma'}
             </Button>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, color: '#718096', fontSize: 12, fontWeight: 600 }}>
+               <ShieldCheck size={16} color="#38a169" /> Ambiente Seguro e Criptografado
+            </div>
           </Form>
 
           <FooterActions>

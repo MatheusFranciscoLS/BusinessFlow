@@ -10,31 +10,37 @@ export const Container = styled.div`
 `;
 
 export const LeftPanel = styled.div`
-  flex: 1;
-  background: #1a202c;
+  flex: 1.2; /* Ligeiramente mais largo para um visual assimétrico moderno */
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e3a8a 100%
+  ); /* Gradiente Premium */
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 60px;
+  padding: 80px;
   color: white;
 
   h1 {
-    font-size: 36px;
+    font-size: 42px;
     font-weight: 800;
     margin-bottom: 16px;
+    letter-spacing: -1px;
     span {
-      color: #3182ce;
+      color: #60a5fa;
     }
   }
 
   p {
-    color: #a0aec0;
-    font-size: 16px;
+    color: #94a3b8;
+    font-size: 18px;
     line-height: 1.6;
+    max-width: 480px;
   }
 
   @media (max-width: 900px) {
-    display: none; /* Esconde o painel decorativo no mobile */
+    display: none;
   }
 `;
 
@@ -78,29 +84,38 @@ export const InputGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1; /* Garante flexibilidade em linhas partilhadas */
 
   label {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 800;
     color: #4a5568;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    /* 🔥 A CORREÇÃO DO BUG DE ALINHAMENTO AQUI */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   input {
     width: 100%;
-    height: 48px;
+    height: 52px; /* Mais alto para conforto visual (Touch-friendly) */
     padding: 0 16px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border-radius: 12px; /* Cantos mais arredondados */
+    border: 2px solid #e2e8f0; /* Borda mais demarcada */
     font-size: 15px;
+    font-weight: 500;
+    color: #1e293b;
+    background: #f8fafc;
     transition: all 0.2s;
-    background: #fcfcfc;
 
     &:focus {
       border-color: #3182ce;
-      box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-      outline: none;
       background: white;
+      outline: none;
+      box-shadow: 0 4px 12px rgba(49, 130, 206, 0.1);
+      transform: translateY(-1px);
     }
   }
 `;

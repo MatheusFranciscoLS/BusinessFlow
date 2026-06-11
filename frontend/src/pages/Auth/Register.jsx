@@ -46,15 +46,15 @@ export default function Register() {
           <p>Configure o ambiente inicial do seu escritório.</p>
 
           <Form onSubmit={handleRegister}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 16, flexDirection: 'row' }}>
               <InputGroup>
-                <label>Seu Nome (Sócio/Gestor)</label>
-                <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: João Silva" />
+                <label>Nome Completo</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Sócio ou Gestor" />
               </InputGroup>
 
               <InputGroup>
-                <label>Nome do Escritório</label>
-                <input value={agencyName} onChange={e => setAgencyName(e.target.value)} placeholder="Ex: JS Contabilidade" />
+                <label>Escritório</label>
+                <input value={agencyName} onChange={e => setAgencyName(e.target.value)} placeholder="Nome da Agência" />
               </InputGroup>
             </div>
 
