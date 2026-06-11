@@ -4,9 +4,9 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ChevronLeft, ChevronRight, FileText, PieChart, Filter, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, PieChart, Filter, ChevronDown, TrendingUp, TrendingDown, DollarSign, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Container, Header, DREContainer, DRERow, MonthNavigator } from './styles';
+import { Container, Header, DREContainer, DRERow, MonthNavigator, SummaryGrid, SummaryCard } from './styles';
 
 const MONTHS_BR = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -69,11 +69,13 @@ const dre = useMemo(() => {
       }
     });
 
-    const receitaLiquida = receitas - impostos;
+const receitaLiquida = receitas - impostos;
     const lucroOperacional = receitaLiquida - pessoal - operacionais;
     const lucroLiquido = lucroOperacional - distribuicao;
+    const despesasTotais = impostos + pessoal + operacionais + distribuicao;
+    const margemLucro = receitas > 0 ? (lucroLiquido / receitas) * 100 : 0;
 
-    return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido };
+    return { receitas, impostos, receitaLiquida, pessoal, operacionais, lucroOperacional, distribuicao, lucroLiquido, despesasTotais, margemLucro };
   }, [transactions, clientFilter, isClient]);
 
   function exportDRE() {
@@ -153,19 +155,56 @@ const dre = useMemo(() => {
         </MonthNavigator>
       </div>
 
-      {!dre ? (
+{!dre ? (
         <p style={{ color: '#a0aec0' }}>A calcular métricas...</p>
       ) : (
-        <DREContainer>
-          <DRERow $isTotal><span>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</span><span style={{ color: '#12a454' }}>{formatCurrency(dre.receitas)}</span></DRERow>
-          <DRERow $indent><span>(-) Impostos, Taxas e Deduções sobre Vendas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.impostos)}</span></DRERow>
-          <DRERow $isTotal style={{ background: '#ebf8ff', borderTop: '2px solid #3182ce', borderBottom: '2px solid #3182ce' }}><span>(=) RECEITA LÍQUIDA</span><span style={{ color: '#2b6cb0' }}>{formatCurrency(dre.receitaLiquida)}</span></DRERow>
-          <DRERow $indent><span>(-) Custos com Pessoal e Encargos (Folha / Pró-labore)</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.pessoal)}</span></DRERow>
-          <DRERow $indent><span>(-) Despesas Operacionais e Administrativas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.operacionais)}</span></DRERow>
-          <DRERow $isTotal style={{ background: '#edf2f7' }}><span>(=) RESULTADO OPERACIONAL (EBITDA / LAIR)</span><span>{formatCurrency(dre.lucroOperacional)}</span></DRERow>
-          <DRERow $indent><span>(-) Distribuição de Lucros aos Sócios</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.distribuicao)}</span></DRERow>
-          <DRERow $isTotal style={{ background: dre.lucroLiquido >= 0 ? '#f0fff4' : '#fff5f5', borderTop: dre.lucroLiquido >= 0 ? '2px solid #48bb78' : '2px solid #f56565' }}><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#22543d' : '#742a2a' }}>(=) LUCRO LÍQUIDO DO EXERCÍCIO</span><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#38a169' : '#e53e3e' }}>{formatCurrency(dre.lucroLiquido)}</span></DRERow>
-        </DREContainer>
+        <>
+          {/* 🔥 DASHBOARD DE INTELIGÊNCIA: Resumo Rápido para o Cérebro */}
+          <SummaryGrid>
+            <SummaryCard>
+              <header><span>Receita Bruta</span><TrendingUp size={24} color="#38a169" /></header>
+              <strong style={{ color: '#38a169' }}>{formatCurrency(dre.receitas)}</strong>
+              <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Faturamento total do mês
+              </span>
+            </SummaryCard>
+            
+            <SummaryCard>
+              <header><span>Despesas e Custos Totais</span><TrendingDown size={24} color="#e53e3e" /></header>
+              <strong style={{ color: '#e53e3e' }}>{formatCurrency(dre.despesasTotais)}</strong>
+              <span style={{ fontSize: 13, color: '#718096' }}>Impostos, folha e operacionais</span>
+            </SummaryCard>
+            
+            <SummaryCard $highlight={true} style={{ background: dre.lucroLiquido < 0 ? 'linear-gradient(135deg, #742a2a 0%, #e53e3e 100%)' : 'linear-gradient(135deg, #1a202c 0%, #2d3748 100%)' }}>
+              <header><span>Resultado Líquido</span><DollarSign size={24} color="white" /></header>
+              <strong>{formatCurrency(dre.lucroLiquido)}</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 8px', borderRadius: 6, fontWeight: 700 }}>
+                  Margem: {dre.margemLucro.toFixed(1)}%
+                </span>
+                
+                {/* O TERMÔMETRO FINANCEIRO PARA A DONA ANA */}
+                <span>
+                  {dre.lucroLiquido < 0 ? <><AlertCircle size={14} style={{marginBottom: -2}}/> Prejuízo</> : 
+                   dre.margemLucro > 20 ? 'Excelente 🚀' : 
+                   dre.margemLucro > 10 ? 'Saudável ✅' : 'Atenção ⚠️'}
+                </span>
+              </div>
+            </SummaryCard>
+          </SummaryGrid>
+
+          {/* TABELA DO DRE */}
+          <DREContainer>
+            <DRERow $isTotal><span>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</span><span style={{ color: '#12a454' }}>{formatCurrency(dre.receitas)}</span></DRERow>
+            <DRERow $indent><span>(-) Impostos, Taxas e Deduções sobre Vendas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.impostos)}</span></DRERow>
+            <DRERow $isTotal style={{ background: '#ebf8ff', borderTop: '2px solid #3182ce', borderBottom: '2px solid #3182ce' }}><span>(=) RECEITA LÍQUIDA</span><span style={{ color: '#2b6cb0' }}>{formatCurrency(dre.receitaLiquida)}</span></DRERow>
+            <DRERow $indent><span>(-) Custos com Pessoal e Encargos (Folha / Pró-labore)</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.pessoal)}</span></DRERow>
+            <DRERow $indent><span>(-) Despesas Operacionais e Administrativas</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.operacionais)}</span></DRERow>
+            <DRERow $isTotal style={{ background: '#edf2f7' }}><span>(=) RESULTADO OPERACIONAL (EBITDA / LAIR)</span><span>{formatCurrency(dre.lucroOperacional)}</span></DRERow>
+            <DRERow $indent><span>(-) Distribuição de Lucros aos Sócios</span><span style={{ color: '#e53e3e' }}>{formatCurrency(dre.distribuicao)}</span></DRERow>
+            <DRERow $isTotal style={{ background: dre.lucroLiquido >= 0 ? '#f0fff4' : '#fff5f5', borderTop: dre.lucroLiquido >= 0 ? '2px solid #48bb78' : '2px solid #f56565' }}><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#22543d' : '#742a2a' }}>(=) LUCRO LÍQUIDO DO EXERCÍCIO</span><span style={{ fontSize: 18, color: dre.lucroLiquido >= 0 ? '#38a169' : '#e53e3e' }}>{formatCurrency(dre.lucroLiquido)}</span></DRERow>
+          </DREContainer>
+        </>
       )}
     </Container>
   );

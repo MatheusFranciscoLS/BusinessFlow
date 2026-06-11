@@ -79,3 +79,39 @@ export const DRERow = styled.div`
     padding-left: ${(props) => (props.$indent ? "24px" : "16px")};
   }
 `;
+
+export const SummaryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+`;
+
+export const SummaryCard = styled.div`
+  background: ${(props) =>
+    props.$highlight
+      ? "linear-gradient(135deg, #1a202c 0%, #2d3748 100%)"
+      : "white"};
+  border: 1px solid #edf2f7;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+  color: ${(props) => (props.$highlight ? "white" : "#2d3748")};
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: ${(props) => (props.$highlight ? "#e2e8f0" : "#718096")};
+  }
+
+  strong {
+    font-size: 28px;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 8px;
+  }
+`;
