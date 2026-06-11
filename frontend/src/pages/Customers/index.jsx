@@ -4,15 +4,16 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
   Users, Search, Plus, Edit, Trash2, ShieldAlert,
-  Building2, DollarSign, Mail, Phone, CalendarClock, Briefcase
+  Building2, DollarSign, Mail, Phone, CalendarClock, Briefcase,
+  TrendingUp, AlertTriangle, MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   Container, Header, Toolbar, SearchBar, ActionButton,
-  Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions
+  Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions,
+  SummaryGrid, SummaryCard, Avatar
 } from './styles';
 
-// 🔥 IMPORTAMOS AS MÁSCARAS DE UX!
 import { maskCPFOrCNPJ, maskPhone, maskCurrency, unmaskCurrency } from '../../utils/masks';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -46,7 +47,17 @@ export default function Clients() {
     );
   }, [clients, searchTerm]);
 
-  const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+
+  const crmMetrics = useMemo(() => {
+    if (!clients) return { total: 0, mrr: 0, inadimplentes: 0 };
+    return clients.reduce((acc, c) => {
+      acc.total += 1;
+      if (c.status === 'ATIVO') acc.mrr += (c.monthlyFee || 0);
+      if (c.status === 'INADIMPLENTE') acc.inadimplentes += 1;
+      return acc;
+    }, { total: 0, mrr: 0, inadimplentes: 0 });
+  }, [clients]);
 
   // 🔥 GERA A DATA DE HOJE PARA BLOQUEAR O PASSADO NO INPUT
   const todayStr = new Date().toISOString().split('T')[0];
@@ -141,14 +152,37 @@ export default function Clients() {
         <ActionButton onClick={handleOpenNew}><Plus size={18} /> Novo Cliente</ActionButton>
       </Header>
 
+{/* 🔥 DASHBOARD EXECUTIVO DO CRM */}
+      <SummaryGrid>
+        <SummaryCard>
+          <div className="icon"><Users size={28} /></div>
+          <div className="info">
+            <div className="label">Total de Contratos</div>
+            <div className="value">{crmMetrics.total}</div>
+          </div>
+        </SummaryCard>
+        
+        <SummaryCard>
+          <div className="icon" style={{ background: '#f0fff4', color: '#38a169' }}><TrendingUp size={28} /></div>
+          <div className="info">
+            <div className="label">Receita Ativa (MRR)</div>
+            <div className="value" style={{ color: '#22543d' }}>{formatCurrency(crmMetrics.mrr)}</div>
+          </div>
+        </SummaryCard>
+
+        <SummaryCard $danger={crmMetrics.inadimplentes > 0}>
+          <div className="icon"><AlertTriangle size={28} /></div>
+          <div className="info">
+            <div className="label">Inadimplentes</div>
+            <div className="value">{crmMetrics.inadimplentes}</div>
+          </div>
+        </SummaryCard>
+      </SummaryGrid>
+
       <Toolbar>
-        <SearchBar>
+        <SearchBar style={{ maxWidth: 400 }}>
           <Search size={18} color="#a0aec0" style={{ marginRight: 8 }} />
-          <input 
-            placeholder="Procurar por Razão Social ou CNPJ..." 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)} 
-          />
+          <input placeholder="Procurar por Razão Social ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </SearchBar>
       </Toolbar>
 
@@ -160,8 +194,10 @@ export default function Clients() {
         <Grid>
           {filteredClients.map(client => (
             <Card key={client.id}>
-              <div className="card-header">
-                <div>
+<div className="card-header" style={{ gap: 16 }}>
+                {/* 🔥 AVATAR COM A INICIAL DA EMPRESA */}
+                <Avatar>{client.fullName.charAt(0).toUpperCase()}</Avatar>
+                <div style={{ flex: 1 }}>
                   <div className="client-name">{client.fullName}</div>
                   <div className="client-doc"><Building2 size={14} /> {maskCPFOrCNPJ(client.document) || 'Sem CNPJ'}</div>
                 </div>
@@ -170,20 +206,35 @@ export default function Clients() {
 
               <div className="card-body">
                 <div className="info-row"><Briefcase size={16} color="#718096" /> {client.taxRegime || 'Não Informado'}</div>
-                <div className="info-row"><DollarSign size={16} color="#38a169" /> Honorários: <strong>{formatCurrency(client.monthlyFee)}</strong></div>
+                <div className="info-row"><DollarSign size={16} color="#38a169" /> Honorários: <strong style={{ color: '#38a169' }}>{formatCurrency(client.monthlyFee)}</strong></div>
                 <div className="info-row"><Mail size={16} color="#718096" /> {client.email || '-'}</div>
-                <div className="info-row"><Phone size={16} color="#718096" /> {maskPhone(client.phone) || '-'}</div>
+                
+                {/* 🔥 O NOVO BOTÃO DE COMUNICAÇÃO 1-CLICK */}
+                <div className="info-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Phone size={16} color="#718096" /> {maskPhone(client.phone) || '-'}
+                  </div>
+                  {client.phone && (
+                    <button 
+                      onClick={() => window.open(`https://api.whatsapp.com/send?phone=55${client.phone.replace(/\\D/g, '')}&text=${encodeURIComponent(`Olá, sou do escritório ${selectedCompany?.name || 'de contabilidade'}. Tudo bem?`)}`, '_blank')}
+                      style={{ background: '#f0fff4', color: '#25D366', border: '1px solid #9ae6b4', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, transition: '0.2s' }}
+                      title="Chamar no WhatsApp"
+                    >
+                      <MessageCircle size={14} /> WhatsApp
+                    </button>
+                  )}
+                </div>
                 
                 {client.certificateExpiry && (
-                  <div className="info-row" style={{ color: '#d69e2e', fontWeight: 600, background: '#fffff0', padding: '6px 8px', borderRadius: 6 }}>
+                  <div className="info-row" style={{ color: '#d69e2e', fontWeight: 700, background: '#fffff0', padding: '8px 12px', borderRadius: 8, marginTop: 4 }}>
                     <CalendarClock size={16} /> e-CNPJ Vence: {new Date(client.certificateExpiry).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                   </div>
                 )}
               </div>
 
               <div className="card-footer">
-                <button onClick={() => handleEdit(client)} style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', display: 'flex', gap: 6 }}><Edit size={16}/> Editar</button>
-                <button onClick={() => handleDelete(client.id)} style={{ background: '#fff5f5', color: '#e53e3e', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer', display: 'flex', gap: 6 }}><Trash2 size={16}/> Excluir</button>
+                <button onClick={() => handleEdit(client)} style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, transition: '0.2s' }}><Edit size={16}/> Editar Dossiê</button>
+                <button onClick={() => handleDelete(client.id)} style={{ background: '#fff5f5', color: '#e53e3e', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, transition: '0.2s' }}><Trash2 size={16}/> Excluir</button>
               </div>
             </Card>
           ))}

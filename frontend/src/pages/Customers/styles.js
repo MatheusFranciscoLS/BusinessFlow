@@ -243,3 +243,58 @@ export const ModalActions = styled.div`
     color: white;
   }
 `;
+
+export const SummaryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+`;
+
+export const SummaryCard = styled.div`
+  background: ${(props) => (props.$danger ? "#fff5f5" : "white")};
+  border: 1px solid ${(props) => (props.$danger ? "#fed7d7" : "#edf2f7")};
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+
+  .icon {
+    padding: 16px;
+    border-radius: 12px;
+    background: ${(props) => (props.$danger ? "#fed7d7" : "#ebf8ff")};
+    color: ${(props) => (props.$danger ? "#e53e3e" : "#3182ce")};
+  }
+  .info {
+    flex: 1;
+  }
+  .label {
+    font-size: 14px;
+    color: #718096;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .value {
+    font-size: 28px;
+    font-weight: 800;
+    color: ${(props) => (props.$danger ? "#c53030" : "#2d3748")};
+  }
+`;
+
+export const Avatar = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(49, 130, 206, 0.3);
+`;
