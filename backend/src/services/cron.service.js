@@ -4,54 +4,76 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export function startCronJobs() {
-  // 🕒 Configurado para rodar todos os dias às 00:01 (Meia-noite e um)
-  // Para testar agora mesmo (a cada minuto), troque '1 0 * * *' por '* * * * *'
+  // 🕒 Roda todos os dias às 00:01 (Meia-noite e um)
   cron.schedule(
     "1 0 * * *",
     async () => {
-      console.log(
-        "🤖 [CRON] A iniciar a Auditoria Financeira da Meia-Noite...",
-      );
+      console.log("🤖 [CRON] A iniciar as rotinas da madrugada...");
 
       try {
-        // 1. Descobrir que dia é hoje (zerando as horas para comparar só a data)
+        // 1. Zera as horas para comparar apenas os dias
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // 2. A MÁGICA: Buscar tudo o que está PENDENTE e cuja data já passou de hoje
-        const result = await prisma.transaction.updateMany({
+        // ==========================================
+        // 💰 MISSÃO 1: AUDITORIA FINANCEIRA (Já tínhamos)
+        // ==========================================
+        const resultFin = await prisma.transaction.updateMany({
+          where: { status: "PENDENTE", date: { lt: today } },
+          data: { status: "ATRASADO" },
+        });
+        if (resultFin.count > 0)
+          console.log(
+            `🚨 [CRON] Financeiro: ${resultFin.count} faturas marcadas como ATRASADAS!`,
+          );
+
+        // ==========================================
+        // 👁️ MISSÃO 2: O VIGIA DE CERTIFICADOS (NOVO!)
+        // ==========================================
+        // Qual é o dia daqui a exatos 30 dias?
+        const targetDate = new Date(today);
+        targetDate.setDate(targetDate.getDate() + 30);
+
+        // Procura clientes cujo e-CNPJ vença nesse exato dia alvo
+        const expiringClients = await prisma.client.findMany({
           where: {
-            status: "PENDENTE",
-            date: {
-              lt: today, // "lt" = Less Than (Menor que hoje)
+            certificateExpiry: {
+              gte: new Date(targetDate.setHours(0, 0, 0, 0)),
+              lt: new Date(targetDate.setHours(23, 59, 59, 999)),
             },
-          },
-          data: {
-            status: "ATRASADO",
           },
         });
 
-        if (result.count > 0) {
+        // Se encontrou alguém, cria as tarefas no Kanban automaticamente!
+        if (expiringClients.length > 0) {
+          for (const client of expiringClients) {
+            await prisma.task.create({
+              data: {
+                title: `🚨 Renovar e-CNPJ: ${client.fullName.split(" ")[0]}`,
+                description: `O certificado digital deste cliente vence em 30 dias. Entre em contacto para providenciar a renovação antes que o escritório perca o acesso às emissões fiscais.`,
+                status: "A_FAZER",
+                priority: "ALTA", // Ganha a cor amarela/laranja no seu front-end!
+                dueDate: client.certificateExpiry,
+                companyId: client.companyId,
+                clientId: client.id,
+              },
+            });
+          }
           console.log(
-            `🚨 [CRON] Auditoria concluída: ${result.count} faturas foram marcadas como ATRASADAS!`,
+            `📅 [CRON] Kanban: ${expiringClients.length} novas tarefas de renovação criadas sozinhas!`,
           );
         } else {
-          console.log(
-            "✅ [CRON] Auditoria concluída: Nenhum atraso detetado hoje.",
-          );
+          console.log("✅ [CRON] Kanban: Nenhum e-CNPJ a vencer em 30 dias.");
         }
       } catch (error) {
-        console.error(
-          "❌ [CRON] Erro ao executar a auditoria financeira:",
-          error,
-        );
+        console.error("❌ [CRON] Erro ao executar as rotinas:", error);
       }
     },
     {
       scheduled: true,
-      timezone: "America/Sao_Paulo", // Garante que a meia-noite é no fuso horário do Brasil
+      timezone: "America/Sao_Paulo",
     },
   );
 
-  console.log("⏳ Motor do Tempo (Node-Cron) ativado e em espera.");
+  console.log("⏳ Motor do Tempo (Node-Cron) ativado (Financeiro + Kanban).");
 }
