@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("ERRO CRÍTICO: JWT_SECRET não definido no .env");
@@ -20,11 +20,18 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
+// 🔥 MUDANÇA 1: O Token agora carrega a Identidade Blindada do Cliente
 function generateAccessToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role || "USER" },
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role || "USER",
+      clientId: user.clientId, // O Elo Físico inquebrável
+      companyAccessId: user.companyAccessId, // A Empresa que ele tem acesso
+    },
     process.env.JWT_SECRET,
-    { expiresIn: "1d" } 
+    { expiresIn: "1d" },
   );
 }
 
@@ -81,15 +88,18 @@ export async function login(data) {
     data: refreshTokenData,
   });
 
+  // 🔥 MUDANÇA 2: Devolver os IDs também para o Front-end usar na interface
   return {
     message: "Login realizado com sucesso",
-    token: accessToken, 
+    token: accessToken,
     refreshToken: refreshTokenData.token,
     user: {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
+      clientId: user.clientId,
+      companyAccessId: user.companyAccessId,
     },
   };
 }
@@ -134,7 +144,7 @@ export async function sendForgotPasswordEmail(email) {
   const transporter = nodemailer.createTransport({
     host: "smtp.ethereal.email",
     port: 587,
-    secure: false, 
+    secure: false,
     auth: {
       user: testAccount.user,
       pass: testAccount.pass,
@@ -142,10 +152,10 @@ export async function sendForgotPasswordEmail(email) {
   });
 
   const info = await transporter.sendMail({
-    from: '"BusinessFlow" <noreply@businessflow.com>', 
-    to: email, 
-    subject: "Recuperação de Senha - BusinessFlow", 
-    text: `Olá ${user.name}, acesse http://localhost:5173/reset-password para redefinir sua senha.`, 
+    from: '"BusinessFlow" <noreply@businessflow.com>',
+    to: email,
+    subject: "Recuperação de Senha - BusinessFlow",
+    text: `Olá ${user.name}, acesse http://localhost:5173/reset-password para redefinir sua senha.`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
         <h2>Olá, ${user.name}!</h2>
@@ -156,7 +166,10 @@ export async function sendForgotPasswordEmail(email) {
     `,
   });
 
-  console.log("🔗 Caixa de Entrada de Teste Ethereal disponível em:", nodemailer.getTestMessageUrl(info));
+  console.log(
+    "🔗 Caixa de Entrada de Teste Ethereal disponível em:",
+    nodemailer.getTestMessageUrl(info),
+  );
   return { message: "Email enviado com sucesso" };
 }
 
