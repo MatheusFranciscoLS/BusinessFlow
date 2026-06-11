@@ -285,7 +285,7 @@ export default function Profile() {
 
       <SectionTitle style={{ fontSize: 22, fontWeight: 800, color: '#1a202c', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
         <Building2 size={28} color="#3182ce" /> 
-        Gestão Multi-Empresas e Portal do Cliente
+        Empresas e Controle de Acessos
       </SectionTitle>
       
       <ProfileCard style={{ padding: '32px', border: '1px solid #edf2f7', borderRadius: 16 }}>

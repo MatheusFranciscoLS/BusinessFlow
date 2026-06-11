@@ -164,7 +164,7 @@ async function handleCreateTask(e) {
   return (
     <Container>
       <Header>
-        <h1><Calendar color="#3182ce" size={32} /> Painel de Comando Unificado</h1>
+        <h1><Calendar color="#3182ce" size={32} /> Gestão de Tarefas e Prazos</h1>
         {!isClient && (
           <ActionGroup>
             {activeTab === 'KANBAN' && (
@@ -173,7 +173,7 @@ async function handleCreateTask(e) {
               </Button>
             )}
             <Button onClick={() => setIsModalOpen(true)} style={{ background: '#3182ce', color: 'white' }}>
-              <Plus size={18} /> Novo Prazo / Obrigação
+              <Plus size={18} /> Nova Tarefa
             </Button>
           </ActionGroup>
         )}
@@ -181,11 +181,11 @@ async function handleCreateTask(e) {
 
       <CardsGrid>
         <StatCard>
-          <div className="title">Obrigações Pendentes <ListTodo size={18} color="#3182ce" /></div>
+          <div className="title">Tarefas Pendentes <ListTodo size={18} color="#3182ce" /></div>
           <div className="value" style={{ color: '#3182ce' }}>{pendingTasksCount}</div>
         </StatCard>
         <StatCard>
-          <div className="title">Obrigações Atrasadas <AlertTriangle size={18} color="#e53e3e" /></div>
+          <div className="title">Tarefas Atrasadas <AlertTriangle size={18} color="#e53e3e" /></div>
           <div className="value" style={{ color: '#e53e3e' }}>{overdueTasksCount}</div>
         </StatCard>
         <StatCard>

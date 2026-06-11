@@ -135,9 +135,10 @@ export default function Helpdesk() {
   return (
     <Container>
       <Header>
-        <h1><LifeBuoy color="#3182ce" size={32} /> Central de Atendimento (Helpdesk)</h1>
+        <h1><LifeBuoy color="#3182ce" size={32} /> Suporte e Atendimento</h1>
         <ActionButton onClick={() => setIsModalOpen(true)}>
-          <Plus size={18} /> Novo Chamado
+          <Plus size={18} /> Nova Conversa
+
         </ActionButton>
       </Header>
 
@@ -149,7 +150,7 @@ export default function Helpdesk() {
           <Sidebar>
             <div style={{ padding: '20px', borderBottom: '1px solid #edf2f7', background: '#f8fafc' }}>
               <h3 style={{ margin: 0, fontSize: 16, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MessageSquare size={18} /> Meus Chamados
+                <MessageSquare size={18} /> Histórico de Conversas
               </h3>
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -280,12 +281,14 @@ export default function Helpdesk() {
         </Layout>
       )}
 
-      {/* MODAL NOVO CHAMADO */}
+      {/* MODAL Nova Conversa
+ */}
       {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
             <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, color: '#2d3748' }}>
-              <LifeBuoy color="#3182ce" /> Abrir Novo Chamado
+              <LifeBuoy color="#3182ce" /> Iniciar Atendimento
+
             </h2>
             <form onSubmit={handleCreateTicket}>
               

@@ -148,7 +148,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
   return (
     <Container>
       <Header>
-        <h1><Users color="#3182ce" size={32} /> Gestão de Clientes (CRM)</h1>
+        <h1><Users color="#3182ce" size={32} /> Carteira de Clientes</h1>
         <ActionButton onClick={handleOpenNew}><Plus size={18} /> Novo Cliente</ActionButton>
       </Header>
 
@@ -240,7 +240,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
               </div>
 
               <div className="card-footer">
-                <button onClick={() => handleEdit(client)} style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, transition: '0.2s' }}><Edit size={16}/> Editar Dossiê</button>
+                <button onClick={() => handleEdit(client)} style={{ background: '#ebf8ff', color: '#3182ce', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, transition: '0.2s' }}><Edit size={16}/> Editar Cadastro</button>
                 <button onClick={() => handleDelete(client.id)} style={{ background: '#fff5f5', color: '#e53e3e', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, transition: '0.2s' }}><Trash2 size={16}/> Excluir</button>
               </div>
             </Card>
@@ -253,7 +253,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
           <ModalContent>
             <h2 style={{ marginBottom: 24, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
               {editingId ? <Edit color="#3182ce" /> : <Plus color="#3182ce" />} 
-              {editingId ? 'Editar Dossiê' : 'Cadastrar Novo Cliente'}
+              {editingId ? 'Editar Cadastro' : 'Cadastrar Novo Cliente'}
             </h2>
             
             <form onSubmit={handleSave}>
