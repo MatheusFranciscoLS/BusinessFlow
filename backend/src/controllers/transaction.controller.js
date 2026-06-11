@@ -88,28 +88,35 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    const { role, userEmail } = req.query;
+    // 🔥 Agora o servidor lê o mês e o ano enviados pelo Front-end!
+    const { role, userEmail, month, year } = req.query;
     const companyId = req.companyId;
 
-    // 🛡️ A FECHADURA ZERO TRUST INICIA AQUI
     let whereClause = { companyId: companyId };
 
     if (role === "CLIENT") {
-      // Se for cliente, o servidor ignora o que ele pede e procura quem ele realmente é pelo e-mail do Token JWT
       const client = await prisma.client.findFirst({
         where: { email: userEmail, companyId: companyId },
       });
 
-      // Se tentar aceder sem estar cadastrado na empresa, é bloqueado na hora.
-      if (!client)
-        return res
-          .status(403)
-          .json({
-            error: "Acesso negado. Cliente não localizado na base segura.",
-          });
-
-      // Força a devolução APENAS das faturas vinculadas a este ID exato.
+      if (!client) return res.status(403).json({ error: "Acesso negado." });
       whereClause.clientId = client.id;
+    }
+
+    // 🔥 O MOTOR DE PERFORMANCE: Filtra o tempo diretamente no Banco de Dados
+    if (month && year) {
+      const m = parseInt(month);
+      const y = parseInt(year);
+
+      // Define o primeiro milissegundo do dia 1º do mês
+      const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+      // Define o último milissegundo do último dia do mês
+      const endDate = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+
+      whereClause.date = {
+        gte: startDate, // gte = Greater than or equal (Maior ou igual)
+        lte: endDate, // lte = Less than or equal (Menor ou igual)
+      };
     }
 
     const transactions = await prisma.transaction.findMany({
