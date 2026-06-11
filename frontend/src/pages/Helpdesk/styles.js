@@ -106,7 +106,10 @@ export const Badge = styled.span`
 
 export const ChatArea = styled.div`
   flex: 1;
-  background: white;
+  /* 🔥 MÁGICA VISUAL: Fundo idêntico ao WhatsApp Web */
+  background: #efeae2
+    url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+  background-size: contain;
   border-radius: 16px;
   border: 1px solid #edf2f7;
   display: flex;
@@ -116,17 +119,35 @@ export const ChatArea = styled.div`
 `;
 
 export const MessageBubble = styled.div`
-  max-width: 75%;
-  padding: 12px 16px;
-  border-radius: 12px;
+  max-width: 65%;
+  /* 🔥 Espaço extra em baixo para acomodar a hora */
+  padding: 8px 12px 22px 12px;
   position: relative;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 14.5px;
+  line-height: 1.4;
   align-self: ${(props) => (props.$isMine ? "flex-end" : "flex-start")};
-  background: ${(props) => (props.$isMine ? "#3182ce" : "#edf2f7")};
-  color: ${(props) => (props.$isMine ? "white" : "#2d3748")};
-  border-bottom-right-radius: ${(props) => (props.$isMine ? "4px" : "12px")};
-  border-bottom-left-radius: ${(props) => (props.$isMine ? "12px" : "4px")};
+
+  /* 🔥 Cores Clássicas do WhatsApp */
+  background: ${(props) => (props.$isMine ? "#d9fdd3" : "white")};
+  color: #111b21;
+
+  /* 🔥 O Efeito "Cauda" do Balão */
+  border-radius: 12px;
+  border-top-right-radius: ${(props) => (props.$isMine ? "0" : "12px")};
+  border-top-left-radius: ${(props) => (props.$isMine ? "12px" : "0")};
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+
+  /* A formatação da hora no canto do balão */
+  .meta {
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 11px;
+    color: #667781;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
 `;
 
 export const ModalOverlay = styled.div`

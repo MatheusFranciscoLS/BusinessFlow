@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 // 🔥 LIMPEZA: CheckCircle removido. ShieldAlert agora será usado para a tela de bloqueio!
 import { 
   LifeBuoy, Plus, MessageSquare, Clock, 
-  AlertCircle, Send, User, Building2, X, ShieldAlert 
+  AlertCircle, Send, User, Building2, X, ShieldAlert,CheckCheck
 } from 'lucide-react';
 
 import {
@@ -31,6 +31,16 @@ export default function Helpdesk() {
   const { data: tickets, mutate } = useSWR(queryParams ? `/tickets${queryParams}` : null, fetcher, { refreshInterval: 5000 });
 
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const sortedTickets = useMemo(() => {
+    if (!tickets) return [];
+    return [...tickets].sort((a, b) => {
+      const aUnread = isClient ? a.hasUnreadClient : a.hasUnreadAdmin;
+      const bUnread = isClient ? b.hasUnreadClient : b.hasUnreadAdmin;
+      if (aUnread && !bUnread) return -1;
+      if (!aUnread && bUnread) return 1;
+      return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
+    });
+  }, [tickets, isClient]);
   const [textMessage, setTextMessage] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef(null);
@@ -146,7 +156,7 @@ export default function Helpdesk() {
               {tickets.length === 0 ? (
                 <p style={{ padding: 20, textAlign: 'center', color: '#a0aec0', fontSize: 14 }}>Nenhum chamado aberto.</p>
               ) : (
-                tickets.map(ticket => {
+                sortedTickets.map(ticket => {
                   const isUnread = isClient ? ticket.hasUnreadClient : ticket.hasUnreadAdmin;
                   return (
                     <TicketCard 
@@ -201,37 +211,48 @@ export default function Helpdesk() {
                   </button>
                 </div>
 
-                {/* Área de rolagem do chat */}
-                <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, background: '#fcfcfc' }}>
+{/* Área de rolagem do chat */}
+                <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  
+                  {/* Mensagem Inicial (Abertura do Chamado) */}
                   <MessageBubble $isMine={isClient}>
-                    <div style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4, opacity: 0.8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4, color: isClient ? '#025c4c' : '#1f2937' }}>
                       {isClient ? 'Você' : selectedTicket.client?.fullName}
                     </div>
                     {selectedTicket.description}
+                    <span className="meta">
+                      {new Date(selectedTicket.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      {isClient && <CheckCheck size={14} color="#53bdeb" />}
+                    </span>
                   </MessageBubble>
 
+                  {/* Respostas da Conversa */}
                   {selectedTicket.messages.map(msg => {
                     const isMine = msg.senderRole === user.role;
                     return (
                       <MessageBubble key={msg.id} $isMine={isMine}>
-                        <div style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 4, opacity: 0.8 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4, color: isMine ? '#025c4c' : '#1f2937' }}>
                           {isMine ? 'Você' : msg.senderName}
                         </div>
                         {msg.message}
+                        <span className="meta">
+                          {new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {isMine && <CheckCheck size={14} color="#53bdeb" />}
+                        </span>
                       </MessageBubble>
                     )
                   })}
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Área de envio de mensagem */}
-                <div style={{ padding: '20px', borderTop: '1px solid #edf2f7', background: 'white', display: 'flex', gap: 16, alignItems: 'center' }}>
+{/* Área de envio de mensagem (Estilo WhatsApp Dock) */}
+                <div style={{ padding: '12px 20px', background: '#f0f2f5', display: 'flex', gap: 16, alignItems: 'center' }}>
                   
                   {!isClient && (
                     <select 
                       value={selectedTicket.status} 
                       onChange={e => handleUpdateStatus(e.target.value)} 
-                      style={{ padding: '12px', borderRadius: 8, border: '1px solid #cbd5e0', fontSize: 14, background: '#f7fafc', fontWeight: 600, outline: 'none' }}
+                      style={{ padding: '12px', borderRadius: 24, border: 'none', fontSize: 13, background: 'white', fontWeight: 700, outline: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'pointer' }}
                     >
                       <option value="ABERTO">🔴 Aberto</option>
                       <option value="EM_ANDAMENTO">🟡 Em Análise</option>
@@ -239,15 +260,17 @@ export default function Helpdesk() {
                     </select>
                   )}
 
-                  <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12, flex: 1 }}>
+                  <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
                     <input 
                       value={textMessage}
                       onChange={e => setTextMessage(e.target.value)}
-                      placeholder="Escreva a sua mensagem..."
-                      style={{ flex: 1, padding: '12px 16px', borderRadius: 8, border: '1px solid #e2e8f0', outline: 'none', fontSize: 14 }}
+                      placeholder="Digite uma mensagem"
+                      style={{ flex: 1, padding: '14px 20px', borderRadius: 24, border: 'none', outline: 'none', fontSize: 15, background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     />
-                    <button type="submit" disabled={selectedTicket.status === 'RESOLVIDO'} style={{ background: selectedTicket.status === 'RESOLVIDO' ? '#a0aec0' : '#3182ce', color: 'white', border: 'none', padding: '0 24px', borderRadius: 8, cursor: selectedTicket.status === 'RESOLVIDO' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, transition: '0.2s' }}>
-                      <Send size={18} /> Enviar
+                    
+                    {/* Botão Redondo Minimalista */}
+                    <button type="submit" disabled={!textMessage.trim() || selectedTicket.status === 'RESOLVIDO'} style={{ background: textMessage.trim() && selectedTicket.status !== 'RESOLVIDO' ? '#00a884' : '#a0aec0', color: 'white', border: 'none', width: 48, height: 48, borderRadius: '50%', cursor: selectedTicket.status === 'RESOLVIDO' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                      <Send size={20} style={{ marginLeft: textMessage.trim() ? 4 : 0 }} />
                     </button>
                   </form>
                 </div>
