@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Calendar, Plus, Clock, AlertTriangle, Zap, Building2, 
-  CheckCircle, ListTodo, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt,Repeat
+  CheckCircle, ListTodo, DollarSign, ArrowDownCircle, ArrowUpCircle, Receipt, Repeat,
+  Trash2, ArrowRight
 } from 'lucide-react';
 
 import {
@@ -35,11 +36,13 @@ export default function Agenda() {
   const { data: tasks, mutate: mutateTasks } = useSWR(queryParams ? `/tasks${queryParams}` : null, fetcher);
   const { data: allTransactions, mutate: mutateTrans } = useSWR(queryParams ? `/transactions${queryParams}` : null, fetcher);
   
-  // 🔥 FIM DA CEGUEIRA: O Backend já nos devolve os dados exatos de quem está logado. É só renderizar!
-  const visibleTasks = tasks || [];
-  const pendingTransactions = (allTransactions || [])
-    .filter(t => t.status !== 'PAGO')
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const visibleTasks = useMemo(() => tasks || [], [tasks]);
+  
+  const pendingTransactions = useMemo(() => {
+    return (allTransactions || [])
+      .filter(t => t.status !== 'PAGO')
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [allTransactions]);
 
   const [activeTab, setActiveTab] = useState('KANBAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,6 +91,16 @@ async function handleCreateTask(e) {
     } catch (err) { toast.error("Erro ao criar obrigação.", { id: tId }); }
   }
 
+  async function handleDeleteTask(taskId) {
+    if(!window.confirm("Apagar esta obrigação do quadro?")) return;
+    const tId = toast.loading("A excluir...");
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      mutateTasks();
+      toast.success("Obrigação excluída!", { id: tId });
+    } catch (err) { toast.error("Erro ao excluir.", { id: tId }); }
+  }
+
   async function handleAutoScan() {
     setIsScanning(true);
     const tId = toast.loading("A verificar Certificados Digitais...");
@@ -129,6 +142,20 @@ async function handleCreateTask(e) {
     switch(prio) { case 'URGENTE': return '#e53e3e'; case 'ALTA': return '#ed8936'; case 'NORMAL': return '#3182ce'; default: return '#a0aec0'; }
   };
 
+  const sortedTasks = useMemo(() => {
+    return [...visibleTasks].sort((a, b) => {
+      const aOverdue = new Date(a.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && a.status !== 'CONCLUIDO';
+      const bOverdue = new Date(b.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && b.status !== 'CONCLUIDO';
+      
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      
+      const pWeight = { 'URGENTE': 4, 'ALTA': 3, 'NORMAL': 2, 'BAIXA': 1 };
+      if (pWeight[a.priority] !== pWeight[b.priority]) return pWeight[b.priority] - pWeight[a.priority];
+      
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
+  }, [visibleTasks]);
   const pendingTasksCount = visibleTasks.filter(t => t.status !== 'CONCLUIDO').length;
   const overdueTasksCount = visibleTasks.filter(t => new Date(t.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && t.status !== 'CONCLUIDO').length;
   const toPayCount = pendingTransactions.filter(t => t.type === 'saida' || t.type === 'outcome').length;
@@ -208,19 +235,40 @@ async function handleCreateTask(e) {
                   </ColumnHeader>
                   
                   <div style={{ flex: 1, padding: '8px 0', overflowY: 'auto' }}>
-                    {visibleTasks.filter(t => t.status === col.id).map(task => {
+                    {/* 🔥 Troca visibleTasks por sortedTasks */}
+                    {sortedTasks.filter(t => t.status === col.id).map(task => {
                       const isOverdue = new Date(task.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && task.status !== 'CONCLUIDO';
+                      
                       return (
-                        <Card key={task.id} $priorityColor={getPriorityColor(task.priority)} $isClient={isClient} draggable={!isClient} onDragStart={(e) => handleDragStart(e, task.id)}>
-                          <h4 style={{ margin: '0 0 8px 0', color: '#2d3748', fontSize: 15 }}>{task.title}</h4>
+                        <Card 
+                          key={task.id} 
+                          $priorityColor={getPriorityColor(task.priority)} 
+                          $isClient={isClient} 
+                          draggable={!isClient} 
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          style={{ background: isOverdue ? '#fff5f5' : 'white', opacity: task.status === 'CONCLUIDO' ? 0.7 : 1 }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <h4 style={{ margin: 0, color: isOverdue ? '#9b2c2c' : '#2d3748', fontSize: 15, fontWeight: 800 }}>{task.title}</h4>
+                            
+                            {/* O BOTÃO DE EXCLUIR PARA A EQUIPA */}
+                            {!isClient && (
+                              <button onClick={() => handleDeleteTask(task.id)} style={{ background: 'none', border: 'none', color: '#cbd5e0', cursor: 'pointer', padding: 0, transition: '0.2s' }} title="Excluir Obrigação" onMouseOver={e => e.currentTarget.style.color = '#e53e3e'} onMouseOut={e => e.currentTarget.style.color = '#cbd5e0'}>
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+
                           {!isClient && task.client && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#718096', marginBottom: 8, fontWeight: 600 }}>
                               <Building2 size={12} /> {task.client.fullName}
                             </div>
                           )}
+                          
                           {task.description && (
-                            <p style={{ fontSize: 12, color: '#4a5568', margin: '0 0 12px 0', background: '#f7fafc', padding: 8, borderRadius: 6 }}>{task.description}</p>
+                            <p style={{ fontSize: 12, color: '#4a5568', margin: '0 0 12px 0', background: isOverdue ? 'white' : '#f7fafc', padding: 8, borderRadius: 6 }}>{task.description}</p>
                           )}
+                          
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700 }}>
                             <span style={{ color: getPriorityColor(task.priority), background: `${getPriorityColor(task.priority)}15`, padding: '4px 8px', borderRadius: 6 }}>
                               {task.priority}
@@ -277,6 +325,7 @@ async function handleCreateTask(e) {
                       </span>
                     </div>
 
+{/* AÇÃO DO GESTOR: Dar Baixa */}
                     {!isClient && (
                       <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 12, marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
                         <button 
@@ -287,6 +336,16 @@ async function handleCreateTask(e) {
                         >
                           <CheckCircle size={16} /> Dar Baixa (Marcar como Pago)
                         </button>
+                      </div>
+                    )}
+
+                    {/* AÇÃO DO CLIENTE: Pagar Conta */}
+                    {isClient && !isIncome && (
+                      <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 12, marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+                         {/* Usa navegação via hash para manter o SPA rápido */}
+                         <button onClick={() => window.location.hash = '#/app/financeiro'} style={{ background: '#38a169', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: '0.2s', boxShadow: '0 2px 6px rgba(56,161,105,0.3)' }}>
+                            Pagar no Financeiro <ArrowRight size={16} />
+                         </button>
                       </div>
                     )}
                   </RadarCard>
