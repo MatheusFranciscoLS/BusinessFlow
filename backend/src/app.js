@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
-import { startCronJobs } from "./services/cron.service.js";
 
 dotenv.config();
 

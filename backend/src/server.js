@@ -1,4 +1,5 @@
 import app from "./app.js";
+import { startCronJobs } from "./services/cron.service.js";
 
 const PORT = process.env.PORT || 3001;
 
