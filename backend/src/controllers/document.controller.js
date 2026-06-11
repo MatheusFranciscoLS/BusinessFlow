@@ -1,7 +1,7 @@
 import * as documentService from "../services/document.service.js";
-// 🔥 Importamos o novo serviço de e-mail e o banco de dados
 import { sendDocumentNotification } from "../services/email.service.js";
 import { PrismaClient } from "@prisma/client";
+import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
 
 const prisma = new PrismaClient();
 
@@ -20,9 +20,16 @@ export async function create(req, res) {
       fileUrl,
     );
 
-    // 🔥 2. A MÁGICA: Gatilho de E-mail em Background!
-    // 🥶 [GELADEIRA]: Desativado temporariamente devido ao bloqueio de portas do Render Gratuito.
-    /*
+    // 🔥 2. ESPIÃO: Alarme disparado no Upload!
+    registerLog(
+      req.companyId,
+      { name: "Usuário do Sistema", role: "ADMIN" },
+      "CREATE",
+      "DOCUMENTOS",
+      `Fez o upload de um novo documento: ${document.name} (Categoria: ${document.category})`,
+    );
+
+    // Gatilho de E-mail em Background
     if (req.body.clientId) {
       Promise.all([
         prisma.client.findUnique({ where: { id: req.body.clientId } }),
@@ -31,14 +38,19 @@ export async function create(req, res) {
         .then(([client, company]) => {
           if (client && client.email && company) {
             const primeiroNome = client.fullName.split(" ")[0];
-            sendDocumentNotification(client.email, primeiroNome, document.name, company.name);
+            sendDocumentNotification(
+              client.email,
+              primeiroNome,
+              document.name,
+              company.name,
+            );
           }
         })
-        .catch((err) => console.error("Erro ao buscar dados para o e-mail:", err));
+        .catch((err) =>
+          console.error("Erro ao buscar dados para o e-mail:", err),
+        );
     }
-    */
 
-    // 3. Devolve o sucesso imediatamente para o Front-end não ficar travado!
     return res.status(201).json(document);
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -61,7 +73,25 @@ export async function getAll(req, res) {
 
 export async function remove(req, res) {
   try {
+    // 🔥 Precisamos descobrir o nome do documento ANTES de o apagar, para podermos dedurar no log!
+    const existingDoc = await prisma.document.findFirst({
+      where: { id: req.params.id, companyId: req.companyId },
+    });
+
+    if (!existingDoc)
+      return res.status(404).json({ error: "Documento não encontrado." });
+
     await documentService.deleteDocument(req.companyId, req.params.id);
+
+    // 🔥 3. ESPIÃO: Alarme disparado na exclusão do ficheiro!
+    registerLog(
+      req.companyId,
+      { name: "Usuário do Sistema", role: "ADMIN" },
+      "DELETE",
+      "DOCUMENTOS",
+      `Apagou permanentemente o documento do cofre: ${existingDoc.name}`,
+    );
+
     return res.status(204).send();
   } catch (err) {
     return res.status(400).json({ error: err.message });
