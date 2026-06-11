@@ -1,5 +1,8 @@
 import * as transactionService from "../services/transaction.service.js";
 import { addMonths } from "date-fns";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {
@@ -75,11 +78,9 @@ export async function create(req, res) {
         data: transactionsData,
       });
 
-      return res
-        .status(201)
-        .json({
-          message: `${numInstallments} parcelas geradas no fluxo de caixa com sucesso!`,
-        });
+      return res.status(201).json({
+        message: `${numInstallments} parcelas geradas no fluxo de caixa com sucesso!`,
+      });
     }
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -142,11 +143,9 @@ export async function update(req, res) {
     });
 
     if (!existingTx)
-      return res
-        .status(404)
-        .json({
-          error: "Transação não encontrada ou pertence a outra agência.",
-        });
+      return res.status(404).json({
+        error: "Transação não encontrada ou pertence a outra agência.",
+      });
 
     const fileUrl = req.file
       ? `/uploads/transactions/${req.file.filename}`
@@ -194,11 +193,9 @@ export async function remove(req, res) {
     });
 
     if (!existingTx)
-      return res
-        .status(403)
-        .json({
-          error: "Tentativa de exclusão bloqueada por violação de segurança.",
-        });
+      return res.status(403).json({
+        error: "Tentativa de exclusão bloqueada por violação de segurança.",
+      });
 
     await prisma.transaction.delete({
       where: { id: transactionId },
