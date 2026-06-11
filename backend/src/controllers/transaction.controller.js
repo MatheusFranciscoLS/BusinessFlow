@@ -88,16 +88,116 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    // 🔥 CORREÇÃO CRÍTICA: Agora o Controller capta o clientId que a Rota de Segurança injetou!
-    const { month, year, clientId } = req.query;
+    const { role, userEmail } = req.query;
+    const companyId = req.companyId;
 
-    const data = await transactionService.getAllTransactions(
-      req.companyId,
-      month,
-      year,
-      clientId, // <- Repassamos isto para o Service filtrar no Banco de Dados
-    );
-    return res.status(200).json(data);
+    // 🛡️ A FECHADURA ZERO TRUST INICIA AQUI
+    let whereClause = { companyId: companyId };
+
+    if (role === "CLIENT") {
+      // Se for cliente, o servidor ignora o que ele pede e procura quem ele realmente é pelo e-mail do Token JWT
+      const client = await prisma.client.findFirst({
+        where: { email: userEmail, companyId: companyId },
+      });
+
+      // Se tentar aceder sem estar cadastrado na empresa, é bloqueado na hora.
+      if (!client)
+        return res
+          .status(403)
+          .json({
+            error: "Acesso negado. Cliente não localizado na base segura.",
+          });
+
+      // Força a devolução APENAS das faturas vinculadas a este ID exato.
+      whereClause.clientId = client.id;
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where: whereClause,
+      include: { client: { select: { fullName: true } } },
+      orderBy: { date: "desc" },
+    });
+
+    return res.status(200).json(transactions);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+export async function update(req, res) {
+  try {
+    const transactionId = req.params.id;
+    const companyId = req.companyId; // Pego diretamente do Token JWT, impossível de falsificar
+
+    // 🛡️ VERIFICAÇÃO DE PROPRIEDADE: A transação existe e pertence a esta Agência?
+    const existingTx = await prisma.transaction.findFirst({
+      where: { id: transactionId, companyId: companyId },
+    });
+
+    if (!existingTx)
+      return res
+        .status(404)
+        .json({
+          error: "Transação não encontrada ou pertence a outra agência.",
+        });
+
+    const fileUrl = req.file
+      ? `/uploads/transactions/${req.file.filename}`
+      : existingTx.fileUrl;
+    const {
+      title,
+      amount,
+      category,
+      type,
+      date,
+      status,
+      paymentMethod,
+      clientId,
+    } = req.body;
+
+    const transaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        title,
+        amount: amount ? parseFloat(amount) : undefined,
+        category,
+        type,
+        date: date ? new Date(date) : undefined,
+        status,
+        paymentMethod,
+        clientId: clientId || null,
+        fileUrl,
+      },
+    });
+
+    return res.status(200).json(transaction);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+export async function remove(req, res) {
+  try {
+    const transactionId = req.params.id;
+    const companyId = req.companyId;
+
+    // 🛡️ VERIFICAÇÃO DE PROPRIEDADE PARA EXCLUSÃO
+    const existingTx = await prisma.transaction.findFirst({
+      where: { id: transactionId, companyId: companyId },
+    });
+
+    if (!existingTx)
+      return res
+        .status(403)
+        .json({
+          error: "Tentativa de exclusão bloqueada por violação de segurança.",
+        });
+
+    await prisma.transaction.delete({
+      where: { id: transactionId },
+    });
+
+    return res.status(204).send();
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -110,30 +210,6 @@ export async function getById(req, res) {
       req.params.id,
     );
     return res.status(200).json(data);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-}
-
-export async function update(req, res) {
-  try {
-    const fileUrl = req.file ? `/uploads/${req.file.filename}` : null;
-    const data = await transactionService.updateTransaction(
-      req.companyId,
-      req.params.id,
-      req.body,
-      fileUrl,
-    );
-    return res.status(200).json(data);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-}
-
-export async function remove(req, res) {
-  try {
-    await transactionService.deleteTransaction(req.companyId, req.params.id);
-    return res.status(204).send();
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
