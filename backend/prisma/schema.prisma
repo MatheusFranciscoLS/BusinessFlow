@@ -7,7 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 👤 O Contador / Consultor (Dono do Escritório)
+// ==========================================
+// 🛡️ SISTEMA DE ACESSOS E AUTENTICAÇÃO
+// ==========================================
 model User {
   id              String         @id @default(uuid())
   name            String
@@ -15,12 +17,18 @@ model User {
   email           String         @unique
   password        String
   avatarUrl       String?
-  role            String         @default("ADMIN") // ADMIN ou CLIENT
+  role            String         @default("ADMIN") 
+  
+  // Vínculos Oficiais
   companyAccessId String?        
+  clientId        String?        // 🔥 MELHORIA 1: Vínculo inquebrável com a empresa cliente
+  client          Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
   
   companies       Company[]      
   refreshTokens   RefreshToken[] 
   createdAt       DateTime       @default(now())
+
+  @@index([email]) // ⚡ Turbo para acelerar o Login
 }
 
 model RefreshToken {
@@ -29,13 +37,17 @@ model RefreshToken {
   expiresAt DateTime
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
 }
 
-// 🏢 A Agência Contábil / Unidade de Negócio
+// ==========================================
+// 🏢 NÚCLEO DO ESCRITÓRIO (BPO / AGÊNCIA)
+// ==========================================
 model Company {
   id           String        @id @default(uuid())
   name         String
-  document     String?       // CNPJ da Empresa
+  document     String?       
   userId       String        
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   
@@ -44,21 +56,24 @@ model Company {
   tickets      Ticket[]
   documents    Document[]
   tasks        Task[]
+  auditLogs    AuditLog[]    // Relação com a Caixa Preta
   
   createdAt    DateTime      @default(now())
 }
 
-// 💼 CRM: O Dossiê do Cliente do Escritório
+// ==========================================
+// 💼 CRM: DOSSIÊ DE CLIENTES
+// ==========================================
 model Client {
   id                String        @id @default(uuid())
   fullName          String
-  document          String?       // CNPJ do Cliente
-  taxRegime         String?       // Simples Nacional, Lucro Presumido, etc
+  document          String?
+  taxRegime         String?
   monthlyFee        Float         @default(0)
-  status            String        @default("ATIVO") // ATIVO, INADIMPLENTE, SUSPENSO
-  email             String?       
+  status            String        @default("ATIVO") 
+  email             String?
   phone             String?       
-  certificateExpiry DateTime?     // Vencimento do e-CNPJ (Usado no Robô de Prazos)
+  certificateExpiry DateTime?
   
   companyId         String
   company           Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -67,37 +82,48 @@ model Client {
   tickets           Ticket[]
   documents         Document[]
   tasks             Task[]
+  users             User[]        // Usuários atrelados a este cliente
   
   createdAt         DateTime      @default(now())
+
+  @@index([companyId]) // ⚡ Turbo de busca
 }
 
-// 💰 BPO FINANCEIRO: Fluxo de Caixa e Lançamentos
+// ==========================================
+// 💰 FINANCEIRO E FLUXO DE CAIXA
+// ==========================================
 model Transaction {
   id            String   @id @default(uuid())
   title         String   
-  description   String?  
+  description   String?
   amount        Float
-  type          String   // entrada (income) ou saida (outcome)
-  category      String   // Honorários, Impostos, Folha, etc
+  type          String   
+  category      String   
   date          DateTime
-  status        String   @default("PAGO") // PAGO, PENDENTE, ATRASADO
-  paymentMethod String?  // PIX, Boleto, etc
-  fileUrl       String?  // Link do comprovativo ou NF (PDF/Imagem)
+  status        String   @default("PAGO") 
+  paymentMethod String?
+  fileUrl       String?
+  installments  Int      @default(1) // 🔥 MELHORIA 4: Registra se é mensalidade
   
-  clientId      String?  
+  clientId      String?
   client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
   companyId     String
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt     DateTime @default(now())
+
+  @@index([companyId, date]) // ⚡ Turbo: Acelera filtros por data no dashboard
+  @@index([clientId])
 }
 
-// 🗄️ COFRE DIGITAL (GED): Documentos Partilhados
+// ==========================================
+// 🗄️ COFRE DIGITAL (GED)
+// ==========================================
 model Document {
   id          String   @id @default(uuid())
   name        String   
-  category    String   // Societário, Fiscal, Trabalhista, Alvarás
+  category    String   
   fileUrl     String   
   
   clientId    String   
@@ -107,19 +133,24 @@ model Document {
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   createdAt   DateTime @default(now())
-  readAt    DateTime?
+  readAt      DateTime?
+
+  @@index([companyId])
+  @@index([clientId])
 }
 
-// 📋 KANBAN FISCAL: Obrigações e Prazos Operacionais
+// ==========================================
+// 📋 KANBAN FISCAL E OBRIGAÇÕES
+// ==========================================
 model Task {
   id          String   @id @default(uuid())
   title       String   
-  description String?  
-  status      String   @default("A_FAZER") // A_FAZER, EM_ANDAMENTO, CONCLUIDO
-  priority    String   @default("NORMAL")  // BAIXA, NORMAL, ALTA, URGENTE
+  description String?
+  status      String   @default("A_FAZER") 
+  priority    String   @default("NORMAL")  
   dueDate     DateTime 
 
-  clientId    String?  
+  clientId    String?
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   companyId   String   
@@ -127,15 +158,19 @@ model Task {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
 }
 
-// 💬 HELPDESK: Central de Atendimento e Tickets
+// ==========================================
+// 💬 HELPDESK: CENTRAL DE CHAMADOS
+// ==========================================
 model Ticket {
   id              String          @id @default(uuid())
   subject         String
-  department      String          // Fiscal, Contábil, DP/RH, Legal
+  department      String          
   description     String
-  status          String          @default("ABERTO") // ABERTO, EM_ANDAMENTO, RESOLVIDO
+  status          String          @default("ABERTO") 
   priority        String          @default("NORMAL")
   hasUnreadAdmin  Boolean         @default(false)
   hasUnreadClient Boolean         @default(false)
@@ -150,16 +185,39 @@ model Ticket {
   
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+
+  @@index([companyId])
 }
 
 model TicketMessage {
   id         String   @id @default(uuid())
   message    String
-  senderRole String   // ADMIN ou CLIENT
+  senderRole String   
   senderName String
   
   ticketId   String
   ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   
   createdAt  DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+// ==========================================
+// 🕵️‍♂️ CAIXA PRETA: TRILHA DE AUDITORIA
+// ==========================================
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String   // Ex: DELETE, UPDATE, CREATE
+  module      String   // Ex: TRANSACTION, CLIENT, DOCUMENT
+  details     String   // Ex: "Fatura de R$ 1500 deletada"
+  userName    String   // Nome de quem fez a ação (registrado fisicamente para não se perder se o usuário for deletado)
+  userRole    String   // Nível de acesso (ADMIN ou CLIENT)
+  
+  companyId   String   
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+
+  @@index([companyId, createdAt])
 }
