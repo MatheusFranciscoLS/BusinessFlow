@@ -26,8 +26,42 @@ export default function Clients() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  // 🔥 PROTEÇÃO ANTI-DUPLO CLIQUE
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isSearchingCnpj, setIsSearchingCnpj] = useState(false); 
+
+  // 🤖 O NOVO ROBÔ DA RECEITA FEDERAL (BRASIL API)
+  async function handleSearchCNPJ() {
+    // Limpa a máscara para enviar apenas os números
+    const cleanCnpj = form.document.replace(/\D/g, ''); 
+    if (cleanCnpj.length !== 14) return toast.error("Digite o CNPJ completo (14 números) para procurar.");
+
+    setIsSearchingCnpj(true);
+    const tId = toast.loading("A consultar a Receita Federal...");
+
+    try {
+      // Chamada direta do Front-end: Custo ZERO de servidor e altíssima velocidade!
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`);
+      
+      if (!response.ok) throw new Error();
+      
+      const data = await response.json();
+
+      // Injeta os dados magicamente no formulário
+      setForm(prev => ({
+        ...prev,
+        fullName: data.razao_social || prev.fullName,
+        email: data.email || prev.email,
+        phone: data.ddd_telefone_1 || prev.phone
+      }));
+
+      toast.success("Dados preenchidos magicamente!", { id: tId });
+    } catch (error) {
+      toast.error("CNPJ não encontrado ou base indisponível.", { id: tId });
+    } finally {
+      setIsSearchingCnpj(false);
+    }
+  }
   
   const [form, setForm] = useState({
     fullName: '', document: '', taxRegime: '', monthlyFee: '', 
@@ -262,19 +296,39 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
                 <input required value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} placeholder="Ex: Clínica Sorriso LTDA" />
               </FormGroup>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+<div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+                
                 <FormGroup>
-                  <label>CNPJ / CPF</label>
-                  <input value={form.document} onChange={e => setForm({...form, document: maskCPFOrCNPJ(e.target.value)})} placeholder="00.000.000/0001-00" maxLength={18} />
+                  <label>CNPJ da Empresa *</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input 
+                      value={maskCPFOrCNPJ(form.document)} 
+                      onChange={e => setForm({...form, document: e.target.value})} 
+                      required 
+                      placeholder="00.000.000/0000-00" 
+                      maxLength={18} 
+                      style={{ flex: 1 }}
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleSearchCNPJ}
+                      disabled={isSearchingCnpj}
+                      title="Preencher dados automaticamente"
+                      style={{ 
+                        background: '#ebf8ff', color: '#3182ce', border: '1px solid #bee3f8', 
+                        borderRadius: 8, padding: '0 16px', fontWeight: 700, 
+                        cursor: isSearchingCnpj ? 'not-allowed' : 'pointer', 
+                        display: 'flex', alignItems: 'center', transition: '0.2s' 
+                      }}
+                    >
+                      {isSearchingCnpj ? '...' : <Search size={18} />}
+                    </button>
+                  </div>
                 </FormGroup>
+
                 <FormGroup>
-                  <label>Regime Tributário</label>
-                  <select value={form.taxRegime} onChange={e => setForm({...form, taxRegime: e.target.value})}>
-                    <option value="Simples Nacional">Simples Nacional</option>
-                    <option value="Lucro Presumido">Lucro Presumido</option>
-                    <option value="Lucro Real">Lucro Real</option>
-                    <option value="MEI">MEI / Pessoa Física</option>
-                  </select>
+                  <label>Razão Social / Nome Fantasia *</label>
+                  <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: TechX Inovações LTDA" />
                 </FormGroup>
               </div>
 
