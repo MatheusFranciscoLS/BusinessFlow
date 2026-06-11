@@ -65,19 +65,20 @@ export default function Layout() {
             </div>
           )}
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
-            <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#2d3748', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #3182ce' }}>
+<div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
+            {/* 🔥 Borda azul iluminada e fundo de vidro */}
+            <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #60a5fa', boxShadow: '0 0 10px rgba(96, 165, 250, 0.2)' }}>
               {user?.avatarUrl ? (
                 <img src={`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <CircleUser size={38} color="#a0aec0" strokeWidth={1.5} />
+                <CircleUser size={28} color="#cbd5e1" strokeWidth={1.5} />
               )}
             </div>
-            <div style={{ color: '#a0aec0', fontSize: 13, fontWeight: 500 }}>
+            <div style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
               {isClient ? 'Área do Cliente' : 'Olá,'} <br />
               <strong style={{ color: 'white', fontSize: 14 }}>{user?.name || 'Gestor'}</strong>
             </div>
-          </div> 
+          </div>
 
           <NavMenu>
             <StyledNavLink to="/app" end onClick={closeMenu}> 
@@ -101,14 +102,14 @@ export default function Layout() {
             <StyledNavLink to="/app/helpdesk" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><LifeBuoy size={20} /> Atendimento</div>
-                {helpdeskCount > 0 && <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>{helpdeskCount}</span>}
+                {helpdeskCount > 0 && <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.5)' }}>{helpdeskCount}</span>}
               </div>
             </StyledNavLink>
 
             <StyledNavLink to="/app/agenda" onClick={closeMenu}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={20} /> Agenda e Prazos</div>
-                {agendaCount > 0 && <span style={{ background: '#e53e3e', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '2px 8px', borderRadius: '12px' }}>{agendaCount}</span>}
+                {agendaCount > 0 && <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: '800', padding: '2px 8px', borderRadius: '12px', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.5)' }}>{agendaCount}</span>}
               </div>
             </StyledNavLink>
 

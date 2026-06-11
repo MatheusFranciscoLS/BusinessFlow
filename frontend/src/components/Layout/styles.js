@@ -16,7 +16,7 @@ export const MobileHeader = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #1a202c;
+    background: #0f172a; /* 🔥 Ajustado para o novo tom escuro */
     padding: 16px;
     color: white;
     position: fixed;
@@ -25,7 +25,7 @@ export const MobileHeader = styled.div`
     right: 0;
     height: 60px;
     z-index: 100;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -54,7 +54,8 @@ export const Overlay = styled.div`
 
 export const SidebarContainer = styled.aside`
   width: 260px;
-  background: #1a202c;
+  /* 🔥 A MÁGICA VISUAL: O Gradiente Premium que liga tudo! */
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 100%);
   padding: 32px 24px;
   display: flex;
   flex-direction: column;
@@ -73,11 +74,11 @@ export const SidebarContainer = styled.aside`
     position: fixed;
     top: 60px;
     bottom: 0;
-    height: auto; /* No mobile ele precisa seguir o bottom livremente */
+    height: auto;
     z-index: 99;
     width: 260px;
     left: ${(props) => (props.$isOpen ? "0" : "-260px")};
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
   }
 `;
 
@@ -113,7 +114,7 @@ export const StyledNavLink = styled(NavLink)`
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #a0aec0;
+  color: #94a3b8; /* 🔥 Tom mais moderno de cinza azulado */
   padding: 12px 16px;
   border-radius: 8px;
   text-decoration: none;
@@ -123,12 +124,18 @@ export const StyledNavLink = styled(NavLink)`
 
   &:hover {
     color: white;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08); /* Efeito Hover suave */
   }
   &.active {
     color: white;
-    background: #3182ce;
-    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+    /* 🔥 Design Apple-like: Barra lateral e gradiente suave */
+    background: linear-gradient(
+      90deg,
+      rgba(49, 130, 206, 0.4) 0%,
+      rgba(49, 130, 206, 0) 100%
+    );
+    border-left: 4px solid #60a5fa;
+    border-radius: 0 8px 8px 0;
   }
 `;
 
@@ -155,9 +162,10 @@ export const LogoutButton = styled.button`
 // 🔥 NOVO ESTILO DO SELETOR DE EMPRESAS
 export const CompanySelector = styled.select`
   width: 100%;
-  background: #2d3748;
+  /* 🔥 Efeito Glassmorphism (Vidro) */
+  background: rgba(255, 255, 255, 0.05);
   color: white;
-  border: 1px solid #4a5568;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 14px;
@@ -165,22 +173,20 @@ export const CompanySelector = styled.select`
   outline: none;
   cursor: pointer;
   transition: all 0.2s;
-  appearance: none; /* Remove a seta padrão para ficar mais clean */
+  appearance: none;
 
-  /* Adiciona uma setinha customizada branca */
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
   background-repeat: no-repeat;
   background-position: right 12px top 50%;
   background-size: 10px auto;
 
   &:focus {
-    border-color: #3182ce;
-    box-shadow: 0 0 0 1px #3182ce;
+    border-color: #60a5fa;
+    background: rgba(255, 255, 255, 0.1);
   }
 
   option {
-    background: #1a202c;
+    background: #0f172a; /* Garante que o menu suspenso seja escuro */
     color: white;
-    padding: 10px;
   }
 `;
