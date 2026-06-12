@@ -7,7 +7,6 @@ export const Container = styled.div`
   padding-bottom: 40px;
   animation: ${fadeIn} 0.4s ease;
 `;
-
 export const Header = styled.header`
   display: flex;
   flex-direction: column;
@@ -19,7 +18,6 @@ export const Header = styled.header`
     margin-bottom: 20px;
   }
 `;
-
 export const Toolbar = styled.div`
   display: flex;
   justify-content: space-between;
@@ -31,14 +29,12 @@ export const Toolbar = styled.div`
     align-items: stretch;
   }
 `;
-
 export const FilterGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex: 1;
 `;
-
 export const SearchContainer = styled.div`
   display: flex;
   align-items: center;
@@ -51,7 +47,6 @@ export const SearchContainer = styled.div`
   width: 100%;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-
   &:focus-within {
     border-color: ${(props) => props.theme.colors.primary};
     box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
@@ -69,7 +64,6 @@ export const SearchContainer = styled.div`
     max-width: 100%;
   }
 `;
-
 export const FilterPillsContainer = styled.div`
   display: flex;
   gap: 8px;
@@ -79,7 +73,6 @@ export const FilterPillsContainer = styled.div`
     display: none;
   }
 `;
-
 export const FilterPill = styled.button`
   background: ${(props) =>
     props.$active ? props.theme.colors.primary : props.theme.colors.background};
@@ -101,7 +94,6 @@ export const FilterPill = styled.button`
     transform: translateY(-2px);
   }
 `;
-
 export const MonthNavigator = styled.div`
   display: flex;
   align-items: center;
@@ -113,7 +105,6 @@ export const MonthNavigator = styled.div`
   padding: 0 8px;
   min-width: 200px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-
   span {
     font-size: 14px;
     font-weight: 700;
@@ -142,7 +133,6 @@ export const MonthNavigator = styled.div`
     width: 100%;
   }
 `;
-
 export const ButtonGroup = styled.div`
   display: flex;
   gap: 12px;
@@ -151,7 +141,6 @@ export const ButtonGroup = styled.div`
     flex-direction: column;
     align-items: stretch;
   }
-
   button {
     height: 48px;
     padding: 0 20px;
@@ -185,7 +174,6 @@ export const ButtonGroup = styled.div`
     }
   }
 `;
-
 export const SummaryContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -195,7 +183,6 @@ export const SummaryContainer = styled.div`
     grid-template-columns: 1fr;
   }
 `;
-
 export const SummaryCard = styled.div`
   background: ${(props) =>
     props.$highlight ? props.theme.colors.sidebar : props.theme.colors.surface};
@@ -247,7 +234,6 @@ export const TableContainer = styled.div`
     border-radius: 4px;
   }
 
-  /* 🔥 NO MOBILE, O FUNDO SOME PARA OS CARTÕES RESPIRAREM */
   @media (max-width: 768px) {
     background: transparent;
     border: none;
@@ -283,7 +269,7 @@ export const Table = styled.table`
     background: ${(props) => props.theme.colors.background};
   }
 
-  /* 🔥 A MÁGICA: TRANSFORMA A TABELA EM CARTÕES NO MOBILE */
+  /* 🔥 A MÁGICA DO NUBANK NO MOBILE: Redesenho total do Cartão usando Flex Order */
   @media (max-width: 768px) {
     min-width: 100%;
     &,
@@ -299,40 +285,88 @@ export const Table = styled.table`
     }
 
     tr {
+      display: flex !important;
+      flex-direction: column;
       background: ${(props) => props.theme.colors.surface} !important;
       border: 1px solid ${(props) => props.theme.colors.border};
-      border-radius: ${(props) => props.theme.sizes.borderRadius};
+      border-radius: 16px;
       margin-bottom: 16px;
-      padding: 16px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-    }
-    tr:hover td {
-      background: transparent;
+      padding: 20px 20px 16px 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      position: relative;
     }
 
     td {
+      border: none !important;
+      padding: 0 !important;
+      width: 100%;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px dashed ${(props) => props.theme.colors.border};
-      text-align: right;
     }
 
-    td:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-      margin-top: 8px;
-      justify-content: center;
-    }
-
+    /* Ocultamos pseudo-elementos antigos */
     td::before {
-      content: attr(data-label);
-      font-weight: 700;
+      display: none !important;
+    }
+
+    /* ORDEM E DESIGN DOS ELEMENTOS NO CARTÃO MOBILE */
+
+    /* 1. Descrição no Topo (Damos margem direita para não bater no Status) */
+    .col-desc {
+      order: 1;
+      padding-right: 90px;
+      margin-bottom: 12px;
+    }
+
+    /* 2. Status Badge a flutuar no Topo Direito */
+    .col-status {
+      order: 2;
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: auto;
+    }
+
+    /* 3. Nome do Cliente (Pequeno e discreto) */
+    .col-client {
+      order: 3;
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    /* 4. Valor (Grande Destaque no Meio) */
+    .col-value {
+      order: 4;
+      margin-bottom: 12px;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    /* 5. Categoria e 6. Data (Um ao lado do outro ou empilhados pequenos) */
+    .col-category {
+      order: 5;
+      margin-bottom: 4px;
+    }
+    .col-date {
+      order: 6;
+      margin-bottom: 16px;
+      font-size: 13px;
       color: ${(props) => props.theme.colors.textSecondary};
-      font-size: 12px;
-      text-transform: uppercase;
-      text-align: left;
+    }
+
+    /* 7. Barra de Ações e Checkbox no Rodapé do Cartão */
+    .col-actions {
+      order: 7;
+      border-top: 1px solid ${(props) => props.theme.colors.border};
+      padding-top: 16px;
+      justify-content: flex-end;
+    }
+    .col-checkbox {
+      order: 8;
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: auto;
     }
   }
 `;
@@ -351,7 +385,6 @@ export const ActionButton = styled.button`
     transform: scale(1.1);
   }
 `;
-
 export const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -369,7 +402,7 @@ export const ModalOverlay = styled.div`
 
 export const ModalContent = styled.div`
   width: 100%;
-  max-width: 500px;
+  max-width: 650px;
   background: ${(props) => props.theme.colors.surface};
   padding: 32px;
   border-radius: 16px;
@@ -382,6 +415,22 @@ export const ModalContent = styled.div`
     font-size: 24px;
     margin-bottom: 24px;
     font-weight: 700;
+  }
+
+  /* 🔥 CORREÇÃO DA FOTO 3: Ajuste de padding para não espremer no Mobile */
+  @media (max-width: 768px) {
+    padding: 24px 20px;
+  }
+`;
+
+/* 🔥 A NOVA GRELHA PARA O FORMULÁRIO (Substitui os styles inline que estavam a espremer os inputs) */
+export const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: ${(props) => props.$columns || "1fr 1fr"};
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr; /* Empilha tudo num ecrã pequeno! */
   }
 `;
 
@@ -410,14 +459,12 @@ export const FormGroup = styled.div`
     }
   }
 `;
-
 export const TransactionTypeContainer = styled.div`
   margin: 20px 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 `;
-
 export const RadioBox = styled.button`
   height: 56px;
   border: 2px solid
@@ -453,7 +500,6 @@ export const RadioBox = styled.button`
     transform: translateY(-2px);
   }
 `;
-
 export const ModalActions = styled.div`
   display: flex;
   justify-content: flex-end;

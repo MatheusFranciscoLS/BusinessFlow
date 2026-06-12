@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
     Container, Header, SummaryContainer, SummaryCard, TableContainer, Table,
     ModalOverlay, ModalContent, FormGroup, TransactionTypeContainer, RadioBox, ModalActions, ActionButton,
-    SearchContainer, ButtonGroup, FilterPillsContainer, FilterPill, MonthNavigator
+    SearchContainer, ButtonGroup, FilterPillsContainer, FilterPill, MonthNavigator, FormRow
 } from './styles';
 import styled, { keyframes } from 'styled-components';
 
@@ -756,11 +756,10 @@ const renderStatusBadge = (statusValue) => {
     <th style={{ textAlign: 'right' }}>{isClient ? 'Pagamento' : 'Ações'}</th>
   </tr>
 </thead>
+
 <tbody>
     {filteredTransactions.map(t => {
         const amount = t.amount || t.price || 0;
-        
-        // 1. A MÁGICA DA PERSPECTIVA (Inverte para o cliente)
         const isFirmIncome = t.type === 'income' || t.type === 'entrada';
         const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
         const isNotPaid = t.status !== 'PAGO'; 
@@ -768,36 +767,23 @@ const renderStatusBadge = (statusValue) => {
         return (
             <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent', borderLeft: t.status === 'ATRASADO' ? '4px solid #e53e3e' : '4px solid transparent' }}>
                 
-                {/* 1. A Coluna do Checkbox */}
                 {!isClient && (
-                  <td data-label="Selecionar">
+                  <td className="col-checkbox">
                     {isNotPaid ? (
-                      <input 
-                        type="checkbox" 
-                        checked={selectedIds.includes(t.id)} 
-                        onChange={() => toggleSelect(t.id)} 
-                        title="Selecionar para dar baixa"
-                        style={{ cursor: 'pointer', width: 20, height: 20 }} 
-                      />
+                      <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleSelect(t.id)} style={{ cursor: 'pointer', width: 20, height: 20 }} />
                     ) : (
-                      <input 
-                        type="checkbox" 
-                        disabled 
-                        title="Esta transação já está liquidada"
-                        style={{ cursor: 'not-allowed', width: 20, height: 20, opacity: 0.3 }} 
-                      />
+                      <input type="checkbox" disabled style={{ cursor: 'not-allowed', width: 20, height: 20, opacity: 0.3 }} />
                     )}
                   </td>
                 )}
 
-                {/* 2. A Coluna de Descrição */}
-                <td data-label="Descrição">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {displayAsIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
+                <td className="col-desc">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {/* Retiramos aquele ícone repetitivo de Arrow para limpar a interface */}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
+                        <span style={{ fontWeight: 700, color: '#2D3748', fontSize: '15px' }}>{t.description || t.title}</span>
                         {t.paymentMethod && (
-                            <span style={{ fontSize: 11, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <span style={{ fontSize: 12, color: '#718096', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                               <CreditCard size={12}/> {t.paymentMethod}
                             </span>
                         )}
@@ -805,76 +791,66 @@ const renderStatusBadge = (statusValue) => {
                   </div>
                 </td>
 
-                {/* 3. A Coluna do Cliente Vinculado */}
                 {!isClient && (
-                    <td data-label="Cliente">
+                    <td className="col-client">
                         {t.client ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
                                 <User size={14} color="#a0aec0" /> {t.client.fullName}
                             </span>
                         ) : (
-                            <span style={{ color: '#cbd5e0', fontSize: 13, fontStyle: 'italic' }}>Caixa Agência</span>
+                            <span style={{ color: '#cbd5e0', fontStyle: 'italic' }}>Caixa Agência</span>
                         )}
                     </td>
                 )}
 
-                {/* 4. As Colunas de Valores, Categoria, Data e Status */}
-                <td data-label="Valor">
-                  <span style={{ color: displayAsIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>
+                <td className="col-value">
+                  <span style={{ color: displayAsIncome ? '#12a454' : '#e52e4d', display: 'block' }}>
                     {!displayAsIncome && '- '} {formatCurrency(amount)}
                   </span>
                 </td>
                 
-                <td data-label="Categoria">
-                  <span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
+                <td className="col-category">
+                  <span style={{ background: '#EDF2F7', color: '#4A5568', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
                     {t.category || 'GERAL'}
                   </span>
                 </td>
                 
-                <td data-label="Vencimento">
+                <td className="col-date">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {formatDateDisplay(t.date)}
+                    Vence a {formatDateDisplay(t.date)}
                     {(t.installments > 1 || t.title?.includes('(Mês') || t.description?.includes('(Mês')) && (
-                      <span title="Lançamento Recorrente (Mensalidade)">
-                        <Repeat size={14} color="#3182ce" />
-                      </span>
+                      <span title="Lançamento Recorrente"><Repeat size={14} color="#3182ce" /></span>
                     )}
                   </div>
                 </td>
                 
-                <td data-label="Situação">{renderStatusBadge(t.status || 'PAGO')}</td>
+                <td className="col-status">{renderStatusBadge(t.status || 'PAGO')}</td>
                 
-                {/* 6. A Coluna de Ações */}
-                <td data-label={isClient ? 'Ações' : 'Ações / Cobrar'} style={{ textAlign: 'right' }}>
+                <td className="col-actions">
                     {isClient ? (
                         (isNotPaid && !displayAsIncome) ? (
                             <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-                                <QrCode size={16} /> Pagar PIX
+                                <QrCode size={16} /> Pagar via PIX
                             </ActionButton>
                         ) : (
                             t.fileUrl ? (
-                              <button onClick={() => openAttachment(t.fileUrl)} title="Ver Documento" style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Paperclip size={18} />
+                              <button onClick={() => openAttachment(t.fileUrl)} style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center' }}>
+                                <Paperclip size={18} /> Ver Documento
                               </button>
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
                         )
                     ) : (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16 /* Aumentámos o gap para segurança dos dedos */ }}>
                             {isNotPaid && t.client && (
-                                <ActionButton 
-                                    onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${t.client.fullName.split(' ')[0]}, tudo bem? Passando para lembrar que o lançamento de *${t.title || t.description}* no valor de *${formatCurrency(amount)}* encontra-se ${t.status === 'ATRASADO' ? 'em atraso' : 'pendente'}. Podemos ajudar com a emissão da 2ª via ou link do PIX?`)}`, '_blank')} 
-                                    color="#25D366" 
-                                    title="Cobrar via WhatsApp"
-                                    style={{ background: '#f0fff4', border: '1px solid #9ae6b4' }}
-                                >
+                                <ActionButton onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${t.client.fullName.split(' ')[0]}...`)}`, '_blank')} color="#25D366" title="Cobrar WhatsApp" style={{ background: '#f0fff4', border: '1px solid #9ae6b4' }}>
                                     <MessageCircle size={18} />
                                 </ActionButton>
                             )}
 
-                            {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
-                            {t.fileUrl && <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante"><Paperclip size={18} /></ActionButton>}
-                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title={isNotPaid ? "Editar" : "Visualizar"}><Edit size={18} /></ActionButton>
-                            {isNotPaid && <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir Transação"><Trash2 size={18} /></ActionButton>}
+                            {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Baixa Manual"><CheckCircle size={18} /></ActionButton>}
+                            {t.fileUrl && <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Anexo"><Paperclip size={18} /></ActionButton>}
+                            <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
+                            {isNotPaid && <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>}
                         </div>
                     )}
                 </td>
@@ -1038,12 +1014,13 @@ const renderStatusBadge = (statusValue) => {
                 </ModalOverlay>
             )}
 
-            {/* MODAL DE CRIAÇÃO / EDIÇÃO */}
+ {/* MODAL DE CRIAÇÃO / EDIÇÃO */}
             {isModalOpen && !isClient && (
                 <ModalOverlay>
                     <ModalContent style={{ maxWidth: 650 }}>
                         <h2 style={{ marginBottom: 20 }}>{editingId ? 'Editar' : 'Novo Lançamento'} Financeiro</h2>
                         <form onSubmit={handleSave}>
+                            
                             <TransactionTypeContainer style={{ marginBottom: 24 }}>
                                 <RadioBox type="button" onClick={() => setType('income')} $isActive={type === 'income' || type === 'entrada'} $activeColor="green">
                                   <ArrowUpCircle size={24} color="#12a454" /> <span>Receita (Entrada)</span>
@@ -1053,18 +1030,19 @@ const renderStatusBadge = (statusValue) => {
                                 </RadioBox>
                             </TransactionTypeContainer>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                            {/* 🔥 1ª LINHA: Descrição e Valor */}
+                            <FormRow $columns="2fr 1fr">
                               <FormGroup>
                                 <label>Descrição do Lançamento *</label>
                                 <input value={title} onChange={e => setTitle(e.target.value)} required placeholder="Ex: Honorários Mensais" />
                               </FormGroup>
                               <FormGroup>
                                 <label>Valor (R$) *</label>
-                                {/* Foi mantido tipo Number nativo para evitar conflito de importação de máscaras nesta página */}
                                 <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required />
                               </FormGroup>
-                            </div>
+                            </FormRow>
 
+                            {/* CLIENTE: Ocupa a linha toda */}
                             <FormGroup>
                               <label>Vincular a um Cliente (Opcional)</label>
                               <select value={clientId} onChange={e => setClientId(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc' }}>
@@ -1073,8 +1051,9 @@ const renderStatusBadge = (statusValue) => {
                               </select>
                             </FormGroup>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-<FormGroup>
+                            {/* 🔥 2ª LINHA: Categoria e Data */}
+                            <FormRow>
+                              <FormGroup>
                                 <label>Categoria (Selecione ou digite uma nova) *</label>
                                 <input 
                                   list="categorias-dinamicas"
@@ -1085,11 +1064,9 @@ const renderStatusBadge = (statusValue) => {
                                   style={{ padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}
                                 />
                                 <datalist id="categorias-dinamicas">
-                                  {/* Puxa as categorias que já existem no banco */}
                                   {categories.filter(c => c !== 'Todos').map(c => (
                                       <option key={c} value={c} />
                                   ))}
-                                  {/* Sugestões base */}
                                   {(type === 'income' || type === 'entrada') ? (
                                       <><option value="Honorários Contábeis" /><option value="Serviços Extras" /></>
                                   ) : (
@@ -1101,8 +1078,9 @@ const renderStatusBadge = (statusValue) => {
                                 <label>Data de Vencimento *</label>
                                 <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
                               </FormGroup>
-                            </div>
+                            </FormRow>
                             
+                            {/* RECORRÊNCIA (Apenas ao criar novo) */}
                             {!editingId && (
                               <div style={{ background: '#f7fafc', border: '1px solid #edf2f7', padding: '16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: '#2d3748' }}>
@@ -1119,7 +1097,8 @@ const renderStatusBadge = (statusValue) => {
                               </div>
                             )}
 
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            {/* 🔥 3ª LINHA: Situação e Meio de Pagamento */}
+                            <FormRow>
                               <FormGroup>
                                 <label>Situação</label>
                                 <select value={status} onChange={e => setStatus(e.target.value)} style={{ padding: '0 40px 0 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f7fafc url("data:image/svg+xml;utf8,<svg fill=\'%23a0aec0\' height=\'24\' viewBox=\'0 0 24 24\' width=\'24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/><path d=\'M0 0h24v24H0z\' fill=\'none\'/></svg>") no-repeat right 12px center', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', cursor: 'pointer' }}>
@@ -1135,13 +1114,15 @@ const renderStatusBadge = (statusValue) => {
                                   <option value="Boleto Bancário">Boleto</option>
                                 </select>
                               </FormGroup>
-                            </div>
+                            </FormRow>
                             
+                            {/* COMPROVANTE */}
                             <FormGroup>
                               <label>Comprovante (Imagem/PDF)</label>
                               <input type="file" onChange={e => setFile(e.target.files[0])} accept="image/*,application/pdf" style={{ padding: 8, background: '#f7fafc' }}/>
                             </FormGroup>
 
+                            {/* BOTÕES DE AÇÃO */}
                             <ModalActions>
                               <button type="button" className="cancel" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancelar</button>
                               <button type="submit" className="save" disabled={isSubmitting}>{isSubmitting ? 'A salvar...' : 'Confirmar Lançamento'}</button>
