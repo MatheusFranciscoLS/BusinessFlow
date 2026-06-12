@@ -31,6 +31,6 @@ router.use("/tasks", taskRoutes);
 router.use("/tickets", ticketRoutes);
 router.use("/documents", documentRoutes);
 router.use("/ofx", ofxRoutes);
-routes.use("/audit", auditRoutes);
+router.use("/audit", auditRoutes);
 
 export default router;
