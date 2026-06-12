@@ -3,11 +3,9 @@ import { Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext'; 
 import api from '../../services/api'; 
 import useSWR from 'swr';
-
-// 🔥 TODOS OS ÍCONES GARANTIDOS AQUI
 import { 
   LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X, 
-  Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock
+  Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock, ShieldAlert
 } from 'lucide-react';
 
 import { 
@@ -120,6 +118,12 @@ export default function Layout() {
             <StyledNavLink to="/app/financeiro" onClick={closeMenu}>
               <DollarSign size={20} /> Financeiro
             </StyledNavLink>
+
+            {!isClient && (
+              <StyledNavLink to="/app/auditoria" onClick={closeMenu}>
+                <ShieldAlert size={20} /> Segurança (Logs)
+              </StyledNavLink>
+            )}
 
             {!isClient && (
               <StyledNavLink to="/app/perfil" onClick={closeMenu}>

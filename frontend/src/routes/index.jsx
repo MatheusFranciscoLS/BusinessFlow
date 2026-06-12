@@ -14,12 +14,13 @@ import Documents from '../pages/Documents';
 import Agenda from '../pages/Agenda';
 import Layout from '../components/Layout';
 
+
 const Dashboard = lazy(() => import('../pages/Dashboard'));
 const Customers = lazy(() => import('../pages/Customers'));
 const Services = lazy(() => import('../pages/Services'));
-
 const Financial = lazy(() => import('../pages/Financial'));
 const Profile = lazy(() => import('../pages/Profile'));
+const Audit = lazy(() => import('../pages/Audit'));
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -78,6 +79,7 @@ const AppRoutes = () => {
            <Route path="helpdesk" element={<Helpdesk />} />
            <Route path="documentos" element={<Documents />} />
            <Route path="agenda" element={<Agenda />} />
+           <Route path="auditoria" element={<Audit />} />
            
           </Route>
 
