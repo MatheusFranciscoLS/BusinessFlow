@@ -106,7 +106,6 @@ export const Badge = styled.span`
 
 export const ChatArea = styled.div`
   flex: 1;
-  /* 🔥 MÁGICA VISUAL: Fundo idêntico ao WhatsApp Web */
   background: #efeae2
     url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
   background-size: contain;
@@ -120,24 +119,22 @@ export const ChatArea = styled.div`
 
 export const MessageBubble = styled.div`
   max-width: 65%;
-  /* 🔥 Espaço extra em baixo para acomodar a hora */
   padding: 8px 12px 22px 12px;
   position: relative;
   font-size: 14.5px;
   line-height: 1.4;
   align-self: ${(props) => (props.$isMine ? "flex-end" : "flex-start")};
-
-  /* 🔥 Cores Clássicas do WhatsApp */
   background: ${(props) => (props.$isMine ? "#d9fdd3" : "white")};
   color: #111b21;
-
-  /* 🔥 O Efeito "Cauda" do Balão */
   border-radius: 12px;
   border-top-right-radius: ${(props) => (props.$isMine ? "0" : "12px")};
   border-top-left-radius: ${(props) => (props.$isMine ? "12px" : "0")};
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 
-  /* A formatação da hora no canto do balão */
+  @media (max-width: 768px) {
+    max-width: 85%; /* Balões respiram mais no mobile */
+  }
+
   .meta {
     position: absolute;
     bottom: 4px;
@@ -172,6 +169,11 @@ export const ModalContent = styled.div`
   width: 100%;
   max-width: 500px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* 🔥 NO MOBILE: Menos margens para não espremer os inputs */
+  @media (max-width: 768px) {
+    padding: 24px 20px;
+  }
 `;
 
 export const FormGroup = styled.div`
@@ -197,5 +199,62 @@ export const FormGroup = styled.div`
     &:focus {
       border-color: #3182ce;
     }
+  }
+`;
+
+/* 🔥 MÁGICA 1: O Empilhador de Colunas (Usado no Modal) */
+export const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: ${(props) => props.$columns || "1fr 1fr"};
+  gap: 16px;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr; /* Empilha no mobile! */
+  }
+`;
+
+/* 🔥 MÁGICA 2: O Cabeçalho do Chat Responsivo */
+export const ChatHeader = styled.div`
+  padding: 20px;
+  border-bottom: 1px solid #edf2f7;
+  background: #f8fafc;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  .chat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chat-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #718096;
+    flex-wrap: wrap; /* Impede que corte a tela em ecrãs pequenos */
+  }
+`;
+
+/* 🔥 MÁGICA 3: O Teclado do Chat Responsivo */
+export const ChatInputArea = styled.div`
+  padding: 12px 20px;
+  background: #f0f2f5;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+    flex-direction: column; /* Empilha o select de status e a caixa de texto */
+    align-items: stretch; /* Estica para ocupar a largura toda */
+    gap: 12px;
+  }
+
+  .chat-form {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    align-items: center;
   }
 `;

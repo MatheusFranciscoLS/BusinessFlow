@@ -4,7 +4,6 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
-// 🔥 LIMPEZA: CheckCircle removido. ShieldAlert agora será usado para a tela de bloqueio!
 import { 
   LifeBuoy, Plus, MessageSquare, Clock, 
   AlertCircle, Send, User, Building2, X, ShieldAlert,CheckCheck
@@ -13,7 +12,8 @@ import {
 import {
   Container, Header, ActionButton, Layout, Sidebar, 
   TicketCard, Badge, ChatArea, MessageBubble, 
-  ModalOverlay, ModalContent, FormGroup
+  ModalOverlay, ModalContent, FormGroup,
+  FormRow, ChatHeader, ChatInputArea
 } from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -198,24 +198,22 @@ export default function Helpdesk() {
               </div>
             ) : (
               <>
-                <div style={{ padding: '20px', borderBottom: '1px solid #edf2f7', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <h2 style={{ margin: '0 0 8px 0', fontSize: 18, color: '#2d3748' }}>{selectedTicket.subject}</h2>
-                    <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#718096' }}>
+                {/* CABEÇALHO DO CHAT */}
+                <ChatHeader>
+                  <div className="chat-info">
+                    <h2 style={{ margin: 0, fontSize: 18, color: '#2d3748' }}>{selectedTicket.subject}</h2>
+                    <div className="chat-meta">
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={14} /> Prioridade: {selectedTicket.priority}</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={14} /> Departamento: {selectedTicket.department}</span>
                     </div>
                   </div>
-                  {/* O "X" agora está disponível tanto para o Cliente quanto para o Gestor fecharem a conversa no mobile/tablet! */}
                   <button onClick={() => setSelectedTicketId(null)} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px', cursor: 'pointer', color: '#a0aec0' }}>
                     <X size={20} />
                   </button>
-                </div>
+                </ChatHeader>
 
-{/* Área de rolagem do chat */}
+                {/* Área de rolagem do chat */}
                 <div style={{ flex: 1, padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  
-                  {/* Mensagem Inicial (Abertura do Chamado) */}
                   <MessageBubble $isMine={isClient}>
                     <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4, color: isClient ? '#025c4c' : '#1f2937' }}>
                       {isClient ? 'Você' : selectedTicket.client?.fullName}
@@ -227,7 +225,6 @@ export default function Helpdesk() {
                     </span>
                   </MessageBubble>
 
-                  {/* Respostas da Conversa */}
                   {selectedTicket.messages.map(msg => {
                     const isMine = msg.senderRole === user.role;
                     return (
@@ -246,9 +243,8 @@ export default function Helpdesk() {
                   <div ref={messagesEndRef} />
                 </div>
 
-{/* Área de envio de mensagem (Estilo WhatsApp Dock) */}
-                <div style={{ padding: '12px 20px', background: '#f0f2f5', display: 'flex', gap: 16, alignItems: 'center' }}>
-                  
+                {/* TECLADO DO CHAT REFEITO (Empilha o status no mobile) */}
+                <ChatInputArea>
                   {!isClient && (
                     <select 
                       value={selectedTicket.status} 
@@ -261,20 +257,18 @@ export default function Helpdesk() {
                     </select>
                   )}
 
-                  <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
+                  <form className="chat-form" onSubmit={handleSendMessage}>
                     <input 
                       value={textMessage}
                       onChange={e => setTextMessage(e.target.value)}
-                      placeholder="Digite uma mensagem"
+                      placeholder="Digite uma mensagem..."
                       style={{ flex: 1, padding: '14px 20px', borderRadius: 24, border: 'none', outline: 'none', fontSize: 15, background: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                     />
-                    
-                    {/* Botão Redondo Minimalista */}
-                    <button type="submit" disabled={!textMessage.trim() || selectedTicket.status === 'RESOLVIDO'} style={{ background: textMessage.trim() && selectedTicket.status !== 'RESOLVIDO' ? '#00a884' : '#a0aec0', color: 'white', border: 'none', width: 48, height: 48, borderRadius: '50%', cursor: selectedTicket.status === 'RESOLVIDO' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                    <button type="submit" disabled={!textMessage.trim() || selectedTicket.status === 'RESOLVIDO'} style={{ background: textMessage.trim() && selectedTicket.status !== 'RESOLVIDO' ? '#00a884' : '#a0aec0', color: 'white', border: 'none', width: 48, height: 48, borderRadius: '50%', cursor: selectedTicket.status === 'RESOLVIDO' ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', flexShrink: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                       <Send size={20} style={{ marginLeft: textMessage.trim() ? 4 : 0 }} />
                     </button>
                   </form>
-                </div>
+                </ChatInputArea>
               </>
             )}
           </ChatArea>
@@ -307,7 +301,7 @@ export default function Helpdesk() {
                 <input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} required placeholder="Ex: Dúvida sobre emissão de NF" />
               </FormGroup>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+<FormRow>
                 <FormGroup>
                   <label>Departamento</label>
                   <select value={form.department} onChange={e => setForm({...form, department: e.target.value})}>
@@ -325,7 +319,7 @@ export default function Helpdesk() {
                     <option value="ALTA">Alta (Urgente)</option>
                   </select>
                 </FormGroup>
-              </div>
+              </FormRow>
 
               <FormGroup>
                 <label>Descrição do Pedido *</label>
