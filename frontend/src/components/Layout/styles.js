@@ -72,13 +72,20 @@ export const SidebarContainer = styled.aside`
 
   @media (max-width: 768px) {
     position: fixed;
-    top: 60px;
-    bottom: 0;
-    height: auto;
-    z-index: 99;
-    width: 260px;
-    left: ${(props) => (props.$isOpen ? "0" : "-260px")};
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.4);
+    top: 0;
+    left: ${(props) => (props.$isOpen ? "0" : "-100%")};
+    z-index: 1000;
+
+    height: 100dvh; /* Usa a altura exata da tela visível do celular */
+    overflow-y: auto; /* Permite rolar o menu se a tela for pequena */
+    padding-bottom: 24px; /* Dá um respiro no final para o botão não colar na borda */
+
+    /* Esconde a barra de rolagem visualmente para ficar mais elegante */
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 `;
 
