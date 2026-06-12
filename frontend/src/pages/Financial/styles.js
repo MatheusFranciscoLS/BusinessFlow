@@ -1,14 +1,23 @@
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes } from "styled-components";
 
 const fadeIn = keyframes`from { opacity: 0; } to { opacity: 1; }`;
 
 export const Container = styled.div`
-  width: 100%; padding-bottom: 40px; animation: ${fadeIn} 0.4s ease;
+  width: 100%;
+  padding-bottom: 40px;
+  animation: ${fadeIn} 0.4s ease;
 `;
 
 export const Header = styled.header`
-  display: flex; flex-direction: column; margin-bottom: 32px;
-  h1 { font-size: 26px; color: #1a202c; font-weight: 800; margin-bottom: 20px; }
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 32px;
+  h1 {
+    font-size: 26px;
+    color: ${(props) => props.theme.colors.text};
+    font-weight: 800;
+    margin-bottom: 20px;
+  }
 `;
 
 export const Toolbar = styled.div`
@@ -33,10 +42,10 @@ export const FilterGroup = styled.div`
 export const SearchContainer = styled.div`
   display: flex;
   align-items: center;
-  background: white;
+  background: ${(props) => props.theme.colors.surface};
   padding: 0 16px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  border-radius: ${(props) => props.theme.sizes.borderRadius};
+  border: 1px solid ${(props) => props.theme.colors.border};
   height: 48px;
   max-width: 400px;
   width: 100%;
@@ -44,7 +53,7 @@ export const SearchContainer = styled.div`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 
   &:focus-within {
-    border-color: #3182ce;
+    border-color: ${(props) => props.theme.colors.primary};
     box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
   }
   input {
@@ -53,10 +62,9 @@ export const SearchContainer = styled.div`
     padding: 10px;
     width: 100%;
     font-size: 14px;
-    color: #4a5568;
+    color: ${(props) => props.theme.colors.textSecondary};
     background: transparent;
   }
-
   @media (max-width: 768px) {
     max-width: 100%;
   }
@@ -73,8 +81,10 @@ export const FilterPillsContainer = styled.div`
 `;
 
 export const FilterPill = styled.button`
-  background: ${(props) => (props.$active ? "#3182ce" : "#edf2f7")};
-  color: ${(props) => (props.$active ? "white" : "#4a5568")};
+  background: ${(props) =>
+    props.$active ? props.theme.colors.primary : props.theme.colors.background};
+  color: ${(props) =>
+    props.$active ? "white" : props.theme.colors.textSecondary};
   border: none;
   padding: 8px 16px;
   border-radius: 20px;
@@ -83,21 +93,22 @@ export const FilterPill = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-
   &:hover {
-    background: ${(props) => (props.$active ? "#2c5282" : "#e2e8f0")};
+    background: ${(props) =>
+      props.$active
+        ? props.theme.colors.primaryHover
+        : props.theme.colors.border};
     transform: translateY(-2px);
   }
 `;
 
-/* O NOVO SELETOR DE MÊS ESTILO FINTECH */
 export const MonthNavigator = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: ${(props) => props.theme.colors.surface};
+  border: 1px solid ${(props) => props.theme.colors.border};
+  border-radius: ${(props) => props.theme.sizes.borderRadius};
   height: 48px;
   padding: 0 8px;
   min-width: 200px;
@@ -106,15 +117,14 @@ export const MonthNavigator = styled.div`
   span {
     font-size: 14px;
     font-weight: 700;
-    color: #2d3748;
+    color: ${(props) => props.theme.colors.text};
     min-width: 120px;
     text-align: center;
   }
-
   button {
     background: transparent;
     border: none;
-    color: #718096;
+    color: ${(props) => props.theme.colors.textSecondary};
     width: 32px;
     height: 32px;
     border-radius: 6px;
@@ -123,13 +133,11 @@ export const MonthNavigator = styled.div`
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-
     &:hover {
-      background: #f7fafc;
-      color: #3182ce;
+      background: ${(props) => props.theme.colors.background};
+      color: ${(props) => props.theme.colors.primary};
     }
   }
-
   @media (max-width: 768px) {
     width: 100%;
   }
@@ -147,7 +155,7 @@ export const ButtonGroup = styled.div`
   button {
     height: 48px;
     padding: 0 20px;
-    border-radius: 8px;
+    border-radius: ${(props) => props.theme.sizes.borderRadius};
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -157,20 +165,20 @@ export const ButtonGroup = styled.div`
     transition: all 0.2s;
     border: none;
     &.primary {
-      background: #3182ce;
+      background: ${(props) => props.theme.colors.primary};
       color: white;
       box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
       &:hover {
-        background: #2c5282;
+        background: ${(props) => props.theme.colors.primaryHover};
         transform: translateY(-2px);
       }
     }
     &.secondary {
-      background: white;
-      color: #4a5568;
-      border: 1px solid #e2e8f0;
+      background: ${(props) => props.theme.colors.surface};
+      color: ${(props) => props.theme.colors.textSecondary};
+      border: 1px solid ${(props) => props.theme.colors.border};
       &:hover {
-        background: #f7fafc;
+        background: ${(props) => props.theme.colors.background};
         border-color: #cbd5e0;
         transform: translateY(-2px);
       }
@@ -189,7 +197,8 @@ export const SummaryContainer = styled.div`
 `;
 
 export const SummaryCard = styled.div`
-  background: ${(props) => (props.$highlight ? "#1a202c" : "white")};
+  background: ${(props) =>
+    props.$highlight ? props.theme.colors.sidebar : props.theme.colors.surface};
   padding: 24px;
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
@@ -197,9 +206,9 @@ export const SummaryCard = styled.div`
   flex-direction: column;
   justify-content: space-between;
   height: 130px;
-  border: 1px solid ${(props) => (props.$highlight ? "transparent" : "#edf2f7")};
+  border: 1px solid
+    ${(props) => (props.$highlight ? "transparent" : props.theme.colors.border)};
   transition: all 0.3s ease;
-
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -209,7 +218,10 @@ export const SummaryCard = styled.div`
     justify-content: space-between;
     align-items: center;
     span {
-      color: ${(props) => (props.$highlight ? "#e2e8f0" : "#718096")};
+      color: ${(props) =>
+        props.$highlight
+          ? props.theme.colors.border
+          : props.theme.colors.textSecondary};
       font-size: 15px;
       font-weight: 600;
     }
@@ -217,22 +229,31 @@ export const SummaryCard = styled.div`
   strong {
     font-size: 28px;
     font-weight: 800;
-    color: ${(props) => (props.$highlight ? "white" : "#2d3748")};
+    color: ${(props) => (props.$highlight ? "white" : props.theme.colors.text)};
   }
 `;
 
 export const TableContainer = styled.div`
-  background: white;
+  background: ${(props) => props.theme.colors.surface};
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   overflow-x: auto;
-  border: 1px solid #edf2f7;
+  border: 1px solid ${(props) => props.theme.colors.border};
   &::-webkit-scrollbar {
     height: 6px;
   }
   &::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 4px;
+  }
+
+  /* 🔥 NO MOBILE, O FUNDO SOME PARA OS CARTÕES RESPIRAREM */
+  @media (max-width: 768px) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 !important;
+    overflow-x: hidden;
   }
 `;
 
@@ -244,35 +265,89 @@ export const Table = styled.table`
   td {
     padding: 16px 20px;
     text-align: left;
-    border-bottom: 1px solid #edf2f7;
+    border-bottom: 1px solid ${(props) => props.theme.colors.border};
   }
   th {
     font-weight: 600;
-    color: #a0aec0;
+    color: ${(props) => props.theme.colors.textMuted};
     font-size: 12px;
     text-transform: uppercase;
-    background: #f8fafc;
+    background: ${(props) => props.theme.colors.background};
     letter-spacing: 0.5px;
   }
   td {
-    color: #4a5568;
+    color: ${(props) => props.theme.colors.text};
     font-size: 14px;
   }
   tr:hover td {
-    background: #f7fafc;
+    background: ${(props) => props.theme.colors.background};
+  }
+
+  /* 🔥 A MÁGICA: TRANSFORMA A TABELA EM CARTÕES NO MOBILE */
+  @media (max-width: 768px) {
+    min-width: 100%;
+    &,
+    thead,
+    tbody,
+    th,
+    td,
+    tr {
+      display: block;
+    }
+    thead tr {
+      display: none;
+    }
+
+    tr {
+      background: ${(props) => props.theme.colors.surface} !important;
+      border: 1px solid ${(props) => props.theme.colors.border};
+      border-radius: ${(props) => props.theme.sizes.borderRadius};
+      margin-bottom: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+    tr:hover td {
+      background: transparent;
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px dashed ${(props) => props.theme.colors.border};
+      text-align: right;
+    }
+
+    td:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-top: 8px;
+      justify-content: center;
+    }
+
+    td::before {
+      content: attr(data-label);
+      font-weight: 700;
+      color: ${(props) => props.theme.colors.textSecondary};
+      font-size: 12px;
+      text-transform: uppercase;
+      text-align: left;
+    }
   }
 `;
 
 export const ActionButton = styled.button`
   background: transparent;
   border: none;
-  color: ${(props) => props.color || "#a0aec0"};
+  color: ${(props) => props.color || props.theme.colors.textMuted};
   padding: 8px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   &:hover {
-    background: ${(props) => (props.color ? `${props.color}15` : "#edf2f7")};
+    background: ${(props) =>
+      props.color ? `${props.color}15` : props.theme.colors.background};
     transform: scale(1.1);
   }
 `;
@@ -295,7 +370,7 @@ export const ModalOverlay = styled.div`
 export const ModalContent = styled.div`
   width: 100%;
   max-width: 500px;
-  background: white;
+  background: ${(props) => props.theme.colors.surface};
   padding: 32px;
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -303,7 +378,7 @@ export const ModalContent = styled.div`
   max-height: 90vh;
   overflow-y: auto;
   h2 {
-    color: #1a202c;
+    color: ${(props) => props.theme.colors.text};
     font-size: 24px;
     margin-bottom: 24px;
     font-weight: 700;
@@ -315,7 +390,7 @@ export const FormGroup = styled.div`
   label {
     font-size: 13px;
     font-weight: 600;
-    color: #4a5568;
+    color: ${(props) => props.theme.colors.textSecondary};
     margin-bottom: 8px;
     display: block;
   }
@@ -324,12 +399,12 @@ export const FormGroup = styled.div`
     width: 100%;
     padding: 0 16px;
     height: 48px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border-radius: ${(props) => props.theme.sizes.borderRadius};
+    border: 1px solid ${(props) => props.theme.colors.border};
     font-size: 15px;
     transition: all 0.2s;
     &:focus {
-      border-color: #3182ce;
+      border-color: ${(props) => props.theme.colors.primary};
       box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
       outline: none;
     }
@@ -349,15 +424,15 @@ export const RadioBox = styled.button`
     ${(props) =>
       props.$isActive
         ? props.$activeColor === "green"
-          ? "#48bb78"
-          : "#f56565"
-        : "#e2e8f0"};
-  border-radius: 8px;
+          ? props.theme.colors.success
+          : props.theme.colors.danger
+        : props.theme.colors.border};
+  border-radius: ${(props) => props.theme.sizes.borderRadius};
   background: ${(props) =>
     props.$isActive
       ? props.$activeColor === "green"
-        ? "#f0fff4"
-        : "#fff5f5"
+        ? props.theme.colors.successLight
+        : props.theme.colors.dangerLight
       : "transparent"};
   display: flex;
   align-items: center;
@@ -369,7 +444,10 @@ export const RadioBox = styled.button`
   span {
     font-size: 15px;
     font-weight: 600;
-    color: ${(props) => (props.$isActive ? "#1a202c" : "#718096")};
+    color: ${(props) =>
+      props.$isActive
+        ? props.theme.colors.text
+        : props.theme.colors.textSecondary};
   }
   &:hover {
     transform: translateY(-2px);
@@ -384,24 +462,24 @@ export const ModalActions = styled.div`
   button {
     padding: 0 24px;
     height: 48px;
-    border-radius: 8px;
+    border-radius: ${(props) => props.theme.sizes.borderRadius};
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     border: none;
     flex: 1;
     &.cancel {
-      background: #edf2f7;
-      color: #4a5568;
+      background: ${(props) => props.theme.colors.background};
+      color: ${(props) => props.theme.colors.textSecondary};
       &:hover {
-        background: #e2e8f0;
+        background: ${(props) => props.theme.colors.border};
       }
     }
     &.save {
-      background: #3182ce;
+      background: ${(props) => props.theme.colors.primary};
       color: white;
       &:hover {
-        background: #2c5282;
+        background: ${(props) => props.theme.colors.primaryHover};
         transform: translateY(-2px);
       }
     }

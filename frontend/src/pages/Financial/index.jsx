@@ -760,40 +760,39 @@ const renderStatusBadge = (statusValue) => {
     {filteredTransactions.map(t => {
         const amount = t.amount || t.price || 0;
         
-        // 🔥 1. A MÁGICA DA PERSPECTIVA (Inverte para o cliente)
+        // 1. A MÁGICA DA PERSPECTIVA (Inverte para o cliente)
         const isFirmIncome = t.type === 'income' || t.type === 'entrada';
         const displayAsIncome = isClient ? !isFirmIncome : isFirmIncome; 
         const isNotPaid = t.status !== 'PAGO'; 
         
         return (
-            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent',borderLeft: t.status === 'ATRASADO' ? '4px solid #e53e3e' : '4px solid transparent' }}>
+            <tr key={t.id} style={{ opacity: isNotPaid ? 0.8 : 1, background: t.status === 'ATRASADO' ? '#fff5f5' : selectedIds.includes(t.id) ? '#ebf8ff' : 'transparent', borderLeft: t.status === 'ATRASADO' ? '4px solid #e53e3e' : '4px solid transparent' }}>
                 
-                {/* 1. A Coluna do Checkbox Transparente (UX Premium) */}
+                {/* 1. A Coluna do Checkbox */}
                 {!isClient && (
-                  <td>
+                  <td data-label="Selecionar">
                     {isNotPaid ? (
                       <input 
                         type="checkbox" 
                         checked={selectedIds.includes(t.id)} 
                         onChange={() => toggleSelect(t.id)} 
                         title="Selecionar para dar baixa"
-                        style={{ cursor: 'pointer', width: 16, height: 16 }} 
+                        style={{ cursor: 'pointer', width: 20, height: 20 }} 
                       />
                     ) : (
                       <input 
                         type="checkbox" 
                         disabled 
                         title="Esta transação já está liquidada"
-                        style={{ cursor: 'not-allowed', width: 16, height: 16, opacity: 0.3 }} 
+                        style={{ cursor: 'not-allowed', width: 20, height: 20, opacity: 0.3 }} 
                       />
                     )}
                   </td>
                 )}
 
-                {/* 2. A Coluna de Descrição com o Ícone do Cartão de Crédito */}
-                <td>
+                {/* 2. A Coluna de Descrição */}
+                <td data-label="Descrição">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* 🔥 2. USA A PERSPECTIVA (displayAsIncome) EM VEZ DE isIncome PARA A COR DA SETA */}
                     {displayAsIncome ? <ArrowUpCircle size={20} color="#12a454" /> : <ArrowDownCircle size={20} color="#e52e4d" />}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 600, color: '#2D3748' }}>{t.description || t.title}</span>
@@ -806,9 +805,9 @@ const renderStatusBadge = (statusValue) => {
                   </div>
                 </td>
 
-                {/* 3. A Coluna do Cliente Vinculado com o Ícone User */}
+                {/* 3. A Coluna do Cliente Vinculado */}
                 {!isClient && (
-                    <td>
+                    <td data-label="Cliente">
                         {t.client ? (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#4a5568', fontWeight: 600 }}>
                                 <User size={14} color="#a0aec0" /> {t.client.fullName}
@@ -819,15 +818,22 @@ const renderStatusBadge = (statusValue) => {
                     </td>
                 )}
 
-                {/* 4. As Colunas de Valores (COM SINAL NEGATIVO CORRETO), Data e Status */}
-                <td><span style={{ color: displayAsIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>{!displayAsIncome && '- '} {formatCurrency(amount)}</span></td>
-                <td><span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>{t.category || 'GERAL'}</span></td>
+                {/* 4. As Colunas de Valores, Categoria, Data e Status */}
+                <td data-label="Valor">
+                  <span style={{ color: displayAsIncome ? '#12a454' : '#e52e4d', fontWeight: 'bold', display: 'block' }}>
+                    {!displayAsIncome && '- '} {formatCurrency(amount)}
+                  </span>
+                </td>
                 
-                {/* 5. Coluna da Data com Ícone de Recorrência Inteligente */}
-                <td>
+                <td data-label="Categoria">
+                  <span style={{ background: '#EDF2F7', color: '#2D3748', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
+                    {t.category || 'GERAL'}
+                  </span>
+                </td>
+                
+                <td data-label="Vencimento">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {formatDateDisplay(t.date)}
-                    {/* Se tiver parcelas ou "Mês" no título, mostra que é recorrente */}
                     {(t.installments > 1 || t.title?.includes('(Mês') || t.description?.includes('(Mês')) && (
                       <span title="Lançamento Recorrente (Mensalidade)">
                         <Repeat size={14} color="#3182ce" />
@@ -836,14 +842,13 @@ const renderStatusBadge = (statusValue) => {
                   </div>
                 </td>
                 
-                <td>{renderStatusBadge(t.status || 'PAGO')}</td>
+                <td data-label="Situação">{renderStatusBadge(t.status || 'PAGO')}</td>
                 
-                {/* 6. A Coluna de Ações (PIX para Cliente, ou Botões de Editar para Gestor) */}
-                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                {/* 6. A Coluna de Ações */}
+                <td data-label={isClient ? 'Ações' : 'Ações / Cobrar'} style={{ textAlign: 'right' }}>
                     {isClient ? (
-                        // 🔥 3. O CLIENTE SÓ PAGA O QUE FOR DESPESA PARA ELE (!displayAsIncome)
                         (isNotPaid && !displayAsIncome) ? (
-                            <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                            <ActionButton onClick={() => setPixTransaction(t)} style={{ background: '#38a169', color: 'white', display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                                 <QrCode size={16} /> Pagar PIX
                             </ActionButton>
                         ) : (
@@ -854,8 +859,7 @@ const renderStatusBadge = (statusValue) => {
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
                         )
                     ) : (
-<div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                            {/* 🔥 A MÁGICA: Botão de Cobrança via WhatsApp 1-Click */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                             {isNotPaid && t.client && (
                                 <ActionButton 
                                     onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${t.client.fullName.split(' ')[0]}, tudo bem? Passando para lembrar que o lançamento de *${t.title || t.description}* no valor de *${formatCurrency(amount)}* encontra-se ${t.status === 'ATRASADO' ? 'em atraso' : 'pendente'}. Podemos ajudar com a emissão da 2ª via ou link do PIX?`)}`, '_blank')} 
@@ -867,7 +871,6 @@ const renderStatusBadge = (statusValue) => {
                                 </ActionButton>
                             )}
 
-                            {/* Restantes Botões Oficiais */}
                             {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Dar Baixa Manual"><CheckCircle size={18} /></ActionButton>}
                             {t.fileUrl && <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Ver Anexo / Comprovante"><Paperclip size={18} /></ActionButton>}
                             <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title={isNotPaid ? "Editar" : "Visualizar"}><Edit size={18} /></ActionButton>
