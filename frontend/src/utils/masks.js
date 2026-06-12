@@ -1,18 +1,14 @@
-// frontend/src/utils/masks.js
-
 export const maskCPFOrCNPJ = (value) => {
   if (!value) return "";
-  const numericValue = value.replace(/\D/g, ""); // Remove tudo o que não for número
+  const numericValue = String(value).replace(/\D/g, "");
 
   if (numericValue.length <= 11) {
-    // Máscara de CPF: 000.000.000-00
     return numericValue
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d{1,2})/, "$1-$2")
       .replace(/(-\d{2})\d+?$/, "$1");
   } else {
-    // Máscara de CNPJ: 00.000.000/0001-00
     return numericValue
       .replace(/(\d{2})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
@@ -24,7 +20,7 @@ export const maskCPFOrCNPJ = (value) => {
 
 export const maskPhone = (value) => {
   if (!value) return "";
-  const numericValue = value.replace(/\D/g, "");
+  const numericValue = String(value).replace(/\D/g, "");
 
   if (numericValue.length <= 10) {
     return numericValue
@@ -36,23 +32,27 @@ export const maskPhone = (value) => {
   return numericValue
     .replace(/(\d{2})(\d)/, "($1) $2")
     .replace(/(\d{5})(\d)/, "$1-$2")
-    .replace(/(-\d{4})\d+?$/, "$1"); // Limita a 11 dígitos no máximo (Celular)
+    .replace(/(-\d{4})\d+?$/, "$1");
 };
 
 export const maskCurrency = (value) => {
-  if (!value) return "";
-  const numericValue = value.replace(/\D/g, "");
+  if (value === undefined || value === null) return "";
+  const numericValue = String(value).replace(/\D/g, "");
+
+  // Retorna "0,00" se estiver vazio ou zerado, garantindo melhor UX
+  if (!numericValue) return "0,00";
 
   const options = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-  const result = new Intl.NumberFormat("pt-BR", options).format(
-    numericValue / 100,
+  return new Intl.NumberFormat("pt-BR", options).format(
+    Number(numericValue) / 100,
   );
-
-  return result === "0,00" ? "" : result;
 };
 
 export const unmaskCurrency = (value) => {
   if (!value) return 0;
-  // Transforma "1.500,00" -> 1500.00 para salvar no Banco
-  return Number(value.replace(/\./g, "").replace(",", "."));
+  // 🔥 BLINDAGEM: Se já for número (ou vier direto do banco), devolve-o imediatamente
+  if (typeof value === "number") return value;
+
+  // Se for String, limpa os pontos e vírgulas para guardar no Prisma
+  return Number(String(value).replace(/\./g, "").replace(",", "."));
 };
