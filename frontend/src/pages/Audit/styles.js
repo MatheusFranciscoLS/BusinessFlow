@@ -21,23 +21,47 @@ export const Header = styled.div`
   margin-bottom: 32px;
   h1 {
     font-size: 24px;
-    color: #1e293b;
+    color: ${(props) => props.theme.colors.sidebar};
     margin-bottom: 8px;
     display: flex;
-    alignitems: center;
+    align-items: center;
     gap: 8px;
   }
   p {
-    color: #64748b;
+    color: ${(props) => props.theme.colors.textSecondary};
     font-size: 15px;
   }
 `;
 
 export const LogTable = styled.div`
-  background: white;
-  border-radius: 12px;
+  background: ${(props) => props.theme.colors.surface};
+  border-radius: ${(props) => props.theme.sizes.borderRadius};
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+
+  /* 🔥 NO MOBILE, O FUNDO SOME PARA OS CARTÕES RESPIRAREM */
+  @media (max-width: 768px) {
+    background: transparent;
+    box-shadow: none;
+  }
+`;
+
+/* 🔥 ESCONDE O CABEÇALHO NO TELEMÓVEL */
+export const TableHeader = styled.div`
+  display: grid;
+  grid-template-columns: 180px 150px 120px 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #f8fafc;
+  font-weight: bold;
+  color: ${(props) => props.theme.colors.textSecondary};
+  font-size: 12px;
+  text-transform: uppercase;
+  border-bottom: 1px solid ${(props) => props.theme.colors.border};
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 export const LogRow = styled.div`
@@ -45,7 +69,7 @@ export const LogRow = styled.div`
   grid-template-columns: 180px 150px 120px 1fr;
   gap: 16px;
   padding: 16px 24px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid ${(props) => props.theme.colors.border};
   align-items: center;
   transition: background 0.2s;
 
@@ -56,9 +80,23 @@ export const LogRow = styled.div`
     border-bottom: none;
   }
 
+  /* 🔥 A MÁGICA: TRANSFORMA LINHA EM CARTÃO NO MOBILE */
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+
+    background: ${(props) => props.theme.colors.surface};
+    margin-bottom: 16px;
+    border-radius: ${(props) => props.theme.sizes.borderRadius};
+    border: 1px solid ${(props) => props.theme.colors.border};
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    padding: 20px;
+
+    &:hover {
+      background: ${(props) => props.theme.colors.surface};
+    }
   }
 `;
 
@@ -71,27 +109,32 @@ export const Badge = styled.span`
   display: inline-block;
   text-align: center;
 
+  /* Usa as cores do nosso Design System! */
   ${(props) =>
-    props.$action === "CREATE" && "background: #dcfce7; color: #166534;"}
+    props.$action === "CREATE" &&
+    `background: ${props.theme.colors.successLight}; color: ${props.theme.colors.success};`}
   ${(props) =>
-    props.$action === "UPDATE" && "background: #fef9c3; color: #854d0e;"}
+    props.$action === "UPDATE" &&
+    `background: ${props.theme.colors.warningLight}; color: ${props.theme.colors.warning};`}
   ${(props) =>
-    props.$action === "DELETE" && "background: #fee2e2; color: #991b1b;"}
+    props.$action === "DELETE" &&
+    `background: ${props.theme.colors.dangerLight}; color: ${props.theme.colors.danger};`}
   ${(props) =>
-    props.$action === "DOWNLOAD" && "background: #e0e7ff; color: #3730a3;"}
+    props.$action === "DOWNLOAD" &&
+    `background: ${props.theme.colors.primaryLight}; color: ${props.theme.colors.primary};`}
 `;
 
 export const TextCol = styled.div`
   font-size: 14px;
-  color: #334155;
+  color: ${(props) => props.theme.colors.text};
 
   strong {
-    color: #0f172a;
+    color: ${(props) => props.theme.colors.sidebar};
     display: block;
     margin-bottom: 2px;
   }
   span {
-    color: #64748b;
+    color: ${(props) => props.theme.colors.textSecondary};
     font-size: 12px;
   }
 `;

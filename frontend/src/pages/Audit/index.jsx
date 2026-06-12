@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 import { ShieldCheck, Loader2 } from 'lucide-react';
-import { Container, Header, LogTable, LogRow, Badge, TextCol } from './styles';
+import { Container, Header, LogTable, TableHeader, LogRow, Badge, TextCol } from './styles';
 
 export default function Audit() {
   const [logs, setLogs] = useState([]);
@@ -37,12 +37,12 @@ export default function Audit() {
       </Header>
 
       <LogTable>
-        <LogRow style={{ background: '#f8fafc', fontWeight: 'bold', color: '#64748b', fontSize: '12px', textTransform: 'uppercase' }}>
+<TableHeader>
           <div>Data e Hora</div>
           <div>Usuário</div>
           <div>Ação</div>
           <div>Detalhes do Evento</div>
-        </LogRow>
+        </TableHeader>
 
         {loading && (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
