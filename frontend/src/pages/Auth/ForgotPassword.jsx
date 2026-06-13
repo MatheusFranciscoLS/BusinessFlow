@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import api from '../../services/api'; // 🔥 A API ESTÁ LIGADA!
 import { 
-  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
+  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions,MobileLogo 
 } from './styles';
 
 export default function ForgotPassword() {
@@ -36,6 +36,7 @@ export default function ForgotPassword() {
 
       <RightPanel>
         <FormContainer>
+          <MobileLogo>Business<span>Flow</span></MobileLogo>
           <h2>Esqueceu a sua senha?</h2>
           <p>Digite o seu e-mail para receber as instruções seguras.</p>
 

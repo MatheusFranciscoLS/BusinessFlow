@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom'; // Para pegar os dados da URL
 import api from '../../services/api';
 import { 
-  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button 
+  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button,MobileLogo 
 } from './styles';
 
 export default function ResetPassword() {
@@ -45,6 +45,7 @@ export default function ResetPassword() {
 
       <RightPanel>
         <FormContainer>
+          <MobileLogo>Business<span>Flow</span></MobileLogo>
           <h2>Nova Senha</h2>
           <p>Para o usuário: <strong>{email}</strong></p>
 

@@ -10,12 +10,8 @@ export const Container = styled.div`
 `;
 
 export const LeftPanel = styled.div`
-  flex: 1.2; /* Ligeiramente mais largo para um visual assimétrico moderno */
-  background: linear-gradient(
-    135deg,
-    #0f172a 0%,
-    #1e3a8a 100%
-  ); /* Gradiente Premium */
+  flex: 1.2;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -31,7 +27,6 @@ export const LeftPanel = styled.div`
       color: #60a5fa;
     }
   }
-
   p {
     color: #94a3b8;
     font-size: 18px;
@@ -51,6 +46,10 @@ export const RightPanel = styled.div`
   justify-content: center;
   align-items: center;
   padding: 40px;
+
+  @media (max-width: 768px) {
+    padding: 20px; /* 🔥 MOBILE: Deixa a caixa respirar! */
+  }
 `;
 
 export const FormContainer = styled.div`
@@ -72,6 +71,39 @@ export const FormContainer = styled.div`
     font-size: 14px;
     margin-bottom: 32px;
   }
+
+  @media (max-width: 768px) {
+    padding: 32px 24px; /* 🔥 MOBILE: Diminui o espaçamento interno para os inputs terem largura! */
+    max-width: 100%;
+  }
+`;
+
+/* 🔥 MÁGICA 1: O Logótipo exclusivo para Telemóvel! */
+export const MobileLogo = styled.h1`
+  display: none;
+  font-size: 32px;
+  font-weight: 800;
+  color: #1e3a8a;
+  margin-bottom: 32px;
+  text-align: center;
+  letter-spacing: -1px;
+  span {
+    color: #3182ce;
+  }
+
+  @media (max-width: 900px) {
+    display: block;
+  }
+`;
+
+/* 🔥 MÁGICA 2: O Empilhador de Inputs para o Registo */
+export const FormRow = styled.div`
+  display: flex;
+  gap: 16px;
+  flex-direction: row;
+  @media (max-width: 768px) {
+    flex-direction: column;
+  } /* Empilha no Mobile! */
 `;
 
 export const Form = styled.form`
@@ -84,7 +116,7 @@ export const InputGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1; /* Garante flexibilidade em linhas partilhadas */
+  flex: 1;
 
   label {
     font-size: 12px;
@@ -92,7 +124,6 @@ export const InputGroup = styled.div`
     color: #4a5568;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    /* 🔥 A CORREÇÃO DO BUG DE ALINHAMENTO AQUI */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -100,16 +131,15 @@ export const InputGroup = styled.div`
 
   input {
     width: 100%;
-    height: 52px; /* Mais alto para conforto visual (Touch-friendly) */
+    height: 52px;
     padding: 0 16px;
-    border-radius: 12px; /* Cantos mais arredondados */
-    border: 2px solid #e2e8f0; /* Borda mais demarcada */
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
     font-size: 15px;
     font-weight: 500;
     color: #1e293b;
     background: #f8fafc;
     transition: all 0.2s;
-
     &:focus {
       border-color: #3182ce;
       background: white;
@@ -132,12 +162,10 @@ export const Button = styled.button`
   transition: all 0.2s;
   margin-top: 12px;
   box-shadow: 0 4px 6px rgba(49, 130, 206, 0.2);
-
   &:hover:not(:disabled) {
     background: #2c5282;
     transform: translateY(-2px);
   }
-
   &:disabled {
     background: #a0aec0;
     cursor: not-allowed;
@@ -153,13 +181,11 @@ export const FooterActions = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-
   a {
     color: #3182ce;
     text-decoration: none;
     font-weight: 700;
     transition: 0.2s;
-
     &:hover {
       color: #2c5282;
       text-decoration: underline;

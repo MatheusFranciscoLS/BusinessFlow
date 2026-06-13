@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { 
-  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
+  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions,
+  MobileLogo, FormRow
 } from './styles';
 
 export default function Register() {
@@ -40,13 +41,15 @@ export default function Register() {
         <p>Eleve o seu escritório de contabilidade para o próximo nível com o nosso ecossistema integrado.</p>
       </LeftPanel>
 
-      <RightPanel>
+<RightPanel>
         <FormContainer style={{ maxWidth: 450 }}>
+          <MobileLogo>Business<span>Flow</span></MobileLogo>
+
           <h2>Criar Nova Conta</h2>
           <p>Configure o ambiente inicial do seu escritório.</p>
 
           <Form onSubmit={handleRegister}>
-            <div style={{ display: 'flex', gap: 16, flexDirection: 'row' }}>
+            <FormRow>
               <InputGroup>
                 <label>Nome Completo</label>
                 <input value={name} onChange={e => setName(e.target.value)} placeholder="Sócio ou Gestor" />
@@ -56,7 +59,7 @@ export default function Register() {
                 <label>Escritório</label>
                 <input value={agencyName} onChange={e => setAgencyName(e.target.value)} placeholder="Nome da Agência" />
               </InputGroup>
-            </div>
+            </FormRow>
 
             <InputGroup>
               <label>E-mail Corporativo</label>

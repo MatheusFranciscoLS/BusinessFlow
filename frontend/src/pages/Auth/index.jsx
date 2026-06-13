@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import { 
-  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions 
+  Container, LeftPanel, RightPanel, FormContainer, Form, InputGroup, Button, FooterActions,
+  MobileLogo
 } from './styles';
 import { ShieldCheck } from 'lucide-react';
 
@@ -43,8 +44,10 @@ export default function Login() {
         <p>A plataforma definitiva para Gestão Contábil, BPO Financeiro e Relacionamento com o Cliente.</p>
       </LeftPanel>
 
-      <RightPanel>
+<RightPanel>
         <FormContainer>
+          <MobileLogo>Business<span>Flow</span></MobileLogo>
+
           <h2>Bem-vindo de volta!</h2>
           <p>Insira as suas credenciais para aceder ao portal.</p>
 

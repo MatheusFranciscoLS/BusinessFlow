@@ -12,7 +12,8 @@ import {
 import {
   Container, Header, ActionGroup, Button, CardsGrid, StatCard,
   TabsContainer, TabButton, KanbanBoard, Column, ColumnHeader, Card,
-  RadarGrid, RadarCard, ModalOverlay, ModalContent, FormGroup
+  RadarGrid, RadarCard, ModalOverlay, ModalContent, FormGroup,
+  FormRow
 } from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -78,7 +79,7 @@ export default function Agenda() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-async function handleCreateTask(e) {
+  async function handleCreateTask(e) {
     e.preventDefault();
     const tId = toast.loading("A criar prazo...");
     try {
@@ -139,7 +140,7 @@ async function handleCreateTask(e) {
   }
 
   const getPriorityColor = (prio) => {
-    switch(prio) { case 'URGENTE': return '#e53e3e'; case 'ALTA': return '#ed8936'; case 'NORMAL': return '#3182ce'; default: return '#a0aec0'; }
+    switch(prio) { case 'URGENTE': return '#e53e3e'; case 'ALTA': return '#ed8936'; case 'NORMAL': return '#3182ce'; case 'BAIXA': return '#718096'; default: return '#a0aec0'; }
   };
 
   const sortedTasks = useMemo(() => {
@@ -156,6 +157,7 @@ async function handleCreateTask(e) {
       return new Date(a.dueDate) - new Date(b.dueDate);
     });
   }, [visibleTasks]);
+  
   const pendingTasksCount = visibleTasks.filter(t => t.status !== 'CONCLUIDO').length;
   const overdueTasksCount = visibleTasks.filter(t => new Date(t.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0) && t.status !== 'CONCLUIDO').length;
   const toPayCount = pendingTransactions.filter(t => t.type === 'saida' || t.type === 'outcome').length;
@@ -198,7 +200,7 @@ async function handleCreateTask(e) {
         </StatCard>
       </CardsGrid>
 
-<TabsContainer>
+      <TabsContainer>
         <TabButton $active={activeTab === 'KANBAN'} onClick={() => setActiveTab('KANBAN')}>
           <ListTodo size={20} /> Quadro Operacional (Fiscal & RH)
           {/* 🔥 NOVO: Badge inteligente que avisa quantas tarefas não estão concluídas */}
@@ -325,7 +327,7 @@ async function handleCreateTask(e) {
                       </span>
                     </div>
 
-{/* AÇÃO DO GESTOR: Dar Baixa */}
+                    {/* AÇÃO DO GESTOR: Dar Baixa */}
                     {!isClient && (
                       <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 12, marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
                         <button 
@@ -342,7 +344,6 @@ async function handleCreateTask(e) {
                     {/* AÇÃO DO CLIENTE: Pagar Conta */}
                     {isClient && !isIncome && (
                       <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 12, marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
-                         {/* Usa navegação via hash para manter o SPA rápido */}
                          <button onClick={() => window.location.hash = '#/app/financeiro'} style={{ background: '#38a169', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: '0.2s', boxShadow: '0 2px 6px rgba(56,161,105,0.3)' }}>
                             Pagar no Financeiro <ArrowRight size={16} />
                          </button>
@@ -377,30 +378,18 @@ async function handleCreateTask(e) {
                 </select>
               </FormGroup>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-<FormGroup>
-  <label>Data de Vencimento</label>
-  <input 
-    type="date" 
-    min={todayStr} /* 🔥 IMPEDE PRAZOS RETROATIVOS */
-    value={form.dueDate} 
-    onChange={e => setForm({...form, dueDate: e.target.value})} 
-    required 
-  />
-</FormGroup>
-<div style={{ background: '#f7fafc', border: '1px solid #edf2f7', padding: '16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: '#2d3748' }}>
-    <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} style={{ width: '18px', height: '18px' }} />
-    <Repeat size={18} color="#3182ce" /> Tornar esta obrigação recorrente (Mensal)
-  </label>
-  {isRecurring && (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '26px' }}>
-      <span style={{ fontSize: '13px', color: '#4a5568' }}>Gerar prazos para os próximos</span>
-      <input type="number" min="2" max="60" value={installments} onChange={(e) => setInstallments(e.target.value)} style={{ width: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
-      <span style={{ fontSize: '13px', color: '#4a5568' }}>meses</span>
-    </div>
-  )}
-</div>
+              <FormRow>
+                <FormGroup>
+                  <label>Data de Vencimento</label>
+                  <input 
+                    type="date" 
+                    min={todayStr} 
+                    value={form.dueDate} 
+                    onChange={e => setForm({...form, dueDate: e.target.value})} 
+                    required 
+                  />
+                </FormGroup>
+                
                 <FormGroup>
                   <label>Prioridade</label>
                   <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
@@ -410,6 +399,20 @@ async function handleCreateTask(e) {
                     <option value="URGENTE">Urgente</option>
                   </select>
                 </FormGroup>
+              </FormRow>
+
+              <div style={{ background: '#f7fafc', border: '1px solid #edf2f7', padding: '16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, color: '#2d3748' }}>
+                  <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                  <Repeat size={18} color="#3182ce" /> Tornar esta obrigação recorrente (Mensal)
+                </label>
+                {isRecurring && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '26px' }}>
+                    <span style={{ fontSize: '13px', color: '#4a5568' }}>Gerar prazos para os próximos</span>
+                    <input type="number" min="2" max="60" value={installments} onChange={(e) => setInstallments(e.target.value)} style={{ width: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e0' }} />
+                    <span style={{ fontSize: '13px', color: '#4a5568' }}>meses</span>
+                  </div>
+                )}
               </div>
 
               <FormGroup>
