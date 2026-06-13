@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as transactionController from "../controllers/transaction.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
-import { upload } from "../config/multer.js";
+import upload from "../config/multer.js";
 import { PrismaClient } from "@prisma/client";
 
 const router = Router();
