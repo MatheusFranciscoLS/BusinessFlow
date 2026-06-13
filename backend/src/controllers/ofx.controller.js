@@ -1,23 +1,19 @@
+import fs from "fs";
+
 export async function parse(req, res) {
   try {
-    if (!req.file || !req.file.buffer) {
-      return res
-        .status(400)
-        .json({ error: "Ficheiro OFX não recebido na memória do servidor." });
+    // 🔥 Agora ele verifica o path (caminho no disco) em vez do buffer!
+    if (!req.file || !req.file.path) {
+      return res.status(400).json({ error: "Ficheiro OFX não recebido." });
     }
 
-    // 🔥 Bancos no Brasil usam frequentemente o formato Latin1 (ISO-8859-1)
-    const content = req.file.buffer.toString("latin1");
+    // Lê o ficheiro do disco
+    const content = fs.readFileSync(req.file.path, "latin1");
     const transactions = [];
-
-    // A forma mais segura de ler OFX sem bibliotecas: Quebrar o texto por blocos brutos
     const blocks = content.split(/<STMTTRN>/i);
 
-    // O índice 0 é o cabeçalho do banco, iteramos a partir do índice 1
     for (let i = 1; i < blocks.length; i++) {
       const block = blocks[i];
-
-      // Função auxiliar super resiliente: extrai as tags independentemente da quebra de linha
       const extract = (tag) => {
         const match = block.match(new RegExp(`<${tag}>([^<\\r\\n]+)`, "i"));
         return match ? match[1].trim() : null;
@@ -31,32 +27,36 @@ export async function parse(req, res) {
         const year = dateRaw.substring(0, 4);
         const month = dateRaw.substring(4, 6);
         const day = dateRaw.substring(6, 8);
-
-        // Garante que a vírgula vira ponto antes de converter para número
         const amount = parseFloat(amountRaw.replace(",", "."));
 
         transactions.push({
           id: "tx-" + Math.random().toString(36).substr(2, 9),
           type: amount >= 0 ? "entrada" : "saida",
-          date: new Date(`${year}-${month}-${day}T12:00:00Z`), // Meio-dia UTC para evitar bug de fuso
+          date: new Date(`${year}-${month}-${day}T12:00:00Z`),
           amount: Math.abs(amount),
           description: memo || "Movimento Bancário",
         });
       }
     }
 
+    // 🔥 HIGIENE DO SERVIDOR: Apaga o ficheiro OFX do disco porque já não precisamos dele!
+    fs.unlinkSync(req.file.path);
+
     if (transactions.length === 0) {
       return res
         .status(400)
-        .json({
-          error: "Nenhuma transação financeira encontrada neste ficheiro.",
-        });
+        .json({ error: "Nenhuma transação encontrada neste ficheiro." });
     }
 
     return res.json(transactions);
   } catch (error) {
     console.error("ERRO CRÍTICO NO OFX:", error);
-    // 🔥 Devolve o erro EXATO para o Front-end para sabermos o que partiu
+
+    // 🔥 Se der erro, garante que o ficheiro é apagado na mesma para não fazer lixo!
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
     return res
       .status(500)
       .json({ error: "Falha no motor de leitura: " + error.message });
