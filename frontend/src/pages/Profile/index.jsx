@@ -8,7 +8,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   Container, Header, ProfileCard, AvatarSection, FormGrid, FormGroup, ActionButton,
-  SectionTitle, CompanyList, CompanyItem, AddButton, ModalOverlay, ModalContent, ModalActions
+  SectionTitle, CompanyList, CompanyItem, AddButton, ModalOverlay, ModalContent, ModalActions,
+  FormRow
 } from './styles';
 import { maskCPFOrCNPJ } from '../../utils/masks';
 
@@ -244,7 +245,7 @@ export default function Profile() {
                 <Shield size={20} color="#38a169" />
                 Segurança do Gestor (Seu Login)
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+<FormRow $gap="20px">
                   <FormGroup>
                     <label>Nome Completo</label>
                     <input value={name} onChange={e => setName(e.target.value)} required />
@@ -261,8 +262,8 @@ export default function Profile() {
                       style={{ background: '#f7fafc', cursor: 'not-allowed' }} 
                     />
                   </FormGroup>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginTop: 20, paddingTop: 20, borderTop: '1px dashed #e2e8f0' }}>
+              </FormRow>
+<FormRow $gap="20px" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed #e2e8f0' }}>
                   <FormGroup>
                     <label>Senha Atual (Deixe em branco para manter)</label>
                     <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="••••••" />
@@ -271,7 +272,7 @@ export default function Profile() {
                     <label>Nova Senha</label>
                     <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••" />
                   </FormGroup>
-              </div>
+              </FormRow>
             </div>
           </FormGrid>
 
@@ -363,9 +364,9 @@ export default function Profile() {
       )}
 
       {/* 🔥 MODAL AVANÇADO DE GESTÃO DE ACESSOS (RBAC) */}
-      {activeCompanyForAccess && (
+{activeCompanyForAccess && (
         <ModalOverlay>
-          <ModalContent style={{ maxWidth: 650, background: '#f8fafc', padding: '40px' }}>
+          <ModalContent style={{ maxWidth: 650, background: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
                <div>
                  <h2 style={{ margin: '0 0 8px 0', color: '#1a202c', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -423,7 +424,9 @@ export default function Profile() {
                     <label>Nome do Sócio / Funcionário</label>
                     <input value={accessForm.name} onChange={e => setAccessForm({...accessForm, name: e.target.value})} required placeholder="Ex: João da Silva" />
                   </FormGroup>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  
+                  {/* 🔥 A ÚLTIMA MÁGICA: Formulário de nova pessoa adaptável */}
+                  <FormRow $gap="16px">
                     <FormGroup>
                       <label>E-mail de Login</label>
                       <input type="email" value={accessForm.email} onChange={e => setAccessForm({...accessForm, email: e.target.value})} required placeholder="cliente@email.com" />
@@ -432,7 +435,8 @@ export default function Profile() {
                       <label>Definir Senha Inicial</label>
                       <input type="password" value={accessForm.password} onChange={e => setAccessForm({...accessForm, password: e.target.value})} required placeholder="Mínimo 6 caracteres" />
                     </FormGroup>
-                  </div>
+                  </FormRow>
+
                 </FormGrid>
                 <ModalActions style={{ marginTop: 24 }}>
                   <button type="submit" className="save" style={{ background: '#805ad5', width: '100%', padding: '16px', fontSize: 16 }}>

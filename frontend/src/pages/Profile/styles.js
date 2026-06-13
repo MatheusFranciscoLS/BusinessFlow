@@ -28,8 +28,8 @@ export const ProfileCard = styled.div`
   border: 1px solid #edf2f7;
   padding: 32px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-  @media (max-width: 500px) {
-    padding: 20px;
+  @media (max-width: 768px) {
+    padding: 20px; /* 🔥 MOBILE: Menos espaçamento lateral */
   }
 `;
 
@@ -44,6 +44,17 @@ export const FormGrid = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
+`;
+
+/* 🔥 MÁGICA 1: O nosso empilhador de formulários inteligente */
+export const FormRow = styled.div`
+  display: grid;
+  grid-template-columns: ${(props) => props.$columns || "1fr 1fr"};
+  gap: ${(props) => props.$gap || "16px"};
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr; /* Empilha os campos um por cima do outro no mobile */
+  }
 `;
 
 export const FormGroup = styled.div`
@@ -65,6 +76,7 @@ export const FormGroup = styled.div`
     font-size: 14px;
     outline: none;
     transition: 0.2s;
+    width: 100%;
     &:focus {
       border-color: #3182ce;
     }
@@ -84,11 +96,14 @@ export const ActionButton = styled.button`
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
-
   &:hover {
     background: #2c5282;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(49, 130, 206, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    width: 100%; /* 🔥 MOBILE: Botões de gravação esticam à largura total */
   }
 `;
 
@@ -104,7 +119,8 @@ export const SectionTitle = styled.h2`
 
 export const CompanyList = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  /* 🔥 MÁGICA 2: Reduzido de 320px para 280px para caber nos ecrãs mais estreitos! */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 `;
 
@@ -118,7 +134,6 @@ export const CompanyItem = styled.div`
   border: 1px solid #edf2f7;
   transition: all 0.2s;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-
   &:hover {
     border-color: #cbd5e0;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
@@ -142,7 +157,6 @@ export const AddButton = styled.button`
   cursor: pointer;
   transition: 0.2s;
   font-size: 16px;
-
   &:hover {
     border-color: #3182ce;
     color: #3182ce;
@@ -180,6 +194,11 @@ export const ModalContent = styled.div`
     background-color: #cbd5e0;
     border-radius: 4px;
   }
+
+  /* 🔥 MÁGICA 3: Reduz muito o padding interno do Modal para não esmagar conteúdo no Mobile */
+  @media (max-width: 768px) {
+    padding: 24px 20px !important;
+  }
 `;
 
 export const ModalActions = styled.div`
@@ -187,7 +206,9 @@ export const ModalActions = styled.div`
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-
+  @media (max-width: 768px) {
+    flex-direction: column-reverse; /* 🔥 MOBILE: Botão salvar fica em cima, cancelar em baixo */
+  }
   button {
     padding: 12px 24px;
     border-radius: 8px;
@@ -195,8 +216,10 @@ export const ModalActions = styled.div`
     cursor: pointer;
     border: none;
     transition: 0.2s;
+    @media (max-width: 768px) {
+      width: 100%;
+    }
   }
-
   .cancel {
     background: #edf2f7;
     color: #4a5568;
