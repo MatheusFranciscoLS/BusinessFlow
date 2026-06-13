@@ -65,9 +65,11 @@ export const Sidebar = styled.div`
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+
   @media (max-width: 1024px) {
     width: 100%;
-    height: 400px;
+    height: calc(100vh - 180px); /* Ocupa a tela elegantemente */
+    display: ${(props) => (props.$hasSelectedTicket ? "none" : "flex")};
   }
 `;
 
@@ -115,6 +117,11 @@ export const ChatArea = styled.div`
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+
+  @media (max-width: 1024px) {
+    display: ${(props) => (props.$hasSelectedTicket ? "flex" : "none")};
+    height: calc(100vh - 140px); /* Ajusta a altura para não cortar o teclado */
+  }
 `;
 
 export const MessageBubble = styled.div`

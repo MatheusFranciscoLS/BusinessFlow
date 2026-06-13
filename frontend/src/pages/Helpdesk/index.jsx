@@ -147,7 +147,7 @@ export default function Helpdesk() {
       ) : (
         <Layout>
           {/* PAINEL ESQUERDO: Lista de Tickets */}
-          <Sidebar>
+          <Sidebar $hasSelectedTicket={!!selectedTicket}>
             <div style={{ padding: '20px', borderBottom: '1px solid #edf2f7', background: '#f8fafc' }}>
               <h3 style={{ margin: 0, fontSize: 16, color: '#2d3748', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <MessageSquare size={18} /> Histórico de Conversas
@@ -190,7 +190,7 @@ export default function Helpdesk() {
           </Sidebar>
 
           {/* PAINEL DIREITO: Área de Chat */}
-          <ChatArea>
+          <ChatArea $hasSelectedTicket={!!selectedTicket}>
             {!selectedTicket ? (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>
                 <MessageSquare size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
