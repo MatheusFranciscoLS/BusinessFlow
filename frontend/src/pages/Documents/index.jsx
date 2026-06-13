@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 
 import {
-  Container, Header, ActionButton, SearchBar, SelectFilter,
-  DocsGrid, DocCard, ModalOverlay, ModalContent, FormGroup
+  Container, Header, ActionButton, SearchBar, SelectFilter, FilterContainer,
+  DocsGrid, DocCard, ModalOverlay, ModalContent, FormGroup, ModalActions
 } from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
@@ -22,15 +22,11 @@ export default function Documents() {
   const isClient = user?.role === 'CLIENT';
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
   
-  // 🔥 SEGURANÇA NO SERVIDOR: A URL carrega a identidade para o Interceptor
   const queryParams = queryCompany 
     ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
     : null;
 
-  // O Gestor puxa a lista de clientes para poder anexar contratos. O Cliente não precisa.
   const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
-  
-  // Aqui puxamos os documentos, já filtrados perfeitamente pelo Back-end
   const { data: documents, mutate } = useSWR(queryParams ? `/documents${queryParams}` : null, fetcher);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,10 +34,8 @@ export default function Documents() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', category: 'Societário (Contrato Social)', clientId: '', file: null });
 
-  // Apenas filtro visual para a barra de pesquisa
   const filteredDocs = useMemo(() => {
     if (!documents) return [];
-
     return documents.filter(doc => {
       const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (doc.client && doc.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -51,11 +45,9 @@ export default function Documents() {
   }, [documents, searchTerm, filterCategory]);
 
   async function handleUpload(e) {
-
-    // Limite de 5MB (5 * 1024 * 1024 bytes)
-if (form.file && form.file.size > 5242880) {
-  return toast.error("O ficheiro é muito pesado! O limite máximo é de 5MB.");
-}
+    if (form.file && form.file.size > 5242880) {
+      return toast.error("O ficheiro é muito pesado! O limite máximo é de 5MB.");
+    }
 
     e.preventDefault();
     if (!form.file) return toast.error("Anexe um ficheiro.");
@@ -83,9 +75,9 @@ if (form.file && form.file.size > 5242880) {
   async function handleConfirmRead(id) {
     const tId = toast.loading("A confirmar leitura...");
     try {
-      await api.put(`/documents/${id}/read`); // Rota nova que você criará no back-end
+      await api.put(`/documents/${id}/read`); 
       toast.success("Leitura confirmada com sucesso!", { id: tId });
-      mutate(); // Recarrega os docs
+      mutate(); 
     } catch (err) {
       toast.error("Erro ao confirmar leitura.", { id: tId });
     }
@@ -116,19 +108,20 @@ if (form.file && form.file.size > 5242880) {
         )}
       </Header>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
+      {/* 🔥 FILTROS QUE ESTICAM NO MOBILE */}
+      <FilterContainer>
         <SearchBar>
           <Search size={18} color="#a0aec0" style={{ marginRight: 8 }} />
           <input placeholder="Procurar por nome do documento ou cliente..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </SearchBar>
-        <div style={{ display: 'flex', alignItems: 'center', background: 'white', padding: '0 16px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+        <div className="select-wrapper">
           <Filter size={18} color="#718096" style={{ marginRight: 8 }} />
-          <SelectFilter value={filterCategory} onChange={e => setFilterCategory(e.target.value)} style={{ border: 'none', padding: 0 }}>
+          <SelectFilter value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
             <option value="">Todas as Pastas</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </SelectFilter>
         </div>
-      </div>
+      </FilterContainer>
 
       {!documents ? (
         <p style={{ color: '#a0aec0', textAlign: 'center' }}>A abrir o cofre...</p>
@@ -139,13 +132,11 @@ if (form.file && form.file.size > 5242880) {
           <p style={{ color: '#a0aec0', margin: 0 }}>{isClient ? "O seu contador ainda não partilhou documentos consigo." : "Nenhum documento encontrado. Clique em Novo Documento para começar."}</p>
         </div>
       ) : (
-<DocsGrid>
+        <DocsGrid>
           {filteredDocs.map(doc => {
-            // 🔥 LÓGICA DE DETEÇÃO DO TIPO DE FICHEIRO
             const isPdf = doc.fileUrl?.toLowerCase().includes('.pdf') || doc.name.toLowerCase().includes('.pdf');
             const isImage = doc.fileUrl?.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null || doc.name.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null;
             
-            // Atribui cores Premium com base no ficheiro
             const iconBg = isPdf ? '#fff5f5' : isImage ? '#faf5ff' : '#ebf8ff';
             const iconColor = isPdf ? '#e53e3e' : isImage ? '#805ad5' : '#3182ce';
             const IconComponent = isImage ? ImageIcon : FileText;
@@ -153,7 +144,6 @@ if (form.file && form.file.size > 5242880) {
             return (
               <DocCard key={doc.id}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-                  {/* Ícone Dinâmico e Colorido */}
                   <div style={{ background: iconBg, padding: 12, borderRadius: 8, color: iconColor }}>
                     <IconComponent size={24} />
                   </div>
@@ -163,14 +153,14 @@ if (form.file && form.file.size > 5242880) {
                   </div>
                 </div>
                 
-                <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#718096' }}>
-                    {!isClient && doc.client && <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}><Building2 size={12} /> {doc.client.fullName}</div>}
+                {/* 🔥 RODAPÉ À PROVA DE MOBILE */}
+                <div className="card-footer">
+                  <div className="footer-info">
+                    {!isClient && doc.client && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Building2 size={12} /> {doc.client.fullName}</span>}
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{new Date(doc.createdAt).toLocaleDateString('pt-BR')}</span>
                       
-                      {/* 🔥 O "X-9" DO ESCRITÓRIO: Etiqueta de Leitura Exclusiva para o Gestor */}
                       {!isClient && (
                         doc.readAt ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fff4', color: '#2f855a', padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 10 }} title={`Lido em ${new Date(doc.readAt).toLocaleString('pt-BR')}`}>
@@ -185,8 +175,7 @@ if (form.file && form.file.size > 5242880) {
                     </div>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {/* Botões de Ação */}
+                  <div className="footer-actions">
                     {isClient && !doc.readAt && (
                       <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer', transition: '0.2s' }} title="Confirmar leitura">
                         <CheckCircle size={18} />
@@ -248,10 +237,11 @@ if (form.file && form.file.size > 5242880) {
                 </div>
               </FormGroup>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 32 }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ background: '#edf2f7', color: '#4a5568', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" style={{ background: '#3182ce', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 600, cursor: 'pointer' }}>Salvar no Cofre</button>
-              </div>
+              {/* 🔥 BOTÕES DE AÇÃO EMPILHÁVEIS NO MOBILE */}
+              <ModalActions>
+                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
+                <button type="submit" className="save">Salvar no Cofre</button>
+              </ModalActions>
             </form>
           </ModalContent>
         </ModalOverlay>
