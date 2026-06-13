@@ -32,22 +32,41 @@ export async function createTicket(data) {
 }
 
 // 🔥 Fechadura Zero Trust
-export async function getTickets(companyId, role, userEmail) {
+export async function getTickets(
+  companyId,
+  role,
+  userEmail,
+  page = 1,
+  limit = 50,
+) {
   let where = { companyId };
 
   if (role === "CLIENT") {
     const clientRecord = await prisma.client.findFirst({
       where: { companyId, email: userEmail },
     });
-    if (!clientRecord) return []; // Bloqueio total
+    // Se não for cliente autorizado, devolve a estrutura vazia corretamente
+    if (!clientRecord) return { tickets: [], total: 0 };
     where.clientId = clientRecord.id;
   }
 
-  return prisma.ticket.findMany({
-    where,
-    include: { client: true, messages: { orderBy: { createdAt: "asc" } } },
-    orderBy: { updatedAt: "desc" },
-  });
+  const skip = (page - 1) * limit;
+  const take = limit;
+
+  // Busca os chamados e o total exato ao mesmo tempo
+  const [tickets, total] = await Promise.all([
+    prisma.ticket.findMany({
+      where,
+      include: { client: true, messages: { orderBy: { createdAt: "asc" } } },
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.ticket.count({ where }),
+  ]);
+
+  // Devolve um objeto com a lista e o total para o Controller ler
+  return { tickets, total };
 }
 
 export async function addMessage(ticketId, data) {

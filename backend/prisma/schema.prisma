@@ -84,9 +84,10 @@ model Client {
   tasks             Task[]
   users             User[]        // Usuários atrelados a este cliente
   
-  createdAt         DateTime      @default(now())
+createdAt         DateTime      @default(now())
 
-  @@index([companyId]) // ⚡ Turbo de busca
+  @@index([companyId]) 
+  @@index([companyId, status])
 }
 
 // ==========================================
@@ -156,10 +157,12 @@ model Task {
   companyId   String   
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([companyId])
+  @@index([companyId, status]) 
+  @@index([companyId, dueDate])
 }
 
 // ==========================================
@@ -183,10 +186,11 @@ model Ticket {
   
   messages        TicketMessage[]
   
-  createdAt       DateTime        @default(now())
+reatedAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   @@index([companyId])
+  @@index([companyId, status])
 }
 
 model TicketMessage {

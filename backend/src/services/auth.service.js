@@ -140,37 +140,37 @@ export async function sendForgotPasswordEmail(email) {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error("Usuário não encontrado.");
 
-  const testAccount = await nodemailer.createTestAccount();
+  // 🔥 Substituímos o "Ethereal" (falso) pelo seu Servidor Real (Gmail)
   const transporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    secure: false,
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 
-  const info = await transporter.sendMail({
-    from: '"BusinessFlow" <noreply@businessflow.com>',
+const tokenDeSeguranca = "chaveultraseguraparajwt";
+  
+  const resetLink = `https://flowbusiness.vercel.app/#/reset-password?email=${encodeURIComponent(email)}&token=${tokenDeSeguranca}`;
+
+  await transporter.sendMail({
+    from: `"BusinessFlow Segurança" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Recuperação de Senha - BusinessFlow",
-    text: `Olá ${user.name}, acesse http://localhost:5173/reset-password para redefinir sua senha.`,
     html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2>Olá, ${user.name}!</h2>
-        <p>Recebemos uma solicitação para redefinir sua senha no painel administrativo.</p>
-        <p>Clique no botão abaixo para prosseguir:</p>
-        <a href="http://localhost:5173/reset-password" style="background: #3182ce; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Redefinir Senha</a>
+      <div style="font-family: Arial, sans-serif; padding: 24px; color: #2d3748; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <h2 style="color: #3182ce; margin-top: 0;">Olá, ${user.name}!</h2>
+        <p>Recebemos uma solicitação para redefinir a sua senha de acesso à plataforma.</p>
+        <p>Clique no botão abaixo para escolher uma nova senha segura:</p>
+        <a href="${resetLink}" style="background: #3182ce; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 16px; font-weight: bold;">Redefinir Minha Senha</a>
+        <p style="margin-top: 32px; font-size: 12px; color: #a0aec0;">Se não pediu esta alteração, ignore este e-mail.</p>
       </div>
     `,
   });
 
-  console.log(
-    "🔗 Caixa de Entrada de Teste Ethereal disponível em:",
-    nodemailer.getTestMessageUrl(info),
-  );
-  return { message: "Email enviado com sucesso" };
+  return { message: "Email de recuperação enviado com sucesso!" };
 }
 
 export async function resetPassword(email, token, newPassword) {

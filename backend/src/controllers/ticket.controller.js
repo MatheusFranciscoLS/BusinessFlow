@@ -39,12 +39,28 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    const { role, userEmail } = req.query;
-    const tickets = await ticketService.getTickets(
+    // 1. Pegamos a página e o limite da URL
+    const { role, userEmail, page = 1, limit = 50 } = req.query;
+
+    // 2. Passamos tudo para o Service (que vai fazer o trabalho sujo)
+    const { tickets, total } = await ticketService.getTickets(
       req.companyId,
       role,
       userEmail,
+      Number(page),
+      Number(limit),
     );
+
+    // 3. Colocamos o total de itens escondido no Cabeçalho (Headers)
+    res.set("X-Total-Count", total);
+    res.set("X-Total-Pages", Math.ceil(total / limit));
+    res.set("X-Current-Page", page);
+    res.set(
+      "Access-Control-Expose-Headers",
+      "X-Total-Count, X-Total-Pages, X-Current-Page",
+    );
+
+    // 4. Devolvemos a array limpa para o Front-end não quebrar
     return res.json(tickets);
   } catch (err) {
     return res.status(500).json({ error: "Erro ao buscar chamados." });

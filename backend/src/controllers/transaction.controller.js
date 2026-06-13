@@ -100,7 +100,8 @@ export async function create(req, res) {
 
 export async function getAll(req, res) {
   try {
-    const { role, userEmail, month, year } = req.query;
+    // 🔥 1. Capturamos page e limit da URL (Por defeito: Traz os últimos 50)
+    const { role, userEmail, month, year, page = 1, limit = 50 } = req.query;
     const companyId = req.companyId;
 
     let whereClause = { companyId: companyId };
@@ -123,12 +124,33 @@ export async function getAll(req, res) {
       whereClause.date = { gte: startDate, lte: endDate };
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: whereClause,
-      include: { client: { select: { fullName: true } } },
-      orderBy: { date: "desc" },
-    });
+    // 🔥 2. Matemática da Paginação
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
 
+    // 🔥 3. Execução Paralela: Busca os 50 registos E conta o total ao mesmo tempo
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where: whereClause,
+        include: { client: { select: { fullName: true } } },
+        orderBy: { date: "desc" },
+        skip, // Salta as páginas anteriores
+        take, // Pega apenas o limite
+      }),
+      prisma.transaction.count({ where: whereClause }),
+    ]);
+
+    // 🔥 4. Injeta os metadados nos Headers (Invisível, mas pronto para o Front-end ler no futuro)
+    res.set("X-Total-Count", total);
+    res.set("X-Total-Pages", Math.ceil(total / take));
+    res.set("X-Current-Page", page);
+    // Para que o navegador consiga ler estes headers, precisamos de expô-los:
+    res.set(
+      "Access-Control-Expose-Headers",
+      "X-Total-Count, X-Total-Pages, X-Current-Page",
+    );
+
+    // Devolvemos a array diretamente para não crashar os .map() do React!
     return res.status(200).json(transactions);
   } catch (err) {
     return res.status(400).json({ error: err.message });

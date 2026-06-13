@@ -51,7 +51,7 @@ export const createTask = async (req, res) => {
 
 export const getTasks = async (req, res) => {
   try {
-    const { role, userEmail } = req.query;
+    const { role, userEmail, page = 1, limit = 50 } = req.query;
     let where = { companyId: req.companyId };
 
     if (role === "CLIENT") {
@@ -62,11 +62,28 @@ export const getTasks = async (req, res) => {
       where.clientId = clientRecord.id;
     }
 
-    const tasks = await prisma.task.findMany({
-      where,
-      include: { client: { select: { fullName: true } } },
-      orderBy: { dueDate: "asc" },
-    });
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const [tasks, total] = await Promise.all([
+      prisma.task.findMany({
+        where,
+        include: { client: { select: { fullName: true } } },
+        orderBy: { dueDate: "asc" },
+        skip,
+        take,
+      }),
+      prisma.task.count({ where }),
+    ]);
+
+    res.set("X-Total-Count", total);
+    res.set("X-Total-Pages", Math.ceil(total / take));
+    res.set("X-Current-Page", page);
+    res.set(
+      "Access-Control-Expose-Headers",
+      "X-Total-Count, X-Total-Pages, X-Current-Page",
+    );
+
     return res.json(tasks);
   } catch (err) {
     return res.status(500).json({ error: "Erro ao buscar as tarefas." });
