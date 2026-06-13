@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   Container, Header, Toolbar, SearchBar, ActionButton,
   Grid, Card, Badge, ModalOverlay, ModalContent, FormGroup, ModalActions,
-  SummaryGrid, SummaryCard, Avatar
+  SummaryGrid, SummaryCard, Avatar, FormRow
 } from './styles';
 
 import { maskCPFOrCNPJ, maskPhone, maskCurrency, unmaskCurrency } from '../../utils/masks';
@@ -290,14 +290,14 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
               {editingId ? 'Editar Cadastro' : 'Cadastrar Novo Cliente'}
             </h2>
             
-            <form onSubmit={handleSave}>
+<form onSubmit={handleSave}>
               <FormGroup>
                 <label>Razão Social / Nome Completo *</label>
                 <input required value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} placeholder="Ex: Clínica Sorriso LTDA" />
               </FormGroup>
 
-<div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
-                
+              {/* 🔥 MÁGICA 1: O bloco de CNPJ responsivo */}
+              <FormRow $columns="1fr 2fr">
                 <FormGroup>
                   <label>CNPJ da Empresa *</label>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -327,12 +327,13 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
                 </FormGroup>
 
                 <FormGroup>
-                  <label>Razão Social / Nome Fantasia *</label>
-                  <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: TechX Inovações LTDA" />
+                  <label>Nome Fantasia</label>
+                  <input value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required placeholder="Ex: TechX Inovações" />
                 </FormGroup>
-              </div>
+              </FormRow>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {/* 🔥 MÁGICA 2: Honorários e Status empilhados no mobile */}
+              <FormRow>
                 <FormGroup>
                   <label>Honorário Mensal (R$)</label>
                   <input type="text" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: maskCurrency(e.target.value)})} placeholder="Ex: 1.500,00" />
@@ -345,30 +346,31 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
                     <option value="SUSPENSO">🛑 Suspenso / Cancelado</option>
                   </select>
                 </FormGroup>
-              </div>
+              </FormRow>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {/* 🔥 MÁGICA 3: Contatos empilhados no mobile */}
+              <FormRow>
                 <FormGroup>
                   <label>E-mail Principal</label>
-                  {/* 🔥 HIGIENIZAÇÃO DE E-MAIL EM TEMPO REAL */}
                   <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value.trim().toLowerCase()})} placeholder="contato@empresa.com" />
                 </FormGroup>
                 <FormGroup>
                   <label>Telefone / WhatsApp</label>
                   <input value={form.phone} onChange={e => setForm({...form, phone: maskPhone(e.target.value)})} placeholder="(11) 90000-0000" maxLength={15} />
                 </FormGroup>
-              </div>
+              </FormRow>
 
               <FormGroup style={{ marginTop: 8, background: '#f7fafc', padding: 16, borderRadius: 8, border: '1px dashed #cbd5e0' }}>
+                {/* O conteúdo da data de certificado mantém-se igual! */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#dd6b20' }}>
                   <CalendarClock size={16} /> Vencimento do Certificado (e-CNPJ)
                 </label>
                 <input 
                   type="date" 
-                  min={todayStr} /* 🔥 AQUI ESTÁ A PROTEÇÃO CONTRA O PASSADO */
+                  min={todayStr}
                   value={form.certificateExpiry} 
                   onChange={e => setForm({...form, certificateExpiry: e.target.value})} 
-                  style={{ width: '100%', maxWidth: 200 }}
+                  style={{ width: '100%', maxWidth: '100%' }} /* Alterado para esticar bem no mobile */
                 />
                 <span style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
                   Preencha para o sistema criar alertas automáticos no Kanban 30 dias antes de vencer.
