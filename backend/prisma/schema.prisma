@@ -57,6 +57,7 @@ model Company {
   documents    Document[]
   tasks        Task[]
   auditLogs    AuditLog[]    // Relação com a Caixa Preta
+  apiKeys   ApiKey[]
   
   createdAt    DateTime      @default(now())
 }
@@ -229,4 +230,22 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@index([companyId, createdAt])
+}
+
+// ==========================================
+// 🔑 API PÚBLICA & INTEGRAÇÕES
+// ==========================================
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String   // Ex: "Integração Zapier", "ERP Financeiro"
+  key       String   @unique // A chave secreta (ex: bf_live_8f7d9a...)
+  
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  lastUsed  DateTime?
+  isActive  Boolean  @default(true)
+
+  @@index([companyId])
 }

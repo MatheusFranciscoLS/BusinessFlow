@@ -1,6 +1,6 @@
 import React, { lazy } from 'react';
 // 👇 AQUI ESTAVA O ERRO! Adicionei o 'Navigate' na importação!
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom"; 
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
@@ -21,6 +21,7 @@ const Dre = lazy(() => import('../pages/Dre'));
 const Financial = lazy(() => import('../pages/Financial'));
 const Profile = lazy(() => import('../pages/Profile'));
 const Audit = lazy(() => import('../pages/Audit'));
+const ApiKeys = lazy(() => import('../pages/ApiKeys'));
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -47,15 +48,15 @@ const AppRoutes = () => {
           {/* ================================================== */}
           {/* GRUPO 1: PÁGINAS PÚBLICAS (SEM LAYOUT)             */}
           {/* ================================================== */}
-          
+
           <Route path="/" element={
             <PublicRoute><Login /></PublicRoute>
           } />
-          
+
           <Route path="/register" element={
             <PublicRoute><Register /></PublicRoute>
           } />
-          
+
           <Route path="/forgot-password" element={
             <PublicRoute><ForgotPassword /></PublicRoute>
           } />
@@ -67,20 +68,21 @@ const AppRoutes = () => {
           {/* ================================================== */}
           {/* GRUPO 2: PÁGINAS DO SISTEMA (COM LAYOUT / SIDEBAR) */}
           {/* ================================================== */}
-          
+
           <Route path="/app" element={
             <PrivateRoute><Layout /></PrivateRoute>
           }>
-           <Route index element={<Dashboard />} />
-           <Route path="clientes" element={<Customers />} />
-           <Route path="servicos" element={<Dre />} />
-           <Route path="financeiro" element={<Financial />} />
-           <Route path="perfil" element={<Profile />} />
-           <Route path="helpdesk" element={<Helpdesk />} />
-           <Route path="documentos" element={<Documents />} />
-           <Route path="agenda" element={<Agenda />} />
-           <Route path="auditoria" element={<Audit />} />
-           
+            <Route index element={<Dashboard />} />
+            <Route path="apikeys" element={<ApiKeys />} />
+            <Route path="clientes" element={<Customers />} />
+            <Route path="servicos" element={<Dre />} />
+            <Route path="financeiro" element={<Financial />} />
+            <Route path="perfil" element={<Profile />} />
+            <Route path="helpdesk" element={<Helpdesk />} />
+            <Route path="documentos" element={<Documents />} />
+            <Route path="agenda" element={<Agenda />} />
+            <Route path="auditoria" element={<Audit />} />
+
           </Route>
 
         </Routes>

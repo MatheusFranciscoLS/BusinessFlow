@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import apiKeyRoutes from "./routes/apiKey.routes.js";
+import publicRoutes from "./routes/public.routes.js";
 
 dotenv.config();
 
@@ -68,6 +70,8 @@ app.use(
 // ==========================================
 
 app.use("/api", routes);
+app.use("/api/apikeys", apiKeyRoutes);
+app.use("/api/v1", publicRoutes);
 
 // ==========================================
 // 🪂 4. O PARAQUEDAS (Global Error Handler)

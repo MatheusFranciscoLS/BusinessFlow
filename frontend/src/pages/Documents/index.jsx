@@ -198,7 +198,6 @@ export default function Documents() {
                         ✍️ Assinar
                       </button>
                     ) : null}
-
                     {isClient && !doc.readAt && (
                       <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer', transition: '0.2s' }} title="Confirmar leitura">
                         <CheckCircle size={18} />
