@@ -1,23 +1,23 @@
 import React, { useState, Suspense } from 'react';
-import { Outlet } from 'react-router-dom'; 
-import { useAuth } from '../../contexts/AuthContext'; 
-import api from '../../services/api'; 
+import { Outlet } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import useSWR from 'swr';
-import { 
-  LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X, 
+import {
+  LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X,
   Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock, ShieldAlert
 } from 'lucide-react';
 
-import { 
-  Container, SidebarContainer, MainContent, Logo, NavMenu, 
+import {
+  Container, SidebarContainer, MainContent, Logo, NavMenu,
   StyledNavLink, LogoutButton, MobileHeader, HamburgerButton, Overlay,
-  CompanySelector 
+  CompanySelector
 } from './styles';
 
 const fetcher = (url) => api.get(url).then(res => res.data);
 
 export default function Layout() {
-  const { signOut, user, companies = [], selectedCompany, changeCompany } = useAuth(); 
+  const { signOut, user, companies = [], selectedCompany, changeCompany } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
@@ -27,14 +27,14 @@ export default function Layout() {
   const activeCompanyId = isClient ? user?.companyAccessId : selectedCompany?.id;
 
   // Consultas de Notificações (SWR)
-  const badgeQuery = user && activeCompanyId 
-    ? `/tickets/unread-count?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
+  const badgeQuery = user && activeCompanyId
+    ? `/tickets/unread-count?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}`
     : null;
   const { data: unreadData } = useSWR(badgeQuery, fetcher, { refreshInterval: 15000 });
   const helpdeskCount = unreadData?.count || 0;
 
-  const agendaQuery = user && activeCompanyId 
-    ? `/tasks/alerts?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}` 
+  const agendaQuery = user && activeCompanyId
+    ? `/tasks/alerts?companyId=${activeCompanyId}&role=${user.role}&userEmail=${user.email}`
     : null;
   const { data: agendaAlerts } = useSWR(agendaQuery, fetcher, { refreshInterval: 15000 });
   const agendaCount = agendaAlerts?.total || 0;
@@ -51,7 +51,7 @@ export default function Layout() {
       <SidebarContainer $isOpen={isOpen}>
         <div>
           <Logo>Business<span>Flow</span></Logo>
-          
+
           {!isClient && companies?.length > 0 && (
             <div style={{ marginBottom: 32 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontWeight: 700 }}>
@@ -62,8 +62,8 @@ export default function Layout() {
               </CompanySelector>
             </div>
           )}
-          
-<div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 40 }}>
             {/* 🔥 Borda azul iluminada e fundo de vidro */}
             <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #60a5fa', boxShadow: '0 0 10px rgba(96, 165, 250, 0.2)' }}>
               {user?.avatarUrl ? (
@@ -78,12 +78,12 @@ export default function Layout() {
             </div>
           </div>
 
-<NavMenu>
+          <NavMenu>
             {/* O "Dashboard" agora é o nosso Início universal */}
-            <StyledNavLink to="/app" end onClick={closeMenu}> 
+            <StyledNavLink to="/app" end onClick={closeMenu}>
               <LayoutDashboard size={20} /> Início
             </StyledNavLink>
-            
+
             {!isClient && (
               <StyledNavLink to="/app/clientes" onClick={closeMenu}>
                 <Users size={20} /> Clientes (CRM)
@@ -128,6 +128,11 @@ export default function Layout() {
             {!isClient && (
               <StyledNavLink to="/app/perfil" onClick={closeMenu}>
                 <Settings size={20} /> Configurações
+              </StyledNavLink>
+            )}
+            {!isClient && (
+              <StyledNavLink to="/app/apikeys" onClick={closeMenu}>
+                <Settings size={20} /> Chaves de API
               </StyledNavLink>
             )}
           </NavMenu>
