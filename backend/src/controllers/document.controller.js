@@ -97,3 +97,33 @@ export async function remove(req, res) {
     return res.status(400).json({ error: err.message });
   }
 }
+
+export async function sign(req, res) {
+  try {
+    // Captura o IP real de onde o cliente está a aceder
+    const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "IP Desconhecido";
+
+    // Pega o e-mail do cliente injetado pelo nosso middleware de segurança
+    const userEmail = req.query.userEmail;
+
+    const signedDoc = await documentService.signDocument(
+      req.companyId,
+      req.params.id,
+      userEmail,
+      ipAddress
+    );
+
+    // 🕵️ ESPIÃO: Grava na Caixa Preta que o documento tem valor legal agora
+    registerLog(
+      req.companyId,
+      { name: userEmail, role: "CLIENT" },
+      "UPDATE",
+      "COFRE DIGITAL",
+      `Assinou eletronicamente o documento: ${signedDoc.name} (IP: ${ipAddress})`
+    );
+
+    return res.status(200).json(signedDoc);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}

@@ -3,8 +3,8 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  FolderLock, UploadCloud, FileText, Download, Trash2, 
+import {
+  FolderLock, UploadCloud, FileText, Download, Trash2,
   Search, Filter, Folder, Building2, CheckCircle,
   Image as ImageIcon, Clock
 } from 'lucide-react';
@@ -21,9 +21,9 @@ export default function Documents() {
   const { user, selectedCompany } = useAuth();
   const isClient = user?.role === 'CLIENT';
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
-  
-  const queryParams = queryCompany 
-    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
+
+  const queryParams = queryCompany
+    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}`
     : null;
 
   const { data: clients } = useSWR(!isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
@@ -37,8 +37,8 @@ export default function Documents() {
   const filteredDocs = useMemo(() => {
     if (!documents) return [];
     return documents.filter(doc => {
-      const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (doc.client && doc.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (doc.client && doc.client.fullName.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = filterCategory === '' || doc.category === filterCategory;
       return matchesSearch && matchesCategory;
     });
@@ -75,9 +75,9 @@ export default function Documents() {
   async function handleConfirmRead(id) {
     const tId = toast.loading("A confirmar leitura...");
     try {
-      await api.put(`/documents/${id}/read`); 
+      await api.put(`/documents/${id}/read`);
       toast.success("Leitura confirmada com sucesso!", { id: tId });
-      mutate(); 
+      mutate();
     } catch (err) {
       toast.error("Erro ao confirmar leitura.", { id: tId });
     }
@@ -95,7 +95,20 @@ export default function Documents() {
     }
   }
 
-  const getFileUrl = (path) => `${api.defaults.baseURL.replace('/api', '')}${path}`;
+  async function handleSignDocument(id) {
+    if (!window.confirm("Ao assinar, será gerado um certificado legal com o seu IP. Deseja continuar?")) return;
+
+    const tId = toast.loading("A gerar hash de segurança...");
+    try {
+      await api.put(`/documents/${id}/sign`);
+      toast.success("Documento assinado com validade legal!", { id: tId });
+      mutate(); // Atualiza a tela automaticamente
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Erro ao assinar documento.", { id: tId });
+    }
+  }
+
+  const getFileUrl = (path) => `${api.defaults.baseURL.replace('/api', '')}${path}`; // Código existente
 
   return (
     <Container>
@@ -136,7 +149,7 @@ export default function Documents() {
           {filteredDocs.map(doc => {
             const isPdf = doc.fileUrl?.toLowerCase().includes('.pdf') || doc.name.toLowerCase().includes('.pdf');
             const isImage = doc.fileUrl?.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null || doc.name.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) != null;
-            
+
             const iconBg = isPdf ? '#fff5f5' : isImage ? '#faf5ff' : '#ebf8ff';
             const iconColor = isPdf ? '#e53e3e' : isImage ? '#805ad5' : '#3182ce';
             const IconComponent = isImage ? ImageIcon : FileText;
@@ -152,15 +165,15 @@ export default function Documents() {
                     <span style={{ fontSize: 11, fontWeight: 700, background: '#edf2f7', padding: '2px 8px', borderRadius: 12, color: '#4a5568' }}>{doc.category}</span>
                   </div>
                 </div>
-                
+
                 {/* 🔥 RODAPÉ À PROVA DE MOBILE */}
                 <div className="card-footer">
                   <div className="footer-info">
                     {!isClient && doc.client && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Building2 size={12} /> {doc.client.fullName}</span>}
-                    
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{new Date(doc.createdAt).toLocaleDateString('pt-BR')}</span>
-                      
+
                       {!isClient && (
                         doc.readAt ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fff4', color: '#2f855a', padding: '2px 8px', borderRadius: 12, fontWeight: 700, fontSize: 10 }} title={`Lido em ${new Date(doc.readAt).toLocaleString('pt-BR')}`}>
@@ -174,8 +187,18 @@ export default function Documents() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="footer-actions">
+                    {doc.isSigned ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f0fff4', color: '#2f855a', padding: '6px 12px', borderRadius: 16, fontWeight: 700, fontSize: 12, border: '1px solid #9ae6b4' }} title="Assinado Eletronicamente">
+                        <CheckCircle size={14} /> Assinado
+                      </span>
+                    ) : isClient ? (
+                      <button onClick={() => handleSignDocument(doc.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#3182ce', color: 'white', padding: '6px 12px', borderRadius: 6, fontWeight: 700, fontSize: 12, border: 'none', cursor: 'pointer', transition: '0.2s' }}>
+                        ✍️ Assinar
+                      </button>
+                    ) : null}
+
                     {isClient && !doc.readAt && (
                       <button onClick={() => handleConfirmRead(doc.id)} style={{ background: '#f0fff4', border: '1px solid #9ae6b4', padding: 8, borderRadius: 6, color: '#2f855a', cursor: 'pointer', transition: '0.2s' }} title="Confirmar leitura">
                         <CheckCircle size={18} />
@@ -185,7 +208,7 @@ export default function Documents() {
                     <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex', transition: '0.2s' }} title="Baixar/Visualizar">
                       <Download size={18} />
                     </a>
-                    
+
                     {!isClient && (
                       <button onClick={() => handleDelete(doc.id)} style={{ background: '#fff5f5', border: '1px solid #fed7d7', padding: 8, borderRadius: 6, color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }} title="Eliminar Documento">
                         <Trash2 size={18} />
@@ -205,10 +228,10 @@ export default function Documents() {
           <ModalContent>
             <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><UploadCloud color="#3182ce" /> Guardar Documento</h2>
             <form onSubmit={handleUpload}>
-              
+
               <FormGroup>
                 <label>Vincular a qual Cliente?</label>
-                <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})} required>
+                <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} required>
                   <option value="">Selecione o dono do documento...</option>
                   {clients?.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
                 </select>
@@ -216,12 +239,12 @@ export default function Documents() {
 
               <FormGroup>
                 <label>Nome do Ficheiro (Ex: Contrato Social 2026)</label>
-                <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
               </FormGroup>
 
               <FormGroup>
                 <label>Pasta / Categoria</label>
-                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </FormGroup>
@@ -229,8 +252,8 @@ export default function Documents() {
               <FormGroup style={{ marginTop: 16 }}>
                 <label>Anexar o PDF ou Imagem</label>
                 <div style={{ border: '2px dashed #cbd5e0', padding: '24px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
-                  <input type="file" onChange={e => setForm({...form, file: e.target.files[0]})} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top:0, left:0, width:'100%', height:'100%', cursor:'pointer' }} required />
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', color: '#4a5568' }}>
+                  <input type="file" onChange={e => setForm({ ...form, file: e.target.files[0] })} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }} required />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#4a5568' }}>
                     <UploadCloud size={28} style={{ marginBottom: 8, color: '#3182ce' }} />
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{form.file ? form.file.name : "Clique ou arraste o ficheiro para aqui"}</span>
                   </div>

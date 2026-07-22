@@ -89,4 +89,10 @@ api.interceptors.response.use(
   },
 );
 
+// Função para assinar o documento eletronicamente
+export async function signDocument(documentId) {
+  const response = await api.put(`/documents/${documentId}/sign`);
+  return response.data;
+}
+
 export default api;

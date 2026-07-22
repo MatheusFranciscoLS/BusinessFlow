@@ -136,6 +136,11 @@ model Document {
   createdAt   DateTime @default(now())
   readAt      DateTime?
 
+  isSigned      Boolean   @default(false)
+  signedAt      DateTime?
+  signedByIp    String?
+  signatureHash String?   // O código único inquebrável que comprova a assinatura
+
   @@index([companyId])
   @@index([clientId])
 }

@@ -63,6 +63,7 @@ router.put("/:id/read", async (req, res) => {
 });
 
 router.post("/", upload.single("file"), documentController.create);
+router.put("/:id/sign", documentController.sign);
 router.get("/", documentController.getAll);
 router.delete("/:id", documentController.remove);
 
