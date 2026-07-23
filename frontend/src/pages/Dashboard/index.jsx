@@ -8,9 +8,11 @@ import {
   LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert,
   MessageCircle, ArrowRight
 } from 'lucide-react';
+// 🔥 IMPORTAÇÕES DO RECHARTS ATUALIZADAS (BarChart, XAxis, YAxis, etc)
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend
-} from 'recharts'; // 🔥 IMPORTAÇÃO DOS GRÁFICOS AQUI
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
 import {
   Container, Header, GridTop, StatCard, MainGrid, Panel, ListItem, ActionGrid, ActionShortcut,
   ClientAlertBanner, ClientPromoPanel
@@ -32,8 +34,6 @@ export default function Dashboard() {
   const { data: clients } = useSWR(isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   const { data: summary } = useSWR(secureQuery ? `/dashboard/summary${secureQuery}` : null, fetcher);
   const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
-
-  // 🔥 MUDANÇA: Agora o Gestor também busca as transações para alimentar o Gráfico!
   const { data: transactions } = useSWR(secureQuery ? `/transactions${secureQuery}` : null, fetcher);
 
   // Lógica do Cliente (Faturas Pendentes)
@@ -60,14 +60,12 @@ export default function Dashboard() {
     return { productivityPercent };
   }, [tasks, summary]);
 
-  // 🔥 LÓGICA DO GRÁFICO (Calcula o que foi pago e o que falta pagar)
+  // LÓGICA DO GRÁFICO 1: PIZZA (Recebido vs A Receber)
   const pieData = useMemo(() => {
     if (!transactions) return [];
 
     const stats = transactions.reduce((acc, curr) => {
-      // Considera apenas as receitas (ignora despesas no gráfico de recebimentos)
       const isIncome = curr.type === 'RECEITA' || curr.type === 'income' || curr.type === 'entrada';
-
       if (isIncome) {
         if (curr.status === 'PAGO') acc.received += (curr.amount || curr.price || 0);
         else acc.pending += (curr.amount || curr.price || 0);
@@ -76,9 +74,43 @@ export default function Dashboard() {
     }, { received: 0, pending: 0 });
 
     return [
-      { name: 'Recebido', value: stats.received, color: '#38a169' }, // Verde
-      { name: 'A Receber', value: stats.pending, color: '#d69e2e' }  // Laranja
+      { name: 'Recebido', value: stats.received, color: '#38a169' },
+      { name: 'A Receber', value: stats.pending, color: '#d69e2e' }
     ];
+  }, [transactions]);
+
+  // 🔥 LÓGICA DO GRÁFICO 2: BARRAS (Fluxo de Caixa Mensal)
+  const monthlyData = useMemo(() => {
+    if (!transactions || transactions.length === 0) return [];
+
+    const grouped = transactions.reduce((acc, t) => {
+      if (t.status !== 'PAGO') return acc; // Caixa real só conta o que está pago!
+
+      const rawDate = new Date(t.date || t.createdAt);
+      const year = rawDate.getFullYear();
+      const month = String(rawDate.getMonth() + 1).padStart(2, '0');
+      const key = `${year}-${month}`; // Cria uma chave universal (Ex: 2026-07)
+
+      if (!acc[key]) {
+        acc[key] = {
+          key,
+          name: rawDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase(), // Ex: JUL
+          Receitas: 0,
+          Despesas: 0
+        };
+      }
+
+      const amount = t.amount || t.price || 0;
+      const type = t.type?.toUpperCase();
+
+      if (type === 'RECEITA' || type === 'INCOME' || type === 'ENTRADA') acc[key].Receitas += amount;
+      else if (type === 'DESPESA' || type === 'EXPENSE' || type === 'SAIDA') acc[key].Despesas += amount;
+
+      return acc;
+    }, {});
+
+    // Ordena do mês mais antigo para o mais novo
+    return Object.values(grouped).sort((a, b) => a.key.localeCompare(b.key));
   }, [transactions]);
 
   // TRAVA DE SEGURANÇA DO CLIENTE
@@ -93,7 +125,7 @@ export default function Dashboard() {
   }
 
   // ==========================================
-  // 👔 VISÃO DO CLIENTE (MANTIDA INTACTA)
+  // 👔 VISÃO DO CLIENTE
   // ==========================================
   if (isClient) {
     return (
@@ -149,13 +181,12 @@ export default function Dashboard() {
     );
   }
 
-  // LOADER DO GESTOR
   if (!summary || !metrics || !transactions) {
     return <Container><p style={{ color: '#a0aec0', padding: 40, textAlign: 'center' }}>Compilando indicadores estratégicos...</p></Container>;
   }
 
   // ==========================================
-  // 🏢 VISÃO DO GESTOR (ESCRITÓRIO) COM GRÁFICOS
+  // 🏢 VISÃO DO GESTOR
   // ==========================================
   return (
     <Container>
@@ -194,7 +225,6 @@ export default function Dashboard() {
             <div className="value" style={{ fontSize: 26, marginBottom: 4 }}>{metrics.productivityPercent}%</div>
             <div className="subtitle">Tarefas no prazo</div>
           </div>
-
           <div style={{ position: 'relative', width: 76, height: 76, borderRadius: '50%', background: `conic-gradient(${metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} ${metrics.productivityPercent * 3.6}deg, #edf2f7 0deg)` }}>
             <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <CheckCircle size={22} color={metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} />
@@ -203,8 +233,10 @@ export default function Dashboard() {
         </StatCard>
       </GridTop>
 
-      {/* 🔥 NOVA ÁREA DOS GRÁFICOS */}
+      {/* ÁREA DOS GRÁFICOS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+
+        {/* GRÁFICO 1: PIZZA */}
         <Panel>
           <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: '#4a5568' }}>Status de Recebimentos</h3>
           <div style={{ width: '100%', height: 250 }}>
@@ -222,10 +254,33 @@ export default function Dashboard() {
           </div>
         </Panel>
 
-        <Panel style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#a0aec0' }}>
-          <Activity size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-          <p style={{ margin: 0, fontWeight: 600 }}>Gráfico de Fluxo de Caixa Mensal</p>
-          <span style={{ fontSize: 12 }}>Em breve na próxima atualização</span>
+        {/* 🔥 GRÁFICO 2: BARRAS (Substituindo o "Em breve") */}
+        <Panel>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: '#4a5568' }}>Fluxo de Caixa Mensal</h3>
+          <div style={{ width: '100%', height: 250 }}>
+            {monthlyData.length === 0 ? (
+              <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>
+                Sem movimentações pagas no período.
+              </div>
+            ) : (
+              <ResponsiveContainer>
+                <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edf2f7" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#718096' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 12, fill: '#718096' }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val) => `R$ ${val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                  />
+                  <Tooltip cursor={{ fill: '#f7fafc' }} formatter={(value) => formatCurrency(value)} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                  <Bar dataKey="Receitas" fill="#38a169" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="Despesas" fill="#e53e3e" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </Panel>
       </div>
 
