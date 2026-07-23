@@ -130,11 +130,6 @@ export default function Layout() {
                 <Settings size={20} /> Configurações
               </StyledNavLink>
             )}
-            {!isClient && (
-              <StyledNavLink to="/app/apikeys" onClick={closeMenu}>
-                <Settings size={20} /> Chaves de API
-              </StyledNavLink>
-            )}
           </NavMenu>
         </div>
 

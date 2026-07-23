@@ -3,11 +3,14 @@ import useSWR from 'swr';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  TrendingUp, Users, AlertTriangle, CheckCircle, 
+import {
+  TrendingUp, Users, AlertTriangle, CheckCircle,
   LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert,
   MessageCircle, ArrowRight
 } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend
+} from 'recharts'; // 🔥 IMPORTAÇÃO DOS GRÁFICOS AQUI
 import {
   Container, Header, GridTop, StatCard, MainGrid, Panel, ListItem, ActionGrid, ActionShortcut,
   ClientAlertBanner, ClientPromoPanel
@@ -22,19 +25,21 @@ export default function Dashboard() {
 
   const queryCompany = isClient ? user.companyAccessId : selectedCompany?.id;
 
-  const secureQuery = queryCompany 
-    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}` 
+  const secureQuery = queryCompany
+    ? `?companyId=${queryCompany}&role=${user?.role}&userEmail=${user?.email}`
     : null;
 
   const { data: clients } = useSWR(isClient && queryCompany ? `/clients?companyId=${queryCompany}` : null, fetcher);
   const { data: summary } = useSWR(secureQuery ? `/dashboard/summary${secureQuery}` : null, fetcher);
   const { data: tasks } = useSWR(secureQuery ? `/tasks${secureQuery}` : null, fetcher);
-  
-  const { data: transactions } = useSWR(isClient && secureQuery ? `/transactions${secureQuery}` : null, fetcher);
-  
+
+  // 🔥 MUDANÇA: Agora o Gestor também busca as transações para alimentar o Gráfico!
+  const { data: transactions } = useSWR(secureQuery ? `/transactions${secureQuery}` : null, fetcher);
+
+  // Lógica do Cliente (Faturas Pendentes)
   const pendingClientBills = useMemo(() => {
     if (!isClient || !transactions) return [];
-    return transactions.filter(t => t.status !== 'PAGO' && (t.type === 'income' || t.type === 'entrada'));
+    return transactions.filter(t => t.status !== 'PAGO' && (t.type === 'income' || t.type === 'entrada' || t.type === 'RECEITA'));
   }, [transactions, isClient]);
 
   const totalPendingAmount = pendingClientBills.reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
@@ -55,6 +60,27 @@ export default function Dashboard() {
     return { productivityPercent };
   }, [tasks, summary]);
 
+  // 🔥 LÓGICA DO GRÁFICO (Calcula o que foi pago e o que falta pagar)
+  const pieData = useMemo(() => {
+    if (!transactions) return [];
+
+    const stats = transactions.reduce((acc, curr) => {
+      // Considera apenas as receitas (ignora despesas no gráfico de recebimentos)
+      const isIncome = curr.type === 'RECEITA' || curr.type === 'income' || curr.type === 'entrada';
+
+      if (isIncome) {
+        if (curr.status === 'PAGO') acc.received += (curr.amount || curr.price || 0);
+        else acc.pending += (curr.amount || curr.price || 0);
+      }
+      return acc;
+    }, { received: 0, pending: 0 });
+
+    return [
+      { name: 'Recebido', value: stats.received, color: '#38a169' }, // Verde
+      { name: 'A Receber', value: stats.pending, color: '#d69e2e' }  // Laranja
+    ];
+  }, [transactions]);
+
   // TRAVA DE SEGURANÇA DO CLIENTE
   if (isClient && clients && !myClientRecord) {
     return (
@@ -67,7 +93,7 @@ export default function Dashboard() {
   }
 
   // ==========================================
-  // 👔 VISÃO DO CLIENTE (DONA ANA)
+  // 👔 VISÃO DO CLIENTE (MANTIDA INTACTA)
   // ==========================================
   if (isClient) {
     return (
@@ -124,12 +150,12 @@ export default function Dashboard() {
   }
 
   // LOADER DO GESTOR
-  if (!summary || !metrics) {
+  if (!summary || !metrics || !transactions) {
     return <Container><p style={{ color: '#a0aec0', padding: 40, textAlign: 'center' }}>Compilando indicadores estratégicos...</p></Container>;
   }
 
   // ==========================================
-  // 🏢 VISÃO DO GESTOR (ESCRITÓRIO)
+  // 🏢 VISÃO DO GESTOR (ESCRITÓRIO) COM GRÁFICOS
   // ==========================================
   return (
     <Container>
@@ -168,7 +194,7 @@ export default function Dashboard() {
             <div className="value" style={{ fontSize: 26, marginBottom: 4 }}>{metrics.productivityPercent}%</div>
             <div className="subtitle">Tarefas no prazo</div>
           </div>
-          
+
           <div style={{ position: 'relative', width: 76, height: 76, borderRadius: '50%', background: `conic-gradient(${metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} ${metrics.productivityPercent * 3.6}deg, #edf2f7 0deg)` }}>
             <div style={{ position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <CheckCircle size={22} color={metrics.productivityPercent < 50 ? '#e53e3e' : metrics.productivityPercent < 80 ? '#d69e2e' : '#38a169'} />
@@ -177,12 +203,38 @@ export default function Dashboard() {
         </StatCard>
       </GridTop>
 
+      {/* 🔥 NOVA ÁREA DOS GRÁFICOS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+        <Panel>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: 16, color: '#4a5568' }}>Status de Recebimentos</h3>
+          <div style={{ width: '100%', height: 250 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={pieData} innerRadius={65} outerRadius={85} paddingAngle={5} dataKey="value">
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Panel>
+
+        <Panel style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#a0aec0' }}>
+          <Activity size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
+          <p style={{ margin: 0, fontWeight: 600 }}>Gráfico de Fluxo de Caixa Mensal</p>
+          <span style={{ fontSize: 12 }}>Em breve na próxima atualização</span>
+        </Panel>
+      </div>
+
       <MainGrid>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <Panel>
             <h3><Users color="#3182ce" /> Atenção: Clientes com Pendências</h3>
             {summary.inadimplentes?.length === 0 ? (
-              <p style={{ color: '#718096', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle size={18} color="#38a169"/> Todas as contas recorrentes operam em total conformidade.</p>
+              <p style={{ color: '#718096', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle size={18} color="#38a169" /> Todas as contas recorrentes operam em total conformidade.</p>
             ) : (
               <div>
                 {summary.inadimplentes?.map((c, index) => (
@@ -190,7 +242,7 @@ export default function Dashboard() {
                     <span className="name">{c.fullName}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span className="status" style={{ background: '#fff5f5', color: '#e53e3e', fontWeight: 700 }}>Atenção Financeira</span>
-                      <button 
+                      <button
                         onClick={() => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá ${c.fullName.split(' ')[0]}, tudo bem? Consta no nosso sistema uma pendência em aberto. Podemos ajudar com a 2ª via ou link do PIX para facilitar?`)}`, '_blank')}
                         title="Cobrar via WhatsApp"
                         style={{ background: '#f0fff4', color: '#25D366', border: '1px solid #9ae6b4', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.2)' }}
@@ -208,8 +260,8 @@ export default function Dashboard() {
         <Panel>
           <h3><Calendar color="#d69e2e" /> Próximas Entregas (Top 5)</h3>
           {tasks?.filter(t => t.status !== 'CONCLUIDO').slice(0, 5).map(t => {
-             const isOverdue = new Date(t.dueDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
-             return (
+            const isOverdue = new Date(t.dueDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
+            return (
               <ListItem key={t.id} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <span className="name" style={{ color: isOverdue ? '#e53e3e' : '#2d3748' }}>{t.title}</span>
@@ -219,7 +271,7 @@ export default function Dashboard() {
                 </div>
                 <span style={{ fontSize: 12, color: '#a0aec0', fontWeight: 600 }}>{t.client?.fullName || 'Tarefa Interna do Escritório'}</span>
               </ListItem>
-             )
+            )
           })}
           <button onClick={() => navigate('/app/agenda')} style={{ width: '100%', background: '#f7fafc', border: '1px solid #e2e8f0', padding: '14px', borderRadius: 8, marginTop: 16, color: '#4a5568', fontWeight: 700, cursor: 'pointer', transition: '0.2s' }}>
             Ver todas as Tarefas

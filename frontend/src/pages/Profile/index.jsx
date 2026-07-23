@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
-import { 
-  Upload, Trash2, Building2, Plus, Edit, Key, X, Shield, Users, FileText 
+import {
+  Upload, Trash2, Building2, Plus, Edit, Key, X, Shield, Users, FileText, Copy, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
+import {
   Container, Header, ProfileCard, AvatarSection, FormGrid, FormGroup, ActionButton,
   SectionTitle, CompanyList, CompanyItem, AddButton, ModalOverlay, ModalContent, ModalActions,
   FormRow
@@ -16,12 +16,12 @@ import { maskCPFOrCNPJ } from '../../utils/masks';
 const fetcher = url => api.get(url).then(res => res.data);
 
 export default function Profile() {
-  const { user, updateUserData } = useAuth(); 
-  
+  const { user, updateUserData } = useAuth();
+
   // -- ESTADOS DO PERFIL DO GESTOR --
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [agencyName, setAgencyName] = useState(''); 
+  const [agencyName, setAgencyName] = useState('');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [avatar, setAvatar] = useState(null);
@@ -38,17 +38,21 @@ export default function Profile() {
   // -- ESTADOS DE ACESSOS (RBAC / PORTAL DO CLIENTE) --
   const [activeCompanyForAccess, setActiveCompanyForAccess] = useState(null);
   const [accessForm, setAccessForm] = useState({ name: '', email: '', password: '' });
-
   const { data: clientAccesses, mutate: mutateAccesses } = useSWR(
-    activeCompanyForAccess ? `/auth/client-account/${activeCompanyForAccess.id}` : null, 
+    activeCompanyForAccess ? `/auth/client-account/${activeCompanyForAccess.id}` : null,
     fetcher
   );
+
+  // -- ESTADOS DE CHAVES DE API E INTEGRAÇÕES --
+  const { data: apiKeys, mutate: mutateApiKeys } = useSWR('/apikeys', fetcher);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
 
   useEffect(() => {
     if (user) {
       setName(user.name || '');
       setEmail(user.email || '');
-      setAgencyName(user.agencyName || ''); 
+      setAgencyName(user.agencyName || '');
       if (user.avatarUrl) {
         setPreview(`${api.defaults.baseURL.replace('/api', '')}${user.avatarUrl}`);
       }
@@ -58,29 +62,29 @@ export default function Profile() {
   function handleAvatarChange(e) {
     const file = e.target.files[0];
     if (!file) return;
-    setAvatar(file); 
-    setPreview(URL.createObjectURL(file)); 
-    setRemoveAvatar(false); 
+    setAvatar(file);
+    setPreview(URL.createObjectURL(file));
+    setRemoveAvatar(false);
   }
 
   function handleRemoveAvatar() {
-    setAvatar(null); 
-    setPreview(''); 
-    setRemoveAvatar(true); 
+    setAvatar(null);
+    setPreview('');
+    setRemoveAvatar(true);
   }
 
   async function handleProfileSubmit(e) {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('name', name); 
-    formData.append('email', email); 
-    formData.append('agencyName', agencyName); 
-    
-    if (oldPassword && newPassword) { 
-      formData.append('oldPassword', oldPassword); 
-      formData.append('newPassword', newPassword); 
+    formData.append('name', name);
+    formData.append('email', email);
+    formData.append('agencyName', agencyName);
+
+    if (oldPassword && newPassword) {
+      formData.append('oldPassword', oldPassword);
+      formData.append('newPassword', newPassword);
     }
-    
+
     if (avatar) formData.append('avatar', avatar);
     if (removeAvatar) formData.append('removeAvatar', 'true');
 
@@ -92,42 +96,42 @@ export default function Profile() {
       } else {
         localStorage.setItem('@BusinessFlow:user', JSON.stringify(response.data));
       }
-      
-      setOldPassword(''); 
-      setNewPassword(''); 
+
+      setOldPassword('');
+      setNewPassword('');
       setRemoveAvatar(false);
-      
+
       toast.success('Perfil atualizado com sucesso!', { id: tId });
       setTimeout(() => window.location.reload(), 1000);
-    } catch (error) { 
-      toast.error(error.response?.data?.error || 'Erro ao atualizar.', { id: tId }); 
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao atualizar.', { id: tId });
     }
   }
 
-  function handleOpenNewCompany() { 
-    setEditingCompanyId(null); 
-    setCompanyName(''); 
-    setCompanyDocument(''); 
-    setIsCompanyModalOpen(true); 
+  function handleOpenNewCompany() {
+    setEditingCompanyId(null);
+    setCompanyName('');
+    setCompanyDocument('');
+    setIsCompanyModalOpen(true);
   }
-  
-  function handleEditCompany(company) { 
-    setEditingCompanyId(company.id); 
-    setCompanyName(company.name); 
-    setCompanyDocument(company.document || ''); 
-    setIsCompanyModalOpen(true); 
+
+  function handleEditCompany(company) {
+    setEditingCompanyId(company.id);
+    setCompanyName(company.name);
+    setCompanyDocument(company.document || '');
+    setIsCompanyModalOpen(true);
   }
 
   async function handleDeleteCompany(id) {
     if (!window.confirm("ATENÇÃO: Excluir esta empresa apagará permanentemente TODO o financeiro, DRE e configurações vinculadas a ela. Tem a certeza absoluta?")) return;
     const tId = toast.loading('A excluir a empresa...');
-    try { 
-      await api.delete(`/companies/${id}`); 
-      toast.success("Empresa excluída permanentemente!", { id: tId }); 
-      mutateCompanies(); 
-      setTimeout(() => window.location.reload(), 1500); 
-    } catch(err) { 
-      toast.error("Erro ao excluir a empresa.", { id: tId }); 
+    try {
+      await api.delete(`/companies/${id}`);
+      toast.success("Empresa excluída permanentemente!", { id: tId });
+      mutateCompanies();
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      toast.error("Erro ao excluir a empresa.", { id: tId });
     }
   }
 
@@ -141,18 +145,13 @@ export default function Profile() {
       } else {
         await api.post('/companies', payload);
       }
-      toast.success('Empresa salva com sucesso!', { id: tId }); 
-      setIsCompanyModalOpen(false); 
-      mutateCompanies(); 
-      setTimeout(() => window.location.reload(), 1500); 
-    } catch(err) { 
-      toast.error('Erro ao salvar os dados.', { id: tId }); 
+      toast.success('Empresa salva com sucesso!', { id: tId });
+      setIsCompanyModalOpen(false);
+      mutateCompanies();
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      toast.error('Erro ao salvar os dados.', { id: tId });
     }
-  }
-
-  function handleOpenAccess(company) { 
-    setActiveCompanyForAccess(company); 
-    setAccessForm({ name: '', email: '', password: '' }); 
   }
 
   async function handleGenerateAccess(e) {
@@ -160,24 +159,60 @@ export default function Profile() {
     const tId = toast.loading('A encriptar e gerar credenciais...');
     try {
       await api.post('/auth/client-account', { ...accessForm, companyId: activeCompanyForAccess.id });
-      toast.success('Acesso concedido com sucesso!', { id: tId }); 
-      setAccessForm({ name: '', email: '', password: '' }); 
-      mutateAccesses(); 
-    } catch (err) { 
-      toast.error(err.response?.data?.error || 'Erro ao gerar acesso.', { id: tId }); 
+      toast.success('Acesso concedido com sucesso!', { id: tId });
+      setAccessForm({ name: '', email: '', password: '' });
+      mutateAccesses();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Erro ao gerar acesso.', { id: tId });
     }
   }
 
   async function handleRevokeAccess(userId) {
     if (!window.confirm("Atenção: Tem certeza que deseja revogar o acesso deste cliente? Ele não poderá mais entrar no Portal do Cliente.")) return;
     const tId = toast.loading('A revogar o acesso do sistema...');
-    try { 
-      await api.delete(`/auth/client-account/${userId}`); 
-      toast.success('Acesso bloqueado com sucesso!', { id: tId }); 
-      mutateAccesses(); 
-    } catch (err) { 
-      toast.error('Erro ao revogar o acesso.', { id: tId }); 
+    try {
+      await api.delete(`/auth/client-account/${userId}`);
+      toast.success('Acesso bloqueado com sucesso!', { id: tId });
+      mutateAccesses();
+    } catch (err) {
+      toast.error('Erro ao revogar o acesso.', { id: tId });
     }
+  }
+
+  // --- FUNÇÕES DE API KEYS ---
+  async function handleCreateKey(e) {
+    e.preventDefault();
+    if (!newKeyName) return toast.error("Dê um nome à integração.");
+
+    setIsGeneratingKey(true);
+    const tId = toast.loading("A gerar chave de alta segurança...");
+
+    try {
+      await api.post('/apikeys', { name: newKeyName });
+      toast.success("Chave gerada com sucesso!", { id: tId });
+      setNewKeyName('');
+      mutateApiKeys();
+    } catch (error) {
+      toast.error("Erro ao gerar chave.", { id: tId });
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  }
+
+  async function handleRevokeKey(id) {
+    if (!window.confirm("Atenção: Sistemas a usar esta chave perderão o acesso imediatamente. Confirmar?")) return;
+    try {
+      await api.delete(`/apikeys/${id}`);
+      toast.success("Chave revogada e destruída.");
+      mutateApiKeys();
+    } catch (error) {
+      toast.error("Erro ao revogar chave.");
+    }
+  }
+
+  function handleCopyKey(keyString) {
+    navigator.clipboard.writeText(keyString);
+    toast.success("Chave copiada para a área de transferência!");
   }
 
   return (
@@ -188,16 +223,17 @@ export default function Profile() {
             Minhas Configurações
           </h1>
           <p style={{ margin: 0, color: '#718096' }}>
-            Gerencie a identidade visual do seu Escritório e os acessos das suas empresas.
+            Gerencie a identidade visual do seu Escritório, os acessos das empresas e integrações.
           </p>
         </div>
       </Header>
 
+      {/* ========================================== */}
+      {/* 1. CONFIGURAÇÕES DO PERFIL (WHITE LABEL)     */}
+      {/* ========================================== */}
       <ProfileCard style={{ marginBottom: 40 }}>
         <form onSubmit={handleProfileSubmit}>
-<AvatarSection style={{ padding: '32px', background: 'linear-gradient(135deg, #ebf8ff 0%, #f7fafc 100%)', borderRadius: 16, marginBottom: 32, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'row', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
-            
-            {/* Círculo do Avatar Premium */}
+          <AvatarSection style={{ padding: '32px', background: 'linear-gradient(135deg, #ebf8ff 0%, #f7fafc 100%)', borderRadius: 16, marginBottom: 32, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'row', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
             <div className="avatar-container" style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: '4px solid white', boxShadow: '0 10px 15px -3px rgba(49,130,206,0.2)', flexShrink: 0 }}>
               {preview ? (
                 <img src={preview} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -207,24 +243,23 @@ export default function Profile() {
                 </div>
               )}
             </div>
-            
-            {/* Controlos de Marca */}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-                <h3 style={{ margin: 0, color: '#2d3748', fontSize: 20, fontWeight: 800 }}>Identidade Visual (White Label)</h3>
-                <p style={{ margin: 0, color: '#718096', fontSize: 14 }}>Esta é a marca oficial que os seus clientes verão no Portal e impressa nos Relatórios Financeiros (PDF).</p>
-                
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-                  <label style={{ cursor: 'pointer', background: '#3182ce', color: 'white', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
-                    <Upload size={18} /> Subir Nova Logo
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
-                  </label>
-                  
-                  {preview && (
-                    <button type="button" onClick={handleRemoveAvatar} style={{ background: '#fff5f5', color: '#e53e3e', border: '1px solid #fed7d7', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', transition: '0.2s' }}>
-                      Remover Marca
-                    </button>
-                  )}
-                </div>
+              <h3 style={{ margin: 0, color: '#2d3748', fontSize: 20, fontWeight: 800 }}>Identidade Visual (White Label)</h3>
+              <p style={{ margin: 0, color: '#718096', fontSize: 14 }}>Esta é a marca oficial que os seus clientes verão no Portal e impressa nos Relatórios Financeiros (PDF).</p>
+
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                <label style={{ cursor: 'pointer', background: '#3182ce', color: 'white', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: 8, transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
+                  <Upload size={18} /> Subir Nova Logo
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+                </label>
+
+                {preview && (
+                  <button type="button" onClick={handleRemoveAvatar} style={{ background: '#fff5f5', color: '#e53e3e', border: '1px solid #fed7d7', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '700', transition: '0.2s' }}>
+                    Remover Marca
+                  </button>
+                )}
+              </div>
             </div>
           </AvatarSection>
 
@@ -245,33 +280,33 @@ export default function Profile() {
                 <Shield size={20} color="#38a169" />
                 Segurança do Gestor (Seu Login)
               </h3>
-<FormRow $gap="20px">
-                  <FormGroup>
-                    <label>Nome Completo</label>
-                    <input value={name} onChange={e => setName(e.target.value)} required />
-                  </FormGroup>
-                  <FormGroup>
-                    <label>E-mail de Acesso</label>
-                    <input 
-                      type="email" 
-                      value={email} 
-                      onChange={e => setEmail(e.target.value)} 
-                      required 
-                      disabled 
-                      title="O E-mail principal não pode ser alterado aqui." 
-                      style={{ background: '#f7fafc', cursor: 'not-allowed' }} 
-                    />
-                  </FormGroup>
+              <FormRow $gap="20px">
+                <FormGroup>
+                  <label>Nome Completo</label>
+                  <input value={name} onChange={e => setName(e.target.value)} required />
+                </FormGroup>
+                <FormGroup>
+                  <label>E-mail de Acesso</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    disabled
+                    title="O E-mail principal não pode ser alterado aqui."
+                    style={{ background: '#f7fafc', cursor: 'not-allowed' }}
+                  />
+                </FormGroup>
               </FormRow>
-<FormRow $gap="20px" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed #e2e8f0' }}>
-                  <FormGroup>
-                    <label>Senha Atual (Deixe em branco para manter)</label>
-                    <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="••••••" />
-                  </FormGroup>
-                  <FormGroup>
-                    <label>Nova Senha</label>
-                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••" />
-                  </FormGroup>
+              <FormRow $gap="20px" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px dashed #e2e8f0' }}>
+                <FormGroup>
+                  <label>Senha Atual (Deixe em branco para manter)</label>
+                  <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="••••••" />
+                </FormGroup>
+                <FormGroup>
+                  <label>Nova Senha</label>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••" />
+                </FormGroup>
               </FormRow>
             </div>
           </FormGrid>
@@ -284,43 +319,44 @@ export default function Profile() {
         </form>
       </ProfileCard>
 
+      {/* ========================================== */}
+      {/* 2. EMPRESAS E CONTROLE DE ACESSOS            */}
+      {/* ========================================== */}
       <SectionTitle style={{ fontSize: 22, fontWeight: 800, color: '#1a202c', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <Building2 size={28} color="#3182ce" /> 
+        <Building2 size={28} color="#3182ce" />
         Empresas e Controle de Acessos
       </SectionTitle>
-      
+
       <ProfileCard style={{ padding: '32px', border: '1px solid #edf2f7', borderRadius: 16 }}>
-<CompanyList>
+        <CompanyList>
           {!userCompanies ? (
             <p style={{ color: '#a0aec0', padding: 20, textAlign: 'center' }}>A carregar ecossistema...</p>
           ) : userCompanies.map(comp => (
-             <CompanyItem key={comp.id}>
-                <div className="info" style={{ marginBottom: 20 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ebf8ff', color: '#3182ce', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                    <Building2 size={24} />
-                  </div>
-                  <strong style={{ display: 'block', fontSize: 18, color: '#2d3748', fontWeight: 800, marginBottom: 8, lineHeight: 1.2 }}>{comp.name}</strong>
-                  <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafc', padding: '6px 10px', borderRadius: 6, width: 'fit-content' }}>
-                    <FileText size={14} /> {maskCPFOrCNPJ(comp.document) || 'CNPJ Não Cadastrado'}
-                  </span>
+            <CompanyItem key={comp.id}>
+              <div className="info" style={{ marginBottom: 20 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ebf8ff', color: '#3182ce', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <Building2 size={24} />
                 </div>
-                
-                {/* Botões reorganizados no rodapé do cartão */}
-                <div className="actions" style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid #edf2f7', paddingTop: 16 }}>
-                   <button type="button" onClick={() => handleOpenAccess(comp)} title="Gerir Acessos do Portal do Cliente" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px', borderRadius: 8, fontWeight: 700, color: '#805ad5', border: '1px solid #e9d8fd', background: '#faf5ff', cursor: 'pointer', transition: '0.2s' }}>
-                     <Users size={18} /> Acessos
-                   </button>
-                   <button type="button" onClick={() => handleEditCompany(comp)} title="Editar Estrutura" style={{ padding: '10px', borderRadius: 8, background: '#f7fafc', border: '1px solid #e2e8f0', color: '#4a5568', cursor: 'pointer', transition: '0.2s' }}>
-                     <Edit size={18} />
-                   </button>
-                   <button type="button" onClick={() => handleDeleteCompany(comp.id)} title="Excluir Definitivamente" style={{ padding: '10px', borderRadius: 8, background: '#fff5f5', border: '1px solid #fed7d7', color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }}>
-                     <Trash2 size={18} />
-                   </button>
-                </div>
-             </CompanyItem>
+                <strong style={{ display: 'block', fontSize: 18, color: '#2d3748', fontWeight: 800, marginBottom: 8, lineHeight: 1.2 }}>{comp.name}</strong>
+                <span style={{ fontSize: 13, color: '#718096', display: 'flex', alignItems: 'center', gap: 6, background: '#f7fafc', padding: '6px 10px', borderRadius: 6, width: 'fit-content' }}>
+                  <FileText size={14} /> {maskCPFOrCNPJ(comp.document) || 'CNPJ Não Cadastrado'}
+                </span>
+              </div>
+
+              <div className="actions" style={{ display: 'flex', gap: 8, alignItems: 'center', borderTop: '1px solid #edf2f7', paddingTop: 16 }}>
+                <button type="button" onClick={() => setActiveCompanyForAccess(comp)} title="Gerir Acessos do Portal do Cliente" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px', borderRadius: 8, fontWeight: 700, color: '#805ad5', border: '1px solid #e9d8fd', background: '#faf5ff', cursor: 'pointer', transition: '0.2s' }}>
+                  <Users size={18} /> Acessos
+                </button>
+                <button type="button" onClick={() => handleEditCompany(comp)} title="Editar Estrutura" style={{ padding: '10px', borderRadius: 8, background: '#f7fafc', border: '1px solid #e2e8f0', color: '#4a5568', cursor: 'pointer', transition: '0.2s' }}>
+                  <Edit size={18} />
+                </button>
+                <button type="button" onClick={() => handleDeleteCompany(comp.id)} title="Excluir Definitivamente" style={{ padding: '10px', borderRadius: 8, background: '#fff5f5', border: '1px solid #fed7d7', color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }}>
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </CompanyItem>
           ))}
-          
-          {/* O Botão de Nova Empresa agora é um Cartão elegante na Grelha! */}
+
           <AddButton type="button" onClick={handleOpenNewCompany}>
             <div style={{ background: 'white', padding: 16, borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', marginBottom: 8 }}>
               <Plus size={32} color="#3182ce" />
@@ -331,7 +367,72 @@ export default function Profile() {
         </CompanyList>
       </ProfileCard>
 
-      {/* MODAL DE EDIÇÃO DE EMPRESA */}
+      {/* ========================================== */}
+      {/* 3. INTEGRAÇÕES E CHAVES DE API (NOVO)        */}
+      {/* ========================================== */}
+      <SectionTitle style={{ fontSize: 22, fontWeight: 800, color: '#1a202c', marginBottom: 24, marginTop: 40, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Key size={28} color="#805ad5" />
+        Chaves de API e Integrações
+      </SectionTitle>
+
+      <ProfileCard style={{ padding: '32px', border: '1px solid #edf2f7', borderRadius: 16 }}>
+        <div style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '32px' }}>
+          <h3 style={{ marginTop: 0, color: '#4a5568' }}>Nova Integração</h3>
+          <p style={{ color: '#718096', fontSize: '14px', marginBottom: '16px' }}>
+            Gere chaves secretas para conectar o BusinessFlow ao Zapier, Make, ou outros ERPs externos.
+          </p>
+
+          <form onSubmit={handleCreateKey} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <input
+              placeholder="Ex: Integração com Zapier"
+              value={newKeyName}
+              onChange={e => setNewKeyName(e.target.value)}
+              style={{ flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e0', outline: 'none' }}
+            />
+            <ActionButton
+              type="submit"
+              disabled={isGeneratingKey}
+              style={{ background: '#805ad5', padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px', height: '48px' }}
+            >
+              <Plus size={18} /> {isGeneratingKey ? 'A gerar...' : 'Gerar Chave'}
+            </ActionButton>
+          </form>
+        </div>
+
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {!apiKeys ? (
+            <p style={{ color: '#a0aec0' }}>A carregar chaves...</p>
+          ) : apiKeys.length === 0 ? (
+            <p style={{ color: '#a0aec0' }}>Nenhuma chave ativa no momento.</p>
+          ) : (
+            apiKeys.map(k => (
+              <div key={k.id} style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 8px 0', color: '#2d3748', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={16} color="#38a169" /> {k.name}
+                  </h4>
+                  <div style={{ background: 'white', padding: '8px 12px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px', color: '#4a5568', border: '1px solid #e2e8f0', letterSpacing: '1px' }}>
+                    {k.key}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" onClick={() => handleCopyKey(k.key)} style={{ background: '#ebf8ff', color: '#3182ce', border: '1px solid #bee3f8', padding: '10px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s' }} title="Copiar Chave">
+                    <Copy size={18} />
+                  </button>
+                  <button type="button" onClick={() => handleRevokeKey(k.id)} style={{ background: '#fff5f5', color: '#e53e3e', border: '1px solid #fed7d7', padding: '10px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s' }} title="Revogar Acesso">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ProfileCard>
+
+      {/* ========================================== */}
+      {/* MODAIS DO SISTEMA                            */}
+      {/* ========================================== */}
       {isCompanyModalOpen && (
         <ModalOverlay>
           <ModalContent style={{ maxWidth: 500 }}>
@@ -344,15 +445,15 @@ export default function Profile() {
                   <label>Razão Social / Nome de Exibição</label>
                   <input value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Ex: BusinessFlow Consultoria" />
                 </FormGroup>
-<FormGroup>
-  <label>CNPJ</label>
-  <input 
-    value={companyDocument} 
-    onChange={e => setCompanyDocument(maskCPFOrCNPJ(e.target.value))} 
-    placeholder="00.000.000/0001-00" 
-    maxLength={18}
-  />
-</FormGroup>
+                <FormGroup>
+                  <label>CNPJ</label>
+                  <input
+                    value={companyDocument}
+                    onChange={e => setCompanyDocument(maskCPFOrCNPJ(e.target.value))}
+                    placeholder="00.000.000/0001-00"
+                    maxLength={18}
+                  />
+                </FormGroup>
               </FormGrid>
               <ModalActions style={{ marginTop: 32 }}>
                 <button type="button" className="cancel" onClick={() => setIsCompanyModalOpen(false)}>Cancelar</button>
@@ -363,29 +464,28 @@ export default function Profile() {
         </ModalOverlay>
       )}
 
-      {/* 🔥 MODAL AVANÇADO DE GESTÃO DE ACESSOS (RBAC) */}
-{activeCompanyForAccess && (
+      {activeCompanyForAccess && (
         <ModalOverlay>
           <ModalContent style={{ maxWidth: 650, background: '#f8fafc' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-               <div>
-                 <h2 style={{ margin: '0 0 8px 0', color: '#1a202c', display: 'flex', alignItems: 'center', gap: 10 }}>
-                   <Key color="#805ad5" /> Gestão de Acessos
-                 </h2>
-                 <p style={{ margin: 0, color: '#718096' }}>
-                   Controle quem pode entrar no Portal do Cliente da empresa <strong>{activeCompanyForAccess.name}</strong>.
-                 </p>
-               </div>
-               <button onClick={() => setActiveCompanyForAccess(null)} style={{ background: 'white', border: '1px solid #e2e8f0', padding: 8, borderRadius: 8, cursor: 'pointer' }}>
-                 <X size={20} color="#a0aec0" />
-               </button>
+              <div>
+                <h2 style={{ margin: '0 0 8px 0', color: '#1a202c', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Key color="#805ad5" /> Gestão de Acessos
+                </h2>
+                <p style={{ margin: 0, color: '#718096' }}>
+                  Controle quem pode entrar no Portal do Cliente da empresa <strong>{activeCompanyForAccess.name}</strong>.
+                </p>
+              </div>
+              <button onClick={() => setActiveCompanyForAccess(null)} style={{ background: 'white', border: '1px solid #e2e8f0', padding: 8, borderRadius: 8, cursor: 'pointer' }}>
+                <X size={20} color="#a0aec0" />
+              </button>
             </div>
 
             <div style={{ background: 'white', padding: 24, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 32 }}>
               <h3 style={{ fontSize: 13, color: '#4a5568', textTransform: 'uppercase', marginBottom: 16, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Users size={16} /> Pessoas com Acesso Liberado
               </h3>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 250, overflowY: 'auto' }}>
                 {!clientAccesses ? (
                   <p style={{ fontSize: 14, color: '#a0aec0', textAlign: 'center', padding: 20 }}>A carregar base de segurança...</p>
@@ -422,21 +522,18 @@ export default function Profile() {
                 <FormGrid>
                   <FormGroup>
                     <label>Nome do Sócio / Funcionário</label>
-                    <input value={accessForm.name} onChange={e => setAccessForm({...accessForm, name: e.target.value})} required placeholder="Ex: João da Silva" />
+                    <input value={accessForm.name} onChange={e => setAccessForm({ ...accessForm, name: e.target.value })} required placeholder="Ex: João da Silva" />
                   </FormGroup>
-                  
-                  {/* 🔥 A ÚLTIMA MÁGICA: Formulário de nova pessoa adaptável */}
                   <FormRow $gap="16px">
                     <FormGroup>
                       <label>E-mail de Login</label>
-                      <input type="email" value={accessForm.email} onChange={e => setAccessForm({...accessForm, email: e.target.value})} required placeholder="cliente@email.com" />
+                      <input type="email" value={accessForm.email} onChange={e => setAccessForm({ ...accessForm, email: e.target.value })} required placeholder="cliente@email.com" />
                     </FormGroup>
                     <FormGroup>
                       <label>Definir Senha Inicial</label>
-                      <input type="password" value={accessForm.password} onChange={e => setAccessForm({...accessForm, password: e.target.value})} required placeholder="Mínimo 6 caracteres" />
+                      <input type="password" value={accessForm.password} onChange={e => setAccessForm({ ...accessForm, password: e.target.value })} required placeholder="Mínimo 6 caracteres" />
                     </FormGroup>
                   </FormRow>
-
                 </FormGrid>
                 <ModalActions style={{ marginTop: 24 }}>
                   <button type="submit" className="save" style={{ background: '#805ad5', width: '100%', padding: '16px', fontSize: 16 }}>
