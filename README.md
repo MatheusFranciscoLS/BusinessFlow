@@ -59,6 +59,111 @@ Este projeto demonstra domínio na construção de **arquiteturas SaaS**, integr
 
 ---
 
+## 🧭 O que o sistema faz
+
+- **Financeiro:** lançamentos, faturas pendentes e atrasadas, e DRE. Uma rotina diária (meia-noite e um) marca como atrasadas as faturas pendentes vencidas.
+- **Importação de extrato bancário** no formato OFX, e relatórios em PDF gerados no navegador.
+- **CRM:** clientes por empresa, com status e documentos (upload de arquivos).
+- **Agenda e tarefas** por cliente e por empresa.
+- **Helpdesk:** chamados com troca de mensagens entre o escritório e o cliente.
+- **Auditoria:** registro de quem fez o quê (criar, alterar, excluir) em cada módulo.
+- **API pública com chave** (`x-api-key`), para integrações que precisam listar dados da empresa.
+- **Dois perfis de acesso:** o gestor (ADMIN) e o cliente (CLIENT), que só enxerga o que é da sua empresa.
+
+---
+
+## ⚙️ Como rodar localmente
+
+Pré-requisitos: Node.js 18 ou mais novo e um banco PostgreSQL (local ou na nuvem).
+
+### 1. Back-end
+
+```bash
+cd backend
+npm install
+```
+
+Crie o arquivo `backend/.env`:
+
+```env
+DATABASE_URL="postgresql://usuario:senha@localhost:5432/businessflow"
+JWT_SECRET="troque-por-uma-chave-longa-e-aleatoria"
+PORT=3001
+# Opcional, só para o envio de e-mails:
+EMAIL_USER=""
+EMAIL_PASS=""
+```
+
+Crie as tabelas, carregue os dados de exemplo e inicie:
+
+```bash
+npx prisma db push
+npx prisma db seed
+npm run dev
+```
+
+A API sobe em `http://localhost:3001/api`. O `seed` cria um gestor, uma empresa e clientes de exemplo (veja `backend/prisma/seed.js`). **Use só em ambiente local e troque as credenciais de exemplo se publicar o projeto.**
+
+### 2. Front-end
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+O painel abre em `http://localhost:3000` e fala com a API em `http://localhost:3001/api`. Para apontar para outra API, defina `REACT_APP_API_URL`.
+
+---
+
+## 🧠 Decisões técnicas
+
+| Decisão | Por quê |
+| :--- | :--- |
+| **Cada dado pertence a uma empresa** (`companyId` em clientes, faturas, documentos, tarefas, chamados e auditoria) | Um escritório nunca vê os dados de outro. O middleware de empresa restringe o perfil CLIENT ao que é dele. |
+| **JWT de acesso + refresh token guardado no banco** | Dá para encerrar sessões e renovar o acesso sem pedir a senha de novo. |
+| **Camadas de segurança na API:** `helmet`, limite de 300 requisições por 15 minutos, CORS restrito ao front-end e `nosniff` na pasta de uploads | Reduz abuso, ataques simples e arquivos disfarçados. |
+| **Validação das entradas com Zod** (autenticação) | Recusa dados malformados antes de chegarem ao banco. |
+| **Log de auditoria que grava o nome e o perfil de quem agiu** (não só o id) | O histórico continua legível mesmo se o usuário for apagado. |
+| **Prisma + PostgreSQL** | Modelo de dados tipado, relações com exclusão em cascata e consultas seguras. |
+| **API pública separada, protegida por chave** | Integrações recebem só o necessário (por exemplo, nome, documento e e-mail de clientes ativos). |
+
+---
+
+## 🗺️ Modelo de dados
+
+```mermaid
+erDiagram
+    User ||--o{ Company : "possui"
+    User ||--o{ RefreshToken : "tem"
+    Company ||--o{ Client : "atende"
+    Company ||--o{ Transaction : "registra"
+    Company ||--o{ Document : "guarda"
+    Company ||--o{ Task : "organiza"
+    Company ||--o{ Ticket : "recebe"
+    Company ||--o{ AuditLog : "audita"
+    Company ||--o{ ApiKey : "emite"
+    Client ||--o{ Transaction : "gera"
+    Client ||--o{ Document : "tem"
+    Client ||--o{ Task : "tem"
+    Client ||--o{ Ticket : "abre"
+    Client ||--o{ User : "acessa por"
+    Ticket ||--o{ TicketMessage : "contém"
+```
+
+---
+
+## 🔭 Próximos passos
+
+Pontos que eu melhoraria, olhando o código hoje:
+
+- **Testes automatizados e CI** (o back-end ainda não tem testes), com verificação a cada alteração no GitHub.
+- **Migrações versionadas do Prisma** no lugar do `db push`, para controlar as mudanças do banco com histórico.
+- **Origens permitidas do CORS por variável de ambiente**, em vez de listadas no código.
+- **Uma só biblioteca de hash de senha** (hoje há duas instaladas) e senhas de exemplo geradas, não fixas, no `seed`.
+
+---
+
 ## 📸 Telas da Aplicação
 
 ### 🔐 Tela de Login
