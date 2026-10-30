@@ -69,11 +69,11 @@ describe("inadimplência", () => {
     suspenso = await newClient(office.company.id, { fullName: "Suspenso 2", status: "SUSPENSO" });
 
     const past = new Date(Date.now() - 20 * 86400000);
-    await createTransaction(office.company.id, { clientId: devedor.id, status: "PENDENTE", amount: 100, date: past });
-    await createTransaction(office.company.id, { clientId: devedor.id, status: "PENDENTE", amount: 50.5, date: past });
-    await createTransaction(office.company.id, { clientId: emDia.id, status: "PAGO", amount: 70, date: past });
-    await createTransaction(office.company.id, { clientId: suspenso.id, status: "PENDENTE", amount: 10, date: past });
-    await createTransaction(other.company.id, { clientId: other.client.id, status: "PENDENTE", amount: 999, date: past });
+    await createTransaction(office.company.id, { clientId: devedor.id, status: "PENDENTE", type: "entrada", amount: 100, date: past });
+    await createTransaction(office.company.id, { clientId: devedor.id, status: "PENDENTE", type: "entrada", amount: 50.5, date: past });
+    await createTransaction(office.company.id, { clientId: emDia.id, status: "PAGO", type: "entrada", amount: 70, date: past });
+    await createTransaction(office.company.id, { clientId: suspenso.id, status: "PENDENTE", type: "entrada", amount: 10, date: past });
+    await createTransaction(other.company.id, { clientId: other.client.id, status: "PENDENTE", type: "entrada", amount: 999, date: past });
   });
 
   it("lista os vencidos por cliente, com total em centavos e dias de atraso", async () => {
