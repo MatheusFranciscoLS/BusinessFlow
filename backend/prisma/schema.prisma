@@ -27,6 +27,11 @@ model User {
   companies       Company[]      
   refreshTokens   RefreshToken[]
   passwordResets  PasswordResetToken[]
+
+  // LGPD: quando e qual versão dos termos a pessoa aceitou.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
   createdAt       DateTime       @default(now())
 
   @@index([email]) // ⚡ Turbo para acelerar o Login
