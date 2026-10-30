@@ -360,43 +360,39 @@ function toggleSelectAll() {
         }
     }
 
-    function handleRunAutoMatch() {
-      if (!bankTransactions.length || !pendingTransactions.length) return;
+    // O servidor procura os pares: valor exato (data até 3 dias), soma de vários
+    // lançamentos e valor aproximado (até 10%). Movimentos já conciliados são ignorados.
+    async function handleRunAutoMatch() {
+      if (!bankTransactions.length) return;
 
-      const matches = [];
-      const bankUnmatched = [];
-      const sysAvailable = [...pendingTransactions];
+      const tId = toast.loading("Procurando correspondências...");
+      try {
+          const { data } = await api.post('/reconciliation/suggest', { movements: bankTransactions });
+          const bankById = new Map(bankTransactions.map(b => [b.id, b]));
+          const systemById = new Map(pendingTransactions.map(t => [t.id, t]));
 
-      bankTransactions.forEach(bt => {
-          const btDate = new Date(bt.date);
-          const btAmount = Math.abs(parseFloat(bt.amount));
+          const matches = data.suggestions
+              .map(s => ({
+                  bankTx: bankById.get(s.bankId),
+                  systemTxs: s.transactionIds.map(id => systemById.get(id)).filter(Boolean),
+                  kind: s.kind,
+                  difference: s.difference,
+              }))
+              .filter(m => m.bankTx && m.systemTxs.length > 0);
 
-          // A Inteligência de Auto-Match: Procura valor exato e data com margem de 3 dias
-          const matchIdx = sysAvailable.findIndex(st => {
-              const stAmount = Math.abs(parseFloat(st.amount || st.price || 0));
-              const stDate = new Date(st.date);
+          const matchedBankIds = new Set(matches.map(m => m.bankTx.id));
+          const alreadyDone = new Set(data.alreadyReconciled);
 
-              const diffTime = Math.abs(btDate.getTime() - stDate.getTime());
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          setAutoMatches(prev => [...prev, ...matches]);
+          setBankTransactions(bankTransactions.filter(b => !matchedBankIds.has(b.id) && !alreadyDone.has(b.id)));
 
-              return stAmount === btAmount && diffDays <= 3;
-          });
-
-          if (matchIdx !== -1) {
-              matches.push({ bankTx: bt, systemTx: sysAvailable[matchIdx] });
-              sysAvailable.splice(matchIdx, 1); 
+          if (matches.length > 0) {
+              toast.success(`Encontrei ${matches.length} correspondências!` + (alreadyDone.size ? ` ${alreadyDone.size} movimentos já estavam conciliados.` : ''), { id: tId });
           } else {
-              bankUnmatched.push(bt);
+              toast.error("Nenhuma correspondência encontrada. Use a conciliação manual.", { id: tId });
           }
-      });
-
-      setAutoMatches(prev => [...prev, ...matches]);
-      setBankTransactions(bankUnmatched);
-
-      if (matches.length > 0) {
-          toast.success(`A IA encontrou ${matches.length} correspondências exatas! ✨`);
-      } else {
-          toast.error("Nenhuma correspondência exata encontrada automaticamente.");
+      } catch (error) {
+          toast.error(error.response?.data?.error || "Falha ao procurar correspondências.", { id: tId });
       }
     }
 
@@ -405,13 +401,20 @@ function toggleSelectAll() {
       setIsSubmitting(true);
       const tId = toast.loading(`A processar ${autoMatches.length} conciliações em lote...`);
       try {
-          await Promise.all(autoMatches.map(m => {
-              const formData = new FormData();
-              formData.append('status', 'PAGO');
-              return api.put(`/transactions/${m.systemTx.id}`, formData);
-          }));
-          toast.success("Conciliação Mágica concluída com sucesso!", { id: tId });
-          setAutoMatches([]);
+          const results = await Promise.allSettled(autoMatches.map(m =>
+              api.post('/reconciliation/confirm', {
+                  bank: m.bankTx,
+                  transactionIds: m.systemTxs.map(t => t.id),
+                  allowDifference: m.kind === 'aproximada',
+              })
+          ));
+          const failed = autoMatches.filter((_, i) => results[i].status === 'rejected');
+          if (failed.length === 0) {
+              toast.success("Conciliação concluída com sucesso!", { id: tId });
+          } else {
+              toast.error(`${failed.length} de ${autoMatches.length} não foram conciliadas. Confira e tente de novo.`, { id: tId, duration: 6000 });
+          }
+          setAutoMatches(failed);
           mutate();
       } catch(err) {
           toast.error("Ocorreu um erro a processar o lote.", { id: tId });
@@ -420,20 +423,47 @@ function toggleSelectAll() {
 
     async function handleConciliate() {
         if (!selectedBankTx || !selectedSystemTx) return toast.error("Selecione uma conta do banco e uma do sistema!");
-        
+
         const tId = toast.loading("A conciliar valores...");
         try {
-            const formData = new FormData();
-            formData.append('status', 'PAGO');
-            await api.put(`/transactions/${selectedSystemTx.id}`, formData);
+            // Manual: a pessoa escolheu o par, então aceita diferença de valor.
+            await api.post('/reconciliation/confirm', {
+                bank: selectedBankTx,
+                transactionIds: [selectedSystemTx.id],
+                allowDifference: true,
+            });
 
             setBankTransactions(prev => prev.filter(t => t.id !== selectedBankTx.id));
             setSelectedBankTx(null);
             setSelectedSystemTx(null);
 
-            mutate(); 
-            toast.success("Match manual perfeito! Conta conciliada.", { id: tId });
-        } catch (error) { toast.error("Falha ao conciliar conta.", { id: tId }); }
+            mutate();
+            toast.success("Conta conciliada.", { id: tId });
+        } catch (error) { toast.error(error.response?.data?.error || "Falha ao conciliar conta.", { id: tId }); }
+    }
+
+    // Tarifa, juros ou rendimento que só existe no banco: vira um lançamento já pago.
+    async function handleCreateFromBank() {
+        if (!selectedBankTx) return toast.error("Selecione um movimento do banco!");
+        if (!window.confirm(`Lançar "${selectedBankTx.description}" (${formatCurrency(selectedBankTx.amount)}) como ${selectedBankTx.type === 'entrada' ? 'entrada' : 'despesa'} já paga?`)) return;
+
+        const tId = toast.loading("Lançando...");
+        try {
+            await api.post('/reconciliation/from-bank', { bank: selectedBankTx });
+            setBankTransactions(prev => prev.filter(t => t.id !== selectedBankTx.id));
+            setSelectedBankTx(null);
+            mutate();
+            toast.success("Lançamento criado a partir do extrato.", { id: tId });
+        } catch (error) { toast.error(error.response?.data?.error || "Falha ao lançar.", { id: tId }); }
+    }
+
+    async function handleUndoReconcile(transactionId) {
+        if (!window.confirm("Desfazer a conciliação deste lançamento? Ele volta a ficar pendente.")) return;
+        try {
+            await api.post('/reconciliation/undo', { transactionId });
+            mutate();
+            toast.success("Conciliação desfeita.");
+        } catch (error) { toast.error(error.response?.data?.error || "Falha ao desfazer.");}
     }
 
     // --- PDF E UTILITÁRIOS ---
@@ -849,6 +879,7 @@ const renderStatusBadge = (statusValue) => {
 
                             {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Baixa Manual"><CheckCircle size={18} /></ActionButton>}
                             {t.fileUrl && <ActionButton onClick={() => openAttachment(t.id)} color="#805ad5" title="Anexo"><Paperclip size={18} /></ActionButton>}
+                            {t.reconciledAt && <ActionButton onClick={() => handleUndoReconcile(t.id)} color="#dd6b20" title="Desfazer conciliação com o banco"><LinkIcon size={18} /></ActionButton>}
                             <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
                             {isNotPaid && <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>}
                         </div>
@@ -928,7 +959,15 @@ const renderStatusBadge = (statusValue) => {
                                 <h4 style={{ color: '#22543d', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
                                   <Wand2 size={20} color="#38a169"/> Auto-Match Concluído!
                                 </h4>
-                                <p style={{ color: '#276749', margin: 0, fontSize: 14 }}>A Inteligência cruzou <strong>{autoMatches.length}</strong> transações perfeitas (Data e Valor iguais).</p>
+                                <p style={{ color: '#276749', margin: 0, fontSize: 14 }}>
+                                  Encontrei <strong>{autoMatches.length}</strong> correspondências:{' '}
+                                  {autoMatches.filter(m => m.kind === 'exata').length} exatas,{' '}
+                                  {autoMatches.filter(m => m.kind === 'soma').length} somando vários lançamentos,{' '}
+                                  {autoMatches.filter(m => m.kind === 'aproximada').length} com valor aproximado.
+                                </p>
+                                {autoMatches.some(m => m.kind === 'aproximada') && (
+                                  <p style={{ color: '#975a16', margin: '4px 0 0 0', fontSize: 12 }}>As aproximadas têm diferença de valor (até 10%). Confira antes de aprovar.</p>
+                                )}
                              </div>
                              <button onClick={handleConfirmAutoMatches} disabled={isSubmitting} style={{ background: '#38a169', color: 'white', padding: '12px 24px', borderRadius: 8, border: 'none', fontWeight: 800, cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 10px rgba(56, 161, 105, 0.3)' }}>
                                 {isSubmitting ? 'A aprovar...' : `Aprovar as ${autoMatches.length} em Lote`}
@@ -1003,6 +1042,9 @@ const renderStatusBadge = (statusValue) => {
                                             <div style={{ fontSize: 18, fontWeight: 800, color: selectedSystemTx ? ((selectedSystemTx.type === 'entrada' || selectedSystemTx.type === 'income') ? '#12a454' : '#e53e3e') : '#a0aec0' }}>{selectedSystemTx ? formatCurrency(selectedSystemTx.amount || selectedSystemTx.price) : 'R$ 0,00'}</div>
                                           </div>
                                       </div>
+                                      <button onClick={handleCreateFromBank} disabled={!selectedBankTx} title="Para tarifas, juros e rendimentos que só existem no banco" style={{ background: 'white', color: selectedBankTx ? '#3182ce' : '#a0aec0', border: `1px solid ${selectedBankTx ? '#3182ce' : '#cbd5e0'}`, padding: '16px 24px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: selectedBankTx ? 'pointer' : 'not-allowed' }}>
+                                        Lançar como tarifa / despesa
+                                      </button>
                                       <button onClick={handleConciliate} disabled={!selectedBankTx || !selectedSystemTx} style={{ background: (!selectedBankTx || !selectedSystemTx) ? '#cbd5e0' : '#3182ce', color: 'white', border: 'none', padding: '16px 32px', borderRadius: 8, fontSize: 16, fontWeight: 700, cursor: (!selectedBankTx || !selectedSystemTx) ? 'not-allowed' : 'pointer', transition: '0.2s', boxShadow: '0 4px 6px rgba(49, 130, 206, 0.2)' }}>
                                         Conciliar Par Manualmente
                                       </button>

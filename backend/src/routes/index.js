@@ -12,6 +12,7 @@ import ticketRoutes from "./ticket.routes.js"; // 🔥 O Helpdesk
 import documentRoutes from "./document.routes.js"; // 🔥 O Cofre Digital
 import ofxRoutes from "./ofx.routes.js";
 import auditRoutes from "./audit.routes.js";
+import reconciliationRoutes from "./reconciliation.routes.js";
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use("/tickets", ticketRoutes);
 router.use("/documents", documentRoutes);
 router.use("/ofx", ofxRoutes);
 router.use("/audit", auditRoutes);
+router.use("/reconciliation", reconciliationRoutes);
 
 export default router;
