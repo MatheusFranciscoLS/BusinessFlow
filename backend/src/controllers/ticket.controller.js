@@ -1,5 +1,15 @@
 import * as ticketService from "../services/ticket.service.js";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. A Caixa Preta
+import prisma from "../config/prisma.js";
+
+const senderRole = (req) => (req.portal ? "CLIENT" : "ADMIN");
+
+// Chamado da empresa logada e, no portal, só os do próprio cliente.
+async function findVisibleTicket(req) {
+  const where = { id: req.params.id, companyId: req.companyId };
+  if (req.portal) where.clientId = req.portal.clientId ?? "sem-cadastro";
+  return prisma.ticket.findFirst({ where, select: { id: true } });
+}
 
 export async function getUnreadCount(req, res) {
   try {
@@ -17,8 +27,22 @@ export async function getUnreadCount(req, res) {
 
 export async function create(req, res) {
   try {
+    // O perfil e, no portal, o cliente vêm do servidor, não do corpo da requisição.
+    const clientId = req.portal ? req.portal.clientId : req.body.clientId;
+    if (!clientId)
+      return res.status(403).json({ error: "Cliente não vinculado a esta empresa." });
+
+    const owner = await prisma.client.findFirst({
+      where: { id: clientId, companyId: req.companyId },
+      select: { id: true },
+    });
+    if (!owner)
+      return res.status(400).json({ error: "Cliente não encontrado nesta empresa." });
+
     const ticket = await ticketService.createTicket({
       ...req.body,
+      clientId,
+      role: senderRole(req),
       companyId: req.companyId,
     });
 
@@ -69,7 +93,14 @@ export async function getAll(req, res) {
 
 export async function addMessage(req, res) {
   try {
-    const newMessage = await ticketService.addMessage(req.params.id, req.body);
+    if (!(await findVisibleTicket(req)))
+      return res.status(404).json({ error: "Chamado não encontrado." });
+
+    const newMessage = await ticketService.addMessage(req.params.id, {
+      message: req.body.message,
+      senderRole: senderRole(req),
+      senderName: req.actor.name,
+    });
 
     // 🔥 3. ESPIÃO: Resposta no chamado
     registerLog(
@@ -88,7 +119,10 @@ export async function addMessage(req, res) {
 
 export async function markAsRead(req, res) {
   try {
-    await ticketService.markAsRead(req.params.id, req.body.role);
+    if (!(await findVisibleTicket(req)))
+      return res.status(404).json({ error: "Chamado não encontrado." });
+
+    await ticketService.markAsRead(req.params.id, senderRole(req));
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: "Erro ao marcar como lido." });
@@ -97,6 +131,9 @@ export async function markAsRead(req, res) {
 
 export async function updateStatus(req, res) {
   try {
+    if (!(await findVisibleTicket(req)))
+      return res.status(404).json({ error: "Chamado não encontrado." });
+
     const updatedTicket = await ticketService.updateStatus(
       req.params.id,
       req.body,

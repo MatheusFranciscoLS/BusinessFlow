@@ -2,6 +2,7 @@ import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
+import { requireManager } from "../middlewares/roles.js";
 
 // Importamos a inteligência do Controller
 import * as TaskController from "../controllers/task.controller.js";
@@ -29,11 +30,12 @@ router.use(async (req, res, next) => {
 });
 
 // Rotas limpas e apontadas ao Controller!
-router.post("/", TaskController.createTask);
+// Cliente do portal só consulta; criar, alterar e apagar tarefas é do gestor.
 router.get("/", TaskController.getTasks);
 router.get("/alerts", TaskController.getAlerts);
-router.put("/:id", TaskController.updateTask);
-router.delete("/:id", TaskController.deleteTask);
-router.post("/auto-scan", TaskController.autoScan);
+router.post("/", requireManager, TaskController.createTask);
+router.put("/:id", requireManager, TaskController.updateTask);
+router.delete("/:id", requireManager, TaskController.deleteTask);
+router.post("/auto-scan", requireManager, TaskController.autoScan);
 
 export default router;
