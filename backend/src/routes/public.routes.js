@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { apiKeyMiddleware } from "../middlewares/apiKey.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.use(apiKeyMiddleware);
 

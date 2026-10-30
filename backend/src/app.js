@@ -16,6 +16,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Atrás do proxy do Render/Vercel: sem isso o limite de requisições e o IP gravado
+// na assinatura de documentos ficam com o IP do proxy, não o do usuário.
+app.set("trust proxy", 1);
+
 // ==========================================
 // 🛡️ 1. CAMADAS DE SEGURANÇA GLOBAIS (O Escudo)
 // ==========================================

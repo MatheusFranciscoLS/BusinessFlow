@@ -1,10 +1,9 @@
 import * as documentService from "../services/document.service.js";
 import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/file.service.js";
 import { sendDocumentNotification } from "../services/email.service.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
 
-const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {
@@ -147,7 +146,9 @@ export async function downloadFile(req, res) {
 export async function sign(req, res) {
   try {
     // Captura o IP real de onde o cliente está a aceder
-    const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "IP Desconhecido";
+    // req.ip respeita o "trust proxy" do app: pega o IP que o proxy viu, e não um
+    // cabeçalho X-Forwarded-For mandado pelo próprio cliente.
+    const ipAddress = req.ip || "IP Desconhecido";
 
     // Pega o e-mail do cliente injetado pelo nosso middleware de segurança
     const userEmail = req.query.userEmail;

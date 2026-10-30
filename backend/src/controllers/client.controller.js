@@ -1,8 +1,7 @@
 import * as clientService from "../services/client.service.js";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 
-const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {

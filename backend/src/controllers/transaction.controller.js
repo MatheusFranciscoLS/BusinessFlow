@@ -1,9 +1,8 @@
 import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/file.service.js";
 import { addMonths } from "date-fns";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { registerLog } from "../services/audit.service.js";
 
-const prisma = new PrismaClient();
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 5000;
