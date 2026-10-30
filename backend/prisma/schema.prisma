@@ -134,7 +134,11 @@ model Transaction {
   paymentMethod String?
   fileUrl       String?
   installments  Int      @default(1) // 🔥 MELHORIA 4: Registra se é mensalidade
-  
+
+  // Conciliação bancária: qual movimento do extrato pagou este lançamento.
+  bankFitId     String?
+  reconciledAt  DateTime?
+
   clientId      String?
   client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
@@ -144,6 +148,7 @@ model Transaction {
   createdAt     DateTime @default(now())
 
   @@index([companyId, date]) // ⚡ Turbo: Acelera filtros por data no dashboard
+  @@index([companyId, bankFitId])
   @@index([clientId])
 }
 
