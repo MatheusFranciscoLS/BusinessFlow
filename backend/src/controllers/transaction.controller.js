@@ -1,4 +1,4 @@
-import { sendStoredFile } from "../services/file.service.js";
+import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/file.service.js";
 import { addMonths } from "date-fns";
 import { PrismaClient } from "@prisma/client";
 import { registerLog } from "../services/audit.service.js";
@@ -24,9 +24,7 @@ export async function create(req, res) {
     const baseDate = new Date(date);
     const parsedAmount = parseFloat(amount);
 
-    const fileUrl = req.file
-      ? `/uploads/transactions/${req.file.filename}`
-      : null;
+    const fileUrl = req.file ? await saveUploadedFile(companyId, req.file) : null;
 
     // Objeto genérico para o log (se o seu middleware de Auth enviar o 'req.user', podemos substituir no futuro)
     const currentUser = { name: "Usuário do Sistema", role: "ADMIN" };
@@ -167,7 +165,7 @@ export async function update(req, res) {
       return res.status(404).json({ error: "Transação não encontrada." });
 
     const fileUrl = req.file
-      ? `/uploads/transactions/${req.file.filename}`
+      ? await saveUploadedFile(companyId, req.file)
       : existingTx.fileUrl;
     const {
       title,
@@ -194,6 +192,9 @@ export async function update(req, res) {
         fileUrl,
       },
     });
+
+    // Anexo novo substitui o antigo, que sai do banco.
+    if (req.file) await deleteStoredFile(existingTx.fileUrl);
 
     // 🔥 3. ESPIÃO: Regista quem alterou e qual era o título antigo
     registerLog(
@@ -229,6 +230,7 @@ export async function remove(req, res) {
     await prisma.transaction.delete({
       where: { id: transactionId },
     });
+    await deleteStoredFile(existingTx.fileUrl);
 
     // 🔥 4. ESPIÃO: A ação mais perigosa do sistema está agora totalmente blindada!
     registerLog(
@@ -268,7 +270,7 @@ export async function downloadFile(req, res) {
     const data = await findVisibleTransaction(req);
     if (!data || !data.fileUrl)
       return res.status(404).json({ error: "Anexo não encontrado." });
-    return sendStoredFile(res, data.fileUrl);
+    return await sendStoredFile(res, data.fileUrl, req.companyId);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

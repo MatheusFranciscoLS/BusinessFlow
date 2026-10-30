@@ -1,5 +1,5 @@
 import * as documentService from "../services/document.service.js";
-import { sendStoredFile } from "../services/file.service.js";
+import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/file.service.js";
 import { sendDocumentNotification } from "../services/email.service.js";
 import { PrismaClient } from "@prisma/client";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
@@ -8,8 +8,7 @@ const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {
-    const fileUrl = req.file ? `/uploads/documents/${req.file.filename}` : null;
-    if (!fileUrl)
+    if (!req.file)
       return res
         .status(400)
         .json({ error: "Ficheiro não recebido pelo servidor." });
@@ -21,6 +20,8 @@ export async function create(req, res) {
     });
     if (!owner)
       return res.status(400).json({ error: "Cliente não encontrado nesta empresa." });
+
+    const fileUrl = await saveUploadedFile(req.companyId, req.file);
 
     // 1. Grava o documento no banco de dados primeiro
     const document = await documentService.createDocument(
@@ -91,6 +92,7 @@ export async function remove(req, res) {
       return res.status(404).json({ error: "Documento não encontrado." });
 
     await documentService.deleteDocument(req.companyId, req.params.id);
+    await deleteStoredFile(existingDoc.fileUrl);
 
     // 🔥 3. ESPIÃO: Alarme disparado na exclusão do ficheiro!
     registerLog(
@@ -136,7 +138,7 @@ export async function downloadFile(req, res) {
   try {
     const doc = await findVisibleDocument(req);
     if (!doc) return res.status(404).json({ error: "Documento não encontrado." });
-    return sendStoredFile(res, doc.fileUrl);
+    return await sendStoredFile(res, doc.fileUrl, req.companyId);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

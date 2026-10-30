@@ -4,25 +4,10 @@ import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { portalScope } from "../middlewares/portal.js";
 import { requireManager } from "../middlewares/roles.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
-import crypto from "crypto";
+import upload from "../config/multer.js";
 import prisma from "../config/prisma.js";
 
 const router = Router();
-
-const docFolder = path.resolve("uploads", "documents");
-if (!fs.existsSync(docFolder)) fs.mkdirSync(docFolder, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: docFolder,
-  filename: (req, file, cb) => {
-    const hash = crypto.randomBytes(10).toString("hex");
-    cb(null, `${hash}-${file.originalname.replace(/\s/g, "_")}`);
-  },
-});
-const upload = multer({ storage });
 
 router.use(authMiddleware);
 router.use(companyMiddleware);
