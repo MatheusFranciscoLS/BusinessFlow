@@ -55,7 +55,14 @@ function generateRefreshToken(userId) {
   };
 }
 
+// O cadastro de escritórios é fechado por padrão: só abre com ALLOW_PUBLIC_REGISTRATION=true.
+export const isRegistrationOpen = () => process.env.ALLOW_PUBLIC_REGISTRATION === "true";
+
 export async function register(data) {
+  if (!isRegistrationOpen()) {
+    throw Object.assign(new Error("O cadastro está fechado. Peça o seu acesso ao escritório."), { status: 403 });
+  }
+
   const validated = registerSchema.parse(data);
 
   const emailExists = await prisma.user.findUnique({

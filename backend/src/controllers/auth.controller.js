@@ -15,8 +15,13 @@ export async function register(req, res) {
     if (error instanceof z.ZodError) {
       return validationError(res, error, "Erro de validação");
     }
-    return res.status(400).json({ error: error.message });
+    return res.status(error.status || 400).json({ error: error.message });
   }
+}
+
+// O que a tela de login precisa saber para se montar.
+export function publicConfig(req, res) {
+  return res.json({ registrationOpen: authService.isRegistrationOpen() });
 }
 
 export async function login(req, res) {
