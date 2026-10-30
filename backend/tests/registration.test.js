@@ -24,10 +24,10 @@ describe("cadastro público", () => {
 
   it("a tela de login descobre se o cadastro está aberto", async () => {
     delete process.env.ALLOW_PUBLIC_REGISTRATION;
-    expect((await api().get("/api/auth/config")).body).toEqual({ registrationOpen: false });
+    expect((await api().get("/api/auth/config")).body).toMatchObject({ registrationOpen: false });
 
     process.env.ALLOW_PUBLIC_REGISTRATION = "true";
-    expect((await api().get("/api/auth/config")).body).toEqual({ registrationOpen: true });
+    expect((await api().get("/api/auth/config")).body).toMatchObject({ registrationOpen: true });
   });
 
   it("aberto por variável de ambiente: cadastra normalmente", async () => {

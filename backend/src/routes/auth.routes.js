@@ -21,6 +21,16 @@ const sensitiveLimiter = rateLimit({
 
 router.get("/config", authController.publicConfig);
 router.post("/login", sensitiveLimiter, authController.login);
+// Limite maior: uma apresentação para uma turma sai quase toda do mesmo IP.
+const demoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test",
+  message: { error: "Muitas entradas na demonstração. Tente novamente em 15 minutos." },
+});
+router.post("/demo-login", demoLimiter, authController.demoLogin);
 router.post("/register", sensitiveLimiter, authController.register);
 router.post("/forgot-password", sensitiveLimiter, authController.forgotPassword);
 router.post("/reset-password", sensitiveLimiter, authController.resetPassword);
