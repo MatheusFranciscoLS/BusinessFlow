@@ -16,6 +16,7 @@ import reconciliationRoutes from "./reconciliation.routes.js";
 import feesRoutes from "./fees.routes.js";
 import portalRoutes from "./portal.routes.js";
 import privacyRoutes from "./privacy.routes.js";
+import teamRoutes from "./team.routes.js";
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use("/reconciliation", reconciliationRoutes);
 router.use("/fees", feesRoutes);
 router.use("/portal", portalRoutes);
 router.use("/privacy", privacyRoutes);
+router.use("/team", teamRoutes);
 
 export default router;

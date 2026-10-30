@@ -23,6 +23,7 @@ const Profile = lazy(() => import('../pages/Profile'));
 const Audit = lazy(() => import('../pages/Audit'));
 const ApiKeys = lazy(() => import('../pages/ApiKeys'));
 const Privacy = lazy(() => import('../pages/Privacy'));
+const Team = lazy(() => import('../pages/Team'));
 
 // --- COMPONENTES DE PROTEÇÃO ---
 
@@ -82,6 +83,7 @@ const AppRoutes = () => {
             <Route path="helpdesk" element={<Helpdesk />} />
             <Route path="documentos" element={<Documents />} />
             <Route path="agenda" element={<Agenda />} />
+            <Route path="equipe" element={<Team />} />
             <Route path="privacidade" element={<Privacy />} />
             <Route path="auditoria" element={<Audit />} />
 

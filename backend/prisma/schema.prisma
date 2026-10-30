@@ -27,6 +27,7 @@ model User {
   companies       Company[]      
   refreshTokens   RefreshToken[]
   passwordResets  PasswordResetToken[]
+  memberships     CompanyMember[]
 
   // LGPD: quando e qual versão dos termos a pessoa aceitou.
   termsAcceptedAt DateTime?
@@ -91,8 +92,25 @@ model Company {
   auditLogs    AuditLog[]    // Relação com a Caixa Preta
   apiKeys   ApiKey[]
   storedFiles StoredFile[]
+  members      CompanyMember[]
 
   createdAt    DateTime      @default(now())
+}
+
+// Equipe do escritório: outros usuários com acesso à empresa, além do dono.
+// role: SOCIO (quase tudo) ou ANALISTA (trabalho do dia a dia, sem apagar nem ver auditoria).
+model CompanyMember {
+  id        String   @id @default(uuid())
+  role      String   @default("ANALISTA")
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId])
 }
 
 // ==========================================
