@@ -3,7 +3,7 @@ import * as transactionController from "../controllers/transaction.controller.js
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { portalScope } from "../middlewares/portal.js";
-import { requireManager } from "../middlewares/roles.js";
+import { requireManager, requireSocio } from "../middlewares/roles.js";
 import upload from "../config/multer.js";
 
 const router = Router();
@@ -19,6 +19,6 @@ router.get("/:id/file", transactionController.downloadFile);
 
 router.post("/", requireManager, upload.single("file"), transactionController.create);
 router.put("/:id", requireManager, upload.single("file"), transactionController.update);
-router.delete("/:id", requireManager, transactionController.remove);
+router.delete("/:id", requireManager, requireSocio, transactionController.remove);
 
 export default router;

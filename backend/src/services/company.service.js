@@ -11,11 +11,18 @@ export async function createCompany(userId, data) {
   });
 }
 
+// Empresas do usuário: as que ele criou (OWNER) e as em que ele está na equipe.
 export async function getUserCompanies(userId) {
-  return prisma.company.findMany({
-    where: { userId },
+  const companies = await prisma.company.findMany({
+    where: { OR: [{ userId }, { members: { some: { userId } } }] },
+    include: { members: { where: { userId }, select: { role: true } } },
     orderBy: { createdAt: "desc" },
   });
+
+  return companies.map(({ members, ...company }) => ({
+    ...company,
+    teamRole: company.userId === userId ? "OWNER" : members[0].role,
+  }));
 }
 
 export async function updateCompany(userId, companyId, data) {

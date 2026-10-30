@@ -5,7 +5,7 @@ import api from '../../services/api';
 import useSWR from 'swr';
 import {
   LayoutDashboard, Users, DollarSign, LogOut, Calendar, Menu, X,
-  Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock, ShieldAlert, ShieldCheck
+  Settings, CircleUser, Building2, PieChart, LifeBuoy, FolderLock, ShieldAlert, ShieldCheck, UsersRound
 } from 'lucide-react';
 
 import {
@@ -122,6 +122,12 @@ export default function Layout() {
             {!isClient && (
               <StyledNavLink to="/app/auditoria" onClick={closeMenu}>
                 <ShieldAlert size={20} /> Segurança (Logs)
+              </StyledNavLink>
+            )}
+
+            {!isClient && (
+              <StyledNavLink to="/app/equipe" onClick={closeMenu}>
+                <UsersRound size={20} /> Equipe
               </StyledNavLink>
             )}
 

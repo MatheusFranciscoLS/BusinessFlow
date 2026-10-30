@@ -37,14 +37,23 @@ export async function companyMiddleware(req, res, next) {
         .status(400)
         .json({ error: "ID da empresa não fornecido no cabeçalho." });
 
-    // 🔥 OTIMIZAÇÃO: "count" não descarrega a empresa para a memória, apenas responde com um número (1 ou 0)
-    const companyExists = await prisma.company.count({
-      where: { id: companyId, userId: userId },
+    // O acesso é do dono da empresa ou de alguém da equipe dela.
+    const company = await prisma.company.findFirst({
+      where: {
+        id: companyId,
+        OR: [{ userId }, { members: { some: { userId } } }],
+      },
+      select: {
+        userId: true,
+        members: { where: { userId }, select: { role: true } },
+      },
     });
 
-    if (companyExists === 0)
+    if (!company)
       return res.status(403).json({ error: "Acesso negado a esta empresa." });
 
+    // OWNER (dono), SOCIO ou ANALISTA
+    req.teamRole = company.userId === userId ? "OWNER" : company.members[0].role;
     req.companyId = companyId;
     return next();
   } catch (error) {

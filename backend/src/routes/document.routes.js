@@ -3,7 +3,7 @@ import * as documentController from "../controllers/document.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { portalScope } from "../middlewares/portal.js";
-import { requireManager } from "../middlewares/roles.js";
+import { requireManager, requireSocio } from "../middlewares/roles.js";
 import upload from "../config/multer.js";
 import prisma from "../config/prisma.js";
 
@@ -37,6 +37,6 @@ router.put("/:id/sign", documentController.sign);
 router.get("/", documentController.getAll);
 
 router.post("/", requireManager, upload.single("file"), documentController.create);
-router.delete("/:id", requireManager, documentController.remove);
+router.delete("/:id", requireManager, requireSocio, documentController.remove);
 
 export default router;
