@@ -17,6 +17,15 @@ export const createTask = async (req, res) => {
         .status(400)
         .json({ error: "Preencha o título e o prazo limite." });
 
+    if (clientId) {
+      const owner = await prisma.client.findFirst({
+        where: { id: clientId, companyId: req.companyId },
+        select: { id: true },
+      });
+      if (!owner)
+        return res.status(400).json({ error: "Cliente não encontrado nesta empresa." });
+    }
+
     const baseDate = new Date(dueDate);
     const tasks = [];
     const numInstallments = parseInt(installments) || 1;
@@ -128,8 +137,9 @@ export const getAlerts = async (req, res) => {
 export const updateTask = async (req, res) => {
   try {
     const { status, priority, dueDate, description } = req.body;
-    const task = await prisma.task.update({
-      where: { id: req.params.id },
+    // Filtra pela empresa: tarefa de outra empresa não é encontrada.
+    const result = await prisma.task.updateMany({
+      where: { id: req.params.id, companyId: req.companyId },
       data: {
         ...(status && { status }),
         ...(priority && { priority }),
@@ -137,6 +147,10 @@ export const updateTask = async (req, res) => {
         ...(dueDate && { dueDate: new Date(dueDate) }),
       },
     });
+    if (result.count === 0)
+      return res.status(404).json({ error: "Tarefa não encontrada." });
+
+    const task = await prisma.task.findUnique({ where: { id: req.params.id } });
     return res.json(task);
   } catch (err) {
     return res.status(500).json({ error: "Erro ao atualizar a tarefa." });
@@ -145,7 +159,11 @@ export const updateTask = async (req, res) => {
 
 export const deleteTask = async (req, res) => {
   try {
-    await prisma.task.delete({ where: { id: req.params.id } });
+    const result = await prisma.task.deleteMany({
+      where: { id: req.params.id, companyId: req.companyId },
+    });
+    if (result.count === 0)
+      return res.status(404).json({ error: "Tarefa não encontrada." });
     return res.json({ message: "Tarefa excluída." });
   } catch (err) {
     return res.status(500).json({ error: "Erro ao excluir a tarefa." });

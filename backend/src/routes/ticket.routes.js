@@ -2,6 +2,8 @@ import { Router } from "express";
 import * as ticketController from "../controllers/ticket.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
+import { portalScope } from "../middlewares/portal.js";
+import { requireManager } from "../middlewares/roles.js";
 import { PrismaClient } from "@prisma/client";
 
 const router = Router();
@@ -9,6 +11,7 @@ const prisma = new PrismaClient();
 
 router.use(authMiddleware);
 router.use(companyMiddleware);
+router.use(portalScope);
 
 // 🔥 INTERCEPTOR ZERO TRUST
 router.use(async (req, res, next) => {
@@ -32,6 +35,6 @@ router.post("/", ticketController.create);
 router.get("/", ticketController.getAll);
 router.post("/:id/messages", ticketController.addMessage);
 router.put("/:id/read", ticketController.markAsRead);
-router.put("/:id/status", ticketController.updateStatus);
+router.put("/:id/status", requireManager, ticketController.updateStatus);
 
 export default router;
