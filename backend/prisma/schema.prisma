@@ -55,6 +55,19 @@ model PasswordResetToken {
   @@index([userId])
 }
 
+// Arquivo enviado (documento ou anexo), guardado no banco para não sumir no deploy.
+model StoredFile {
+  id        String   @id @default(uuid())
+  filename  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
 // ==========================================
 // 🏢 NÚCLEO DO ESCRITÓRIO (BPO / AGÊNCIA)
 // ==========================================
@@ -72,7 +85,8 @@ model Company {
   tasks        Task[]
   auditLogs    AuditLog[]    // Relação com a Caixa Preta
   apiKeys   ApiKey[]
-  
+  storedFiles StoredFile[]
+
   createdAt    DateTime      @default(now())
 }
 
