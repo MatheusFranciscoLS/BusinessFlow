@@ -49,8 +49,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Criar as tabelas no banco de teste
-        run: npx prisma db push
+      - name: Aplicar as migracoes no banco de teste vazio
+        run: npx prisma migrate deploy
+
+      - name: Conferir que as migracoes batem com o schema
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
 
       - name: Rodar os testes
         run: npm test

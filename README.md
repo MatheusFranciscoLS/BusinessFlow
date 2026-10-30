@@ -110,6 +110,22 @@ npm run dev
 
 A API sobe em `http://localhost:3001/api`. O `seed` cria um gestor, uma empresa e clientes de exemplo (veja `backend/prisma/seed.js`). **Use só em ambiente local e troque as credenciais de exemplo se publicar o projeto.**
 
+#### Migrações do banco
+
+O histórico do banco fica em `backend/prisma/migrations` (a primeira é `0_init`, a foto completa do schema). A CI aplica as migrações em um banco vazio e confere que elas batem com o `schema.prisma`: **quem mudar o schema precisa criar a migração junto**:
+
+```bash
+npx prisma migrate dev --name o-que-mudou
+```
+
+**Banco que já existe (criado antes com `db push`):** rode uma única vez, para dizer ao Prisma que o `0_init` já está aplicado, sem mexer nos dados:
+
+```bash
+npx prisma migrate resolve --applied 0_init
+```
+
+Depois disso, o deploy pode usar `npx prisma migrate deploy` no lugar de `db push`.
+
 ### 2. Front-end
 
 ```bash
