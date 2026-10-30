@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import api from '../../services/api';
+import api, { openProtectedFile } from '../../services/api';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -533,8 +533,8 @@ function toggleSelectAll() {
         toast.success("Excel (CSV) gerado com sucesso!");
     }
 
-    function openAttachment(fileUrl) { 
-        window.open(`${api.defaults.baseURL.replace('/api', '')}${fileUrl}`, '_blank'); 
+    function openAttachment(transactionId) {
+        openProtectedFile(`/transactions/${transactionId}/file`).catch(() => toast.error('Não foi possível abrir o anexo.'));
     }
 
 const renderStatusBadge = (statusValue) => {
@@ -834,7 +834,7 @@ const renderStatusBadge = (statusValue) => {
                             </ActionButton>
                         ) : (
                             t.fileUrl ? (
-                              <button onClick={() => openAttachment(t.fileUrl)} style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center' }}>
+                              <button onClick={() => openAttachment(t.id)} style={{ background: '#ebf8ff', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer', color: '#3182ce', display: 'inline-flex', alignItems: 'center' }}>
                                 <Paperclip size={18} /> Ver Documento
                               </button>
                             ) : <span style={{ color: '#a0aec0', fontSize: 12 }}>-</span>
@@ -848,7 +848,7 @@ const renderStatusBadge = (statusValue) => {
                             )}
 
                             {isNotPaid && <ActionButton onClick={() => handleMarkAsPaid(t)} color="#12a454" title="Baixa Manual"><CheckCircle size={18} /></ActionButton>}
-                            {t.fileUrl && <ActionButton onClick={() => openAttachment(t.fileUrl)} color="#805ad5" title="Anexo"><Paperclip size={18} /></ActionButton>}
+                            {t.fileUrl && <ActionButton onClick={() => openAttachment(t.id)} color="#805ad5" title="Anexo"><Paperclip size={18} /></ActionButton>}
                             <ActionButton onClick={() => handleEdit(t)} color="#3182ce" title="Editar"><Edit size={18} /></ActionButton>
                             {isNotPaid && <ActionButton onClick={() => handleDelete(t.id)} color="#e53e3e" title="Excluir"><Trash2 size={18} /></ActionButton>}
                         </div>

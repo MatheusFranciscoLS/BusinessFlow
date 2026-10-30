@@ -1,4 +1,4 @@
-import * as transactionService from "../services/transaction.service.js";
+import { sendStoredFile } from "../services/file.service.js";
 import { addMonths } from "date-fns";
 import { PrismaClient } from "@prisma/client";
 import { registerLog } from "../services/audit.service.js";
@@ -101,18 +101,15 @@ export async function create(req, res) {
 export async function getAll(req, res) {
   try {
     // 🔥 1. Capturamos page e limit da URL (Por defeito: Traz os últimos 50)
-    const { role, userEmail, month, year, page = 1, limit = 50 } = req.query;
+    const { month, year, page = 1, limit = 50 } = req.query;
     const companyId = req.companyId;
 
     let whereClause = { companyId: companyId };
 
-    if (role === "CLIENT") {
-      const client = await prisma.client.findFirst({
-        where: { email: userEmail, companyId: companyId },
-      });
-
-      if (!client) return res.status(403).json({ error: "Acesso negado." });
-      whereClause.clientId = client.id;
+    // Perfil CLIENT (definido pelo servidor em portalScope): só os próprios lançamentos.
+    if (req.portal) {
+      if (!req.portal.clientId) return res.status(200).json([]);
+      whereClause.clientId = req.portal.clientId;
     }
 
     if (month && year) {
@@ -248,13 +245,30 @@ export async function remove(req, res) {
   }
 }
 
+// Busca o lançamento respeitando a empresa e, no portal, o cliente dono dele.
+async function findVisibleTransaction(req) {
+  const where = { id: req.params.id, companyId: req.companyId };
+  if (req.portal) where.clientId = req.portal.clientId ?? "sem-cadastro";
+  return prisma.transaction.findFirst({ where });
+}
+
 export async function getById(req, res) {
   try {
-    const data = await transactionService.getTransactionById(
-      req.companyId,
-      req.params.id,
-    );
+    const data = await findVisibleTransaction(req);
+    if (!data)
+      return res.status(404).json({ error: "Transação não encontrada." });
     return res.status(200).json(data);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+export async function downloadFile(req, res) {
+  try {
+    const data = await findVisibleTransaction(req);
+    if (!data || !data.fileUrl)
+      return res.status(404).json({ error: "Anexo não encontrado." });
+    return sendStoredFile(res, data.fileUrl);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

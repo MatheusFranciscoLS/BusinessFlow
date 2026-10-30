@@ -66,7 +66,7 @@ describe("financeiro", () => {
     const update = await api().put(`/api/transactions/${txB.id}`).set(asA).send({ title: "Invadido" });
     const remove = await api().delete(`/api/transactions/${txB.id}`).set(asA);
 
-    expect(read.status).toBe(400);
+    expect(read.status).toBe(404);
     expect(update.status).toBe(404);
     expect(remove.status).toBe(403);
 

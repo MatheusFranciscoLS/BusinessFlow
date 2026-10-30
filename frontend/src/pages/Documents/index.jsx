@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import api from '../../services/api';
+import api, { openProtectedFile } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -108,7 +108,6 @@ export default function Documents() {
     }
   }
 
-  const getFileUrl = (path) => `${api.defaults.baseURL.replace('/api', '')}${path}`; // Código existente
 
   return (
     <Container>
@@ -204,9 +203,9 @@ export default function Documents() {
                       </button>
                     )}
 
-                    <a href={getFileUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex', transition: '0.2s' }} title="Baixar/Visualizar">
+                    <button onClick={() => openProtectedFile(`/documents/${doc.id}/file`).catch(() => toast.error('Não foi possível abrir o arquivo.'))} style={{ background: '#f7fafc', border: '1px solid #e2e8f0', padding: 8, borderRadius: 6, color: '#3182ce', display: 'flex', transition: '0.2s', cursor: 'pointer' }} title="Baixar/Visualizar">
                       <Download size={18} />
-                    </a>
+                    </button>
 
                     {!isClient && (
                       <button onClick={() => handleDelete(doc.id)} style={{ background: '#fff5f5', border: '1px solid #fed7d7', padding: 8, borderRadius: 6, color: '#e53e3e', cursor: 'pointer', transition: '0.2s' }} title="Eliminar Documento">

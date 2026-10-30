@@ -95,4 +95,19 @@ export async function signDocument(documentId) {
   return response.data;
 }
 
+// Documentos e anexos só saem com login: baixa o arquivo com o token e abre em outra aba.
+export async function openProtectedFile(path) {
+  const win = window.open("", "_blank"); // abre já, para o navegador não bloquear o pop-up
+  try {
+    const response = await api.get(path, { responseType: "blob" });
+    const url = URL.createObjectURL(response.data);
+    if (win) win.location.href = url;
+    else window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) {
+    if (win) win.close();
+    throw error;
+  }
+}
+
 export default api;

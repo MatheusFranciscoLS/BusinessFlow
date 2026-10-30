@@ -25,7 +25,8 @@ model User {
   client          Client?        @relation(fields: [clientId], references: [id], onDelete: SetNull)
   
   companies       Company[]      
-  refreshTokens   RefreshToken[] 
+  refreshTokens   RefreshToken[]
+  passwordResets  PasswordResetToken[]
   createdAt       DateTime       @default(now())
 
   @@index([email]) // ⚡ Turbo para acelerar o Login
@@ -39,6 +40,19 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
+}
+
+// Pedido de redefinição de senha: só o hash do código fica no banco.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ==========================================
