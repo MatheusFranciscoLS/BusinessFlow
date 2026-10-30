@@ -1,10 +1,30 @@
 import { PrismaClient } from "@prisma/client";
 import { fakerPT_BR as faker } from "@faker-js/faker";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
+// Este script APAGA todos os dados antes de criar os de exemplo. Por isso só roda em
+// banco local. Para rodar em outro banco de propósito: SEED_ALLOW_REMOTE=true.
+function assertLocalDatabase() {
+  const url = process.env.DATABASE_URL || "";
+  const host = url.match(/@([^/:?]+)/)?.[1] || "";
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(host);
+  if (!isLocal && process.env.SEED_ALLOW_REMOTE !== "true") {
+    throw new Error(
+      `Recusei rodar o seed: o banco "${host || "(vazio)"}" não é local e o seed apaga tudo. ` +
+        `Se é isso mesmo que você quer, defina SEED_ALLOW_REMOTE=true.`,
+    );
+  }
+}
+
+// A senha de exemplo não fica escrita no código (o repositório é público): vem de
+// SEED_PASSWORD ou é gerada a cada carga e mostrada uma vez no final.
+const seedPassword = process.env.SEED_PASSWORD || crypto.randomBytes(9).toString("base64url");
+
 async function main() {
+  assertLocalDatabase();
   console.log("🌱 A iniciar o Motor de Seed Master V2 (Com Auditoria)...\n");
 
   console.log("🧹 A limpar o banco de dados antigo...");
@@ -18,7 +38,7 @@ async function main() {
 
   console.log("🏢 A criar o Gestor e o Escritório...");
 
-  const hashedPassword = await bcrypt.hash("123456", 10);
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
   const gestor = await prisma.user.create({
     data: {
@@ -215,6 +235,8 @@ async function main() {
   }
 
   console.log("✅ SEED V2 CONCLUÍDO COM SUCESSO!");
+  console.log(`\n🔑 Senha de todos os usuários de exemplo nesta carga: ${seedPassword}`);
+  console.log("   (gerada agora; para fixar uma, defina SEED_PASSWORD antes de rodar o seed)");
 }
 
 main()

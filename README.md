@@ -108,7 +108,7 @@ npx prisma db seed
 npm run dev
 ```
 
-A API sobe em `http://localhost:3001/api`. O `seed` cria um gestor, uma empresa e clientes de exemplo (veja `backend/prisma/seed.js`). **Use só em ambiente local e troque as credenciais de exemplo se publicar o projeto.**
+A API sobe em `http://localhost:3001/api`. O `seed` cria um gestor, uma empresa e clientes de exemplo (veja `backend/prisma/seed.js`). **O seed apaga todos os dados antes de criar os de exemplo, por isso recusa rodar em banco que não seja local.** A senha dos usuários de exemplo é gerada a cada carga e mostrada no final (ou use `SEED_PASSWORD`); ela não fica escrita no código.
 
 ### 2. Front-end
 
