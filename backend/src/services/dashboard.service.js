@@ -1,4 +1,12 @@
 import prisma from "../config/prisma.js";
+import { sumMoney, round2 } from "../utils/money.js";
+
+const INCOME_TYPES = ["entrada", "income"];
+const OUTCOME_TYPES = ["saida", "outcome"];
+
+// Soma em centavos os lançamentos dos tipos informados.
+const totalOf = (list, types) =>
+  sumMoney(list.filter((t) => types.includes(t.type)).map((t) => t.amount || t.price || 0));
 
 function getDateFilters(period) {
   const now = new Date();
@@ -106,24 +114,16 @@ export async function getSummary(companyId, period = "mes", clientId = null) {
     where: currentWhere,
   });
 
-  const entradas = currentTransactions
-    .filter((t) => t.type === "entrada" || t.type === "income")
-    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
-  const saidas = currentTransactions
-    .filter((t) => t.type === "saida" || t.type === "outcome")
-    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
-  const saldo = entradas - saidas;
+  const entradas = totalOf(currentTransactions, INCOME_TYPES);
+  const saidas = totalOf(currentTransactions, OUTCOME_TYPES);
+  const saldo = round2(entradas - saidas);
 
   const prevTransactions = await prisma.transaction.findMany({
     where: prevWhere,
   });
 
-  const prevEntradas = prevTransactions
-    .filter((t) => t.type === "entrada" || t.type === "income")
-    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
-  const prevSaidas = prevTransactions
-    .filter((t) => t.type === "saida" || t.type === "outcome")
-    .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
+  const prevEntradas = totalOf(prevTransactions, INCOME_TYPES);
+  const prevSaidas = totalOf(prevTransactions, OUTCOME_TYPES);
 
   const growthEntradas =
     prevEntradas === 0 ? 100 : ((entradas - prevEntradas) / prevEntradas) * 100;
@@ -141,15 +141,15 @@ export async function getSummary(companyId, period = "mes", clientId = null) {
   }
 
   const incomeByCategory = currentTransactions
-    .filter((t) => t.type === "entrada" || t.type === "income")
+    .filter((t) => INCOME_TYPES.includes(t.type))
     .reduce((acc, t) => {
       const cat = t.category || "Geral";
-      acc[cat] = (acc[cat] || 0) + (t.amount || t.price || 0);
+      (acc[cat] = acc[cat] || []).push(t.amount || t.price || 0);
       return acc;
     }, {});
 
   const distribuicao = Object.keys(incomeByCategory)
-    .map((key) => ({ name: key, value: incomeByCategory[key] }))
+    .map((key) => ({ name: key, value: sumMoney(incomeByCategory[key]) }))
     .sort((a, b) => b.value - a.value);
 
   return {
@@ -176,14 +176,14 @@ export async function monthly(companyId, period = "mes", clientId = null) {
 
   const transactions = await prisma.transaction.findMany({ where });
 
-  const data = Array.from({ length: 12 }, () => ({ entradas: 0, saidas: 0 }));
+  const months = Array.from({ length: 12 }, () => ({ entradas: [], saidas: [] }));
   transactions.forEach((t) => {
     const m = t.date.getMonth();
-    if (t.type === "entrada" || t.type === "income")
-      data[m].entradas += t.amount || t.price || 0;
-    else data[m].saidas += t.amount || t.price || 0;
+    const value = t.amount || t.price || 0;
+    if (INCOME_TYPES.includes(t.type)) months[m].entradas.push(value);
+    else months[m].saidas.push(value);
   });
-  return data;
+  return months.map((m) => ({ entradas: sumMoney(m.entradas), saidas: sumMoney(m.saidas) }));
 }
 
 export async function topClients(companyId, period = "mes") {
@@ -198,15 +198,14 @@ export async function topClients(companyId, period = "mes") {
     },
     include: { client: true },
   });
-  const totals = transactions.reduce((acc, t) => {
+  const byClient = transactions.reduce((acc, t) => {
     if (!t.client) return acc;
-    acc[t.clientId] = {
-      clientName: t.client.fullName,
-      total: (acc[t.clientId]?.total || 0) + (t.amount || t.price || 0),
-    };
+    acc[t.clientId] = acc[t.clientId] || { clientName: t.client.fullName, values: [] };
+    acc[t.clientId].values.push(t.amount || t.price || 0);
     return acc;
   }, {});
-  return Object.values(totals)
+  return Object.values(byClient)
+    .map(({ clientName, values }) => ({ clientName, total: sumMoney(values) }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 }

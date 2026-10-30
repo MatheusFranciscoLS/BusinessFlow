@@ -2,6 +2,7 @@ import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/
 import { addMonths } from "date-fns";
 import prisma from "../config/prisma.js";
 import { registerLog } from "../services/audit.service.js";
+import { parseMoney } from "../utils/money.js";
 
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -24,7 +25,9 @@ export async function create(req, res) {
 
     const numInstallments = parseInt(installments) || 1;
     const baseDate = new Date(date);
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseMoney(amount);
+    if (parsedAmount === null)
+      return res.status(400).json({ error: "Valor inválido." });
 
     const fileUrl = req.file ? await saveUploadedFile(companyId, req.file) : null;
 
@@ -170,6 +173,11 @@ export async function update(req, res) {
     if (!existingTx)
       return res.status(404).json({ error: "Transação não encontrada." });
 
+    // Sem "amount" no corpo, o valor antigo fica; com valor inválido, recusa.
+    const parsedAmount = parseMoney(req.body.amount);
+    if (parsedAmount === null && req.body.amount !== undefined && req.body.amount !== "")
+      return res.status(400).json({ error: "Valor inválido." });
+
     const fileUrl = req.file
       ? await saveUploadedFile(companyId, req.file)
       : existingTx.fileUrl;
@@ -188,7 +196,7 @@ export async function update(req, res) {
       where: { id: transactionId },
       data: {
         title,
-        amount: amount ? parseFloat(amount) : undefined,
+        amount: parsedAmount ?? undefined,
         category,
         type,
         date: date ? new Date(date) : undefined,

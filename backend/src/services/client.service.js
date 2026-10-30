@@ -1,4 +1,5 @@
 import prisma from "../config/prisma.js";
+import { parseMoney } from "../utils/money.js";
 
 export async function createClient(companyId, data) {
   return prisma.client.create({
@@ -6,7 +7,7 @@ export async function createClient(companyId, data) {
       fullName: data.fullName,
       document: data.document || null,
       taxRegime: data.taxRegime || null,
-      monthlyFee: data.monthlyFee ? parseFloat(data.monthlyFee) : 0,
+      monthlyFee: parseMoney(data.monthlyFee) ?? 0,
       status: data.status || "ATIVO",
       email: data.email || null,
       phone: data.phone || null,
@@ -39,7 +40,7 @@ export async function updateClient(companyId, id, data) {
       fullName: data.fullName,
       document: data.document,
       taxRegime: data.taxRegime,
-      monthlyFee: data.monthlyFee ? parseFloat(data.monthlyFee) : 0,
+      monthlyFee: parseMoney(data.monthlyFee) ?? 0,
       status: data.status,
       email: data.email,
       phone: data.phone,
