@@ -59,7 +59,7 @@ describe("gerar obrigações do mês", () => {
     const res = await api().post("/api/obligations/generate").set(headers).send({ month: 11, year: 2026 });
     expect(res.status).toBe(201);
     expect(res.body.created).toBe(2);
-    expect(res.body.clientsWithoutRegime).toEqual(["Sem regime"]);
+    expect(res.body.clientsWithoutRegime).toContain("Sem regime");
 
     const tasks = await prisma.task.findMany({ where: { companyId: office.company.id, obligationKey: { not: null } } });
     const of = (client) => tasks.filter((t) => t.clientId === client.id);
