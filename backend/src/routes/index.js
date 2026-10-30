@@ -14,6 +14,7 @@ import ofxRoutes from "./ofx.routes.js";
 import auditRoutes from "./audit.routes.js";
 import reconciliationRoutes from "./reconciliation.routes.js";
 import feesRoutes from "./fees.routes.js";
+import portalRoutes from "./portal.routes.js";
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use("/ofx", ofxRoutes);
 router.use("/audit", auditRoutes);
 router.use("/reconciliation", reconciliationRoutes);
 router.use("/fees", feesRoutes);
+router.use("/portal", portalRoutes);
 
 export default router;

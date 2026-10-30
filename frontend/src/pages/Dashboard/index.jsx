@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import PortalPending from '../../components/PortalPending';
 import {
   TrendingUp, Users, AlertTriangle, CheckCircle,
   LifeBuoy, Calendar, FileText, ArrowUpRight, ArrowDownRight, Activity, ShieldAlert,
@@ -134,6 +135,8 @@ export default function Dashboard() {
           <h1>Bem-vindo ao seu Portal, {user?.name.split(' ')[0]}!</h1>
           <p>O seu canal direto e seguro com o seu escritório de contabilidade.</p>
         </Header>
+
+        <PortalPending />
 
         {pendingClientBills?.length > 0 && (
           <ClientAlertBanner>
