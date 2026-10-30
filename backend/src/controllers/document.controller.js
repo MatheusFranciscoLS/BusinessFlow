@@ -146,7 +146,9 @@ export async function downloadFile(req, res) {
 export async function sign(req, res) {
   try {
     // Captura o IP real de onde o cliente está a aceder
-    const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "IP Desconhecido";
+    // req.ip respeita o "trust proxy" do app: pega o IP que o proxy viu, e não um
+    // cabeçalho X-Forwarded-For mandado pelo próprio cliente.
+    const ipAddress = req.ip || "IP Desconhecido";
 
     // Pega o e-mail do cliente injetado pelo nosso middleware de segurança
     const userEmail = req.query.userEmail;
