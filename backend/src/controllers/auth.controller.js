@@ -1,16 +1,19 @@
 import * as authService from "../services/auth.service.js";
 import { z } from "zod";
 
+const validationError = (res, error, title) =>
+  res.status(400).json({
+    error: title,
+    details: error.issues.map((issue) => issue.message),
+  });
+
 export async function register(req, res) {
   try {
     const result = await authService.register(req.body);
     return res.status(201).json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: "Erro de validação", 
-        details: error.errors.map(e => e.message) 
-      });
+      return validationError(res, error, "Erro de validação");
     }
     return res.status(400).json({ error: error.message });
   }
@@ -22,10 +25,7 @@ export async function login(req, res) {
     return res.status(200).json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        error: "Dados inválidos", 
-        details: error.errors.map(e => e.message) 
-      });
+      return validationError(res, error, "Dados inválidos");
     }
     return res.status(401).json({ error: error.message });
   }
@@ -54,10 +54,10 @@ export async function logout(req, res) {
 export async function forgotPassword(req, res) {
   try {
     const { email } = req.body;
-    await authService.sendForgotPasswordEmail(email);
-    return res.status(200).json({ message: "Email de recuperação enviado!" });
+    const result = await authService.sendForgotPasswordEmail(email);
+    return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(500).json({ error: "Não foi possível processar o pedido." });
   }
 }
 
@@ -67,6 +67,9 @@ export async function resetPassword(req, res) {
     await authService.resetPassword(email, token, newPassword);
     return res.status(200).json({ message: "Senha atualizada com sucesso!" });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return validationError(res, error, "Dados inválidos");
+    }
     return res.status(400).json({ error: error.message });
   }
 }

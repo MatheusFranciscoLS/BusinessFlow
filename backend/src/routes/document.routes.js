@@ -2,14 +2,15 @@ import { Router } from "express";
 import * as documentController from "../controllers/document.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
+import { portalScope } from "../middlewares/portal.js";
+import { requireManager } from "../middlewares/roles.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const docFolder = path.resolve("uploads", "documents");
 if (!fs.existsSync(docFolder)) fs.mkdirSync(docFolder, { recursive: true });
@@ -25,16 +26,18 @@ const upload = multer({ storage });
 
 router.use(authMiddleware);
 router.use(companyMiddleware);
+router.use(portalScope);
 
-// 🔥 INTERCEPTOR ZERO TRUST
+// Perfil e e-mail vêm do banco (nunca da URL) e seguem para os controllers.
 router.use(async (req, res, next) => {
   try {
-    const userId = req.user?.id || req.userId;
-    const loggedUser = await prisma.user.findUnique({ where: { id: userId } });
+    const loggedUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { role: true, email: true },
+    });
     if (!loggedUser)
       return res.status(401).json({ error: "Utilizador não encontrado." });
 
-    // Sobrescreve a URL com a verdade
     req.query.role = loggedUser.role;
     req.query.userEmail = loggedUser.email;
     next();
@@ -43,28 +46,12 @@ router.use(async (req, res, next) => {
   }
 });
 
-router.put("/:id/read", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Atualiza o documento no banco de dados, gravando a data/hora atual
-    const doc = await prisma.document.update({
-      where: { id },
-      data: { readAt: new Date() },
-    });
-
-    return res.json(doc);
-  } catch (error) {
-    console.error("Erro ao confirmar leitura:", error);
-    return res
-      .status(500)
-      .json({ error: "Erro ao confirmar leitura do documento." });
-  }
-});
-
-router.post("/", upload.single("file"), documentController.create);
+router.put("/:id/read", documentController.markAsRead);
+router.get("/:id/file", documentController.downloadFile);
 router.put("/:id/sign", documentController.sign);
 router.get("/", documentController.getAll);
-router.delete("/:id", documentController.remove);
+
+router.post("/", requireManager, upload.single("file"), documentController.create);
+router.delete("/:id", requireManager, documentController.remove);
 
 export default router;

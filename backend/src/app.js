@@ -55,10 +55,11 @@ app.options("*", cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Trava para não executar scripts maliciosos disfarçados de imagem na pasta de upload
+// Só os avatares ficam públicos. Documentos e anexos saem por rotas com login
+// (/api/documents/:id/file e /api/transactions/:id/file).
 app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "../uploads"), {
+  "/uploads/avatars",
+  express.static(path.join(__dirname, "../uploads/avatars"), {
     setHeaders: (res, filePath) => {
       res.set("X-Content-Type-Options", "nosniff");
     },

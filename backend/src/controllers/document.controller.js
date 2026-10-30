@@ -1,4 +1,5 @@
 import * as documentService from "../services/document.service.js";
+import { sendStoredFile } from "../services/file.service.js";
 import { sendDocumentNotification } from "../services/email.service.js";
 import { PrismaClient } from "@prisma/client";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
@@ -12,6 +13,14 @@ export async function create(req, res) {
       return res
         .status(400)
         .json({ error: "Ficheiro não recebido pelo servidor." });
+
+    // O cliente informado precisa ser desta empresa.
+    const owner = await prisma.client.findFirst({
+      where: { id: req.body.clientId, companyId: req.companyId },
+      select: { id: true },
+    });
+    if (!owner)
+      return res.status(400).json({ error: "Cliente não encontrado nesta empresa." });
 
     // 1. Grava o documento no banco de dados primeiro
     const document = await documentService.createDocument(
@@ -93,6 +102,41 @@ export async function remove(req, res) {
     );
 
     return res.status(204).send();
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+// Busca o documento respeitando a empresa e, no portal, o cliente dono dele.
+async function findVisibleDocument(req) {
+  const where = { id: req.params.id, companyId: req.companyId };
+  if (req.portal) where.clientId = req.portal.clientId ?? "sem-cadastro";
+  return prisma.document.findFirst({ where });
+}
+
+export async function markAsRead(req, res) {
+  try {
+    const existing = await findVisibleDocument(req);
+    if (!existing)
+      return res.status(404).json({ error: "Documento não encontrado." });
+
+    const doc = await prisma.document.update({
+      where: { id: existing.id },
+      data: { readAt: new Date() },
+    });
+    return res.json(doc);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: "Erro ao confirmar leitura do documento." });
+  }
+}
+
+export async function downloadFile(req, res) {
+  try {
+    const doc = await findVisibleDocument(req);
+    if (!doc) return res.status(404).json({ error: "Documento não encontrado." });
+    return sendStoredFile(res, doc.fileUrl);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }

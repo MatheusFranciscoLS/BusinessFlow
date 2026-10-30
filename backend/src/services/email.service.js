@@ -11,6 +11,30 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://flowbusiness.vercel.app";
+
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+export async function sendPasswordResetEmail(user, token) {
+  const resetLink = `${FRONTEND_URL}/#/reset-password?email=${encodeURIComponent(user.email)}&token=${token}`;
+
+  await transporter.sendMail({
+    from: `"BusinessFlow Segurança" <${process.env.EMAIL_USER}>`,
+    to: user.email,
+    subject: "Recuperação de Senha - BusinessFlow",
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 24px; color: #2d3748; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 12px;">
+        <h2 style="color: #3182ce; margin-top: 0;">Olá, ${escapeHtml(user.name)}!</h2>
+        <p>Recebemos uma solicitação para redefinir a sua senha de acesso à plataforma.</p>
+        <p>Clique no botão abaixo para escolher uma nova senha. O link vale por 1 hora e só pode ser usado uma vez.</p>
+        <a href="${resetLink}" style="background: #3182ce; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 16px; font-weight: bold;">Redefinir Minha Senha</a>
+        <p style="margin-top: 32px; font-size: 12px; color: #a0aec0;">Se não pediu esta alteração, ignore este e-mail.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendDocumentNotification(
   clientEmail,
   clientName,

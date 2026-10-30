@@ -1,13 +1,16 @@
 import prisma from "../config/prisma.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import nodemailer from "nodemailer";
+import { sendPasswordResetEmail } from "./email.service.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("ERRO CRÍTICO: JWT_SECRET não definido no .env");
 }
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
 
 const registerSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
@@ -20,15 +23,24 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-// 🔥 MUDANÇA 1: O Token agora carrega a Identidade Blindada do Cliente
+const resetPasswordSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+  token: z.string().min(1, "Código de redefinição inválido"),
+  newPassword: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
+});
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+// O token carrega a identidade do usuário e a empresa a que ele tem acesso.
 function generateAccessToken(user) {
   return jwt.sign(
     {
       id: user.id,
       email: user.email,
       role: user.role || "USER",
-      clientId: user.clientId, // O Elo Físico inquebrável
-      companyAccessId: user.companyAccessId, // A Empresa que ele tem acesso
+      clientId: user.clientId,
+      companyAccessId: user.companyAccessId,
     },
     process.env.JWT_SECRET,
     { expiresIn: "1d" },
@@ -88,7 +100,6 @@ export async function login(data) {
     data: refreshTokenData,
   });
 
-  // 🔥 MUDANÇA 2: Devolver os IDs também para o Front-end usar na interface
   return {
     message: "Login realizado com sucesso",
     token: accessToken,
@@ -136,48 +147,71 @@ export async function logout(token) {
   } catch (err) {}
 }
 
+// Responde sempre igual, exista o e-mail ou não, para não revelar quem tem conta.
 export async function sendForgotPasswordEmail(email) {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error("Usuário não encontrado.");
+  const generic = {
+    message: "Se o e-mail estiver cadastrado, enviamos o link de recuperação.",
+  };
+  if (typeof email !== "string" || !email) return generic;
 
-  // 🔥 Substituímos o "Ethereal" (falso) pelo seu Servidor Real (Gmail)
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return generic;
+
+  const token = crypto.randomBytes(32).toString("hex");
+
+  // Só o último pedido vale.
+  await prisma.passwordResetToken.deleteMany({
+    where: { userId: user.id, usedAt: null },
+  });
+  await prisma.passwordResetToken.create({
+    data: {
+      tokenHash: hashToken(token),
+      userId: user.id,
+      expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
     },
   });
 
-const tokenDeSeguranca = "chaveultraseguraparajwt";
-  
-  const resetLink = `https://flowbusiness.vercel.app/#/reset-password?email=${encodeURIComponent(email)}&token=${tokenDeSeguranca}`;
+  try {
+    await sendPasswordResetEmail(user, token);
+  } catch (err) {
+    console.error("Erro ao enviar e-mail de recuperação:", err.message);
+  }
 
-  await transporter.sendMail({
-    from: `"BusinessFlow Segurança" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "Recuperação de Senha - BusinessFlow",
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 24px; color: #2d3748; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 12px;">
-        <h2 style="color: #3182ce; margin-top: 0;">Olá, ${user.name}!</h2>
-        <p>Recebemos uma solicitação para redefinir a sua senha de acesso à plataforma.</p>
-        <p>Clique no botão abaixo para escolher uma nova senha segura:</p>
-        <a href="${resetLink}" style="background: #3182ce; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 16px; font-weight: bold;">Redefinir Minha Senha</a>
-        <p style="margin-top: 32px; font-size: 12px; color: #a0aec0;">Se não pediu esta alteração, ignore este e-mail.</p>
-      </div>
-    `,
-  });
-
-  return { message: "Email de recuperação enviado com sucesso!" };
+  return generic;
 }
 
 export async function resetPassword(email, token, newPassword) {
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({
-    where: { email },
-    data: { password: hashedPassword },
+  const data = resetPasswordSchema.parse({ email, token, newPassword });
+  const invalid = new Error("Link de recuperação inválido ou expirado.");
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashToken(data.token) },
+    include: { user: { select: { id: true, email: true } } },
   });
+
+  if (
+    !record ||
+    record.usedAt ||
+    record.expiresAt < new Date() ||
+    record.user.email !== data.email
+  ) {
+    throw invalid;
+  }
+
+  const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: record.userId },
+      data: { password: hashedPassword },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    }),
+    // Quem estava logado com a senha antiga precisa entrar de novo.
+    prisma.refreshToken.deleteMany({ where: { userId: record.userId } }),
+  ]);
+
   return { message: "Senha alterada com sucesso!" };
 }
