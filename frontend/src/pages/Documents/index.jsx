@@ -16,6 +16,7 @@ import {
 
 const fetcher = (url) => api.get(url).then(res => res.data);
 const CATEGORIES = ["Societário (Contrato Social)", "Fiscal e Tributário", "Alvarás e Licenças", "Trabalhista / RH", "Outros"];
+const FILTER_CATEGORIES = [...CATEGORIES, "Enviado pelo cliente"];
 
 export default function Documents() {
   const { user, selectedCompany } = useAuth();
@@ -62,7 +63,8 @@ export default function Documents() {
       formData.append('companyId', queryCompany);
       formData.append('clientId', form.clientId);
 
-      await api.post('/documents', formData);
+      // O cliente do portal envia pela rota própria: o servidor define o dono e a pasta.
+      await api.post(isClient ? '/portal/documents' : '/documents', formData);
       toast.success("Documento guardado com sucesso!", { id: tId });
       setIsModalOpen(false);
       setForm({ name: '', category: 'Societário (Contrato Social)', clientId: '', file: null });
@@ -113,11 +115,9 @@ export default function Documents() {
     <Container>
       <Header>
         <h1><FolderLock color="#3182ce" size={32} /> Cofre Digital (GED)</h1>
-        {!isClient && (
-          <ActionButton onClick={() => setIsModalOpen(true)}>
-            <UploadCloud size={18} /> Novo Documento
-          </ActionButton>
-        )}
+        <ActionButton onClick={() => setIsModalOpen(true)}>
+          <UploadCloud size={18} /> {isClient ? 'Enviar ao escritório' : 'Novo Documento'}
+        </ActionButton>
       </Header>
 
       {/* 🔥 FILTROS QUE ESTICAM NO MOBILE */}
@@ -130,7 +130,7 @@ export default function Documents() {
           <Filter size={18} color="#718096" style={{ marginRight: 8 }} />
           <SelectFilter value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
             <option value="">Todas as Pastas</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {FILTER_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </SelectFilter>
         </div>
       </FilterContainer>
@@ -221,36 +221,40 @@ export default function Documents() {
       )}
 
       {/* MODAL DE UPLOAD */}
-      {isModalOpen && !isClient && (
+      {isModalOpen && (
         <ModalOverlay>
           <ModalContent>
-            <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><UploadCloud color="#3182ce" /> Guardar Documento</h2>
+            <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}><UploadCloud color="#3182ce" /> {isClient ? 'Enviar documento ao escritório' : 'Guardar Documento'}</h2>
             <form onSubmit={handleUpload}>
 
-              <FormGroup>
-                <label>Vincular a qual Cliente?</label>
-                <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} required>
-                  <option value="">Selecione o dono do documento...</option>
-                  {clients?.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
-                </select>
-              </FormGroup>
+              {!isClient && (
+                <FormGroup>
+                  <label>Vincular a qual Cliente?</label>
+                  <select value={form.clientId} onChange={e => setForm({ ...form, clientId: e.target.value })} required>
+                    <option value="">Selecione o dono do documento...</option>
+                    {clients?.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}
+                  </select>
+                </FormGroup>
+              )}
 
               <FormGroup>
                 <label>Nome do Ficheiro (Ex: Contrato Social 2026)</label>
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
               </FormGroup>
 
-              <FormGroup>
-                <label>Pasta / Categoria</label>
-                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </FormGroup>
+              {!isClient && (
+                <FormGroup>
+                  <label>Pasta / Categoria</label>
+                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </FormGroup>
+              )}
 
               <FormGroup style={{ marginTop: 16 }}>
                 <label>Anexar o PDF ou Imagem</label>
                 <div style={{ border: '2px dashed #cbd5e0', padding: '24px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', position: 'relative', background: '#f7fafc' }}>
-                  <input type="file" onChange={e => setForm({ ...form, file: e.target.files[0] })} accept="image/*,application/pdf" style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }} required />
+                  <input type="file" onChange={e => setForm({ ...form, file: e.target.files[0] })} accept={isClient ? ".pdf,.png,.jpg,.jpeg,.xml,.ofx,.csv,.xlsx,.xls,.docx,.doc,.txt" : "image/*,application/pdf"} style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }} required />
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#4a5568' }}>
                     <UploadCloud size={28} style={{ marginBottom: 8, color: '#3182ce' }} />
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{form.file ? form.file.name : "Clique ou arraste o ficheiro para aqui"}</span>
