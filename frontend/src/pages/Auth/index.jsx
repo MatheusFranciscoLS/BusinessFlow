@@ -7,9 +7,13 @@ import {
   MobileLogo
 } from './styles';
 import { ShieldCheck } from 'lucide-react';
+import useSWR from 'swr';
+import api from '../../services/api';
 
 export default function Login() {
-  const { signIn } = useAuth(); 
+  const { signIn } = useAuth();
+  // O link de cadastro só aparece quando o servidor está com o cadastro aberto.
+  const { data: config } = useSWR('/auth/config', (url) => api.get(url).then((res) => res.data));
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,9 +82,11 @@ export default function Login() {
 
           <FooterActions>
             <Link to="/forgot-password">Esqueceu-se da sua senha?</Link>
-            <span style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-              Ainda não é parceiro? <Link to="/register">Registe o seu Escritório</Link>
-            </span>
+            {config?.registrationOpen && (
+              <span style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                Ainda não é parceiro? <Link to="/register">Registe o seu Escritório</Link>
+              </span>
+            )}
           </FooterActions>
         </FormContainer>
       </RightPanel>

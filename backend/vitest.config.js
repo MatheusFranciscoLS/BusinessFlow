@@ -11,6 +11,8 @@ export default defineConfig({
     env: {
       JWT_SECRET: "segredo-so-para-testes",
       NODE_ENV: "test",
+      // Em produção o cadastro é fechado por padrão; os testes de cadastro precisam dele aberto.
+      ALLOW_PUBLIC_REGISTRATION: "true",
     },
   },
 });

@@ -19,6 +19,7 @@ const sensitiveLimiter = rateLimit({
   message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
 });
 
+router.get("/config", authController.publicConfig);
 router.post("/login", sensitiveLimiter, authController.login);
 router.post("/register", sensitiveLimiter, authController.register);
 router.post("/forgot-password", sensitiveLimiter, authController.forgotPassword);
