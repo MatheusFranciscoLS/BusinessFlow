@@ -84,8 +84,10 @@ export function AuthProvider({ children }) {
     api.defaults.headers.Authorization = `Bearer ${token}`;
     setUser(user);
 
-    // Redirecionamento suave
-    window.location.href = '/#/app';
+    // Recarrega já no painel: as empresas do gestor só são lidas na abertura da página.
+    // Só trocar o "#" não recarrega, e o início ficava em branco até atualizar a tela.
+    window.location.replace('/#/app');
+    window.location.reload();
   }
 
   async function signIn({ email, password }) {

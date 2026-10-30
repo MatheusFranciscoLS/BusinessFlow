@@ -18,6 +18,7 @@ import portalRoutes from "./portal.routes.js";
 import privacyRoutes from "./privacy.routes.js";
 import teamRoutes from "./team.routes.js";
 import obligationsRoutes from "./obligations.routes.js";
+import homeRoutes from "./home.routes.js";
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use("/portal", portalRoutes);
 router.use("/privacy", privacyRoutes);
 router.use("/team", teamRoutes);
 router.use("/obligations", obligationsRoutes);
+router.use("/home", homeRoutes);
 
 export default router;
