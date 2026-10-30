@@ -11,7 +11,7 @@ export async function create(req, res) {
     // 🔥 2. ESPIÃO: Regista a criação de um novo cliente
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "CREATE",
       "CLIENTES",
       `Cadastrou o novo cliente: ${data.fullName}`,
@@ -55,7 +55,7 @@ export async function update(req, res) {
     // 🔥 3. ESPIÃO: Regista a alteração de dados (ex: alteração de honorários)
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "UPDATE",
       "CLIENTES",
       `Atualizou os dados cadastrais do cliente: ${data.fullName}`,
@@ -81,7 +81,7 @@ export async function remove(req, res) {
     // 🔥 4. ESPIÃO: Alarme máximo! Um cliente e todo o seu histórico foram apagados.
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "DELETE",
       "CLIENTES",
       `Apagou o cliente e todo o seu histórico (Dossiê, Faturas, Documentos): ${client.fullName}`,

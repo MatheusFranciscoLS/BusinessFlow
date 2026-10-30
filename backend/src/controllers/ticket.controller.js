@@ -25,7 +25,7 @@ export async function create(req, res) {
     // 🔥 2. ESPIÃO: Abertura de chamado
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "CREATE",
       "CHAMADOS",
       `Abriu um novo chamado de Suporte: "${ticket.subject}"`,
@@ -74,7 +74,7 @@ export async function addMessage(req, res) {
     // 🔥 3. ESPIÃO: Resposta no chamado
     registerLog(
       req.companyId,
-      { name: newMessage.senderName, role: newMessage.senderRole },
+      req.actor,
       "UPDATE",
       "CHAMADOS",
       `Enviou uma resposta no chamado de suporte.`,
@@ -105,7 +105,7 @@ export async function updateStatus(req, res) {
     // 🔥 4. ESPIÃO: Mudança de Status (Ex: Fechou o chamado)
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "UPDATE",
       "CHAMADOS",
       `Alterou o status do chamado "${updatedTicket.subject}" para: ${updatedTicket.status}`,

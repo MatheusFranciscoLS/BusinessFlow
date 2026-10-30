@@ -33,7 +33,7 @@ export async function create(req, res) {
     // 🔥 2. ESPIÃO: Alarme disparado no Upload!
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "CREATE",
       "DOCUMENTOS",
       `Fez o upload de um novo documento: ${document.name} (Categoria: ${document.category})`,
@@ -97,7 +97,7 @@ export async function remove(req, res) {
     // 🔥 3. ESPIÃO: Alarme disparado na exclusão do ficheiro!
     registerLog(
       req.companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "DELETE",
       "DOCUMENTOS",
       `Apagou permanentemente o documento do cofre: ${existingDoc.name}`,
@@ -162,7 +162,7 @@ export async function sign(req, res) {
     // 🕵️ ESPIÃO: Grava na Caixa Preta que o documento tem valor legal agora
     registerLog(
       req.companyId,
-      { name: userEmail, role: "CLIENT" },
+      req.actor,
       "UPDATE",
       "COFRE DIGITAL",
       `Assinou eletronicamente o documento: ${signedDoc.name} (IP: ${ipAddress})`
