@@ -3,7 +3,7 @@ import { api, prisma, resetDatabase, createOffice, createPortalUser, createTrans
 
 let office, other, owner, portal;
 
-const member = (name, role) => ({ name, email: uniqueEmail(name.toLowerCase()), password: "senha-forte-1", role });
+const member = (name, role) => ({ name, email: uniqueEmail("equipe"), password: "senha-forte-1", role });
 
 beforeAll(async () => {
   await resetDatabase();
