@@ -13,6 +13,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/MatheusFranciscoLS/BusinessFlow/actions/workflows/ci.yml">
+    <img alt="CI" src="https://github.com/MatheusFranciscoLS/BusinessFlow/actions/workflows/ci.yml/badge.svg">
+  </a>
+</p>
+
+<p align="center">
   <img alt="React" src="https://img.shields.io/static/v1?label=frontend&message=React&color=3182ce&labelColor=1a202c">
   <img alt="Node" src="https://img.shields.io/static/v1?label=backend&message=Node.js&color=33cc95&labelColor=1a202c">
   <img alt="Prisma" src="https://img.shields.io/static/v1?label=ORM&message=Prisma&color=1B222D&labelColor=1a202c">
@@ -153,11 +159,38 @@ erDiagram
 
 ---
 
+## ✅ Testes
+
+O back-end tem testes automatizados que rodam **contra um PostgreSQL de verdade** (não um banco de mentira), porque o ponto mais importante do sistema é o isolamento entre empresas e isso só se prova com o banco real. O GitHub Actions roda tudo a cada push e pull request (`.github/workflows/ci.yml`), e também confere que o painel React compila.
+
+**O que está coberto**
+
+| Área | O que os testes garantem |
+| :--- | :--- |
+| Autenticação | Cadastro e login, senha criptografada e nunca devolvida, mesma resposta para e-mail desconhecido e senha errada, renovação e encerramento de sessão, token ausente, vencido ou com assinatura errada |
+| Acesso por perfil | Gestor só entra na empresa dele; perfil CLIENT fica preso à própria empresa e não entra no CRM nem na auditoria |
+| Isolamento entre empresas | Uma empresa não lê, altera nem apaga clientes, lançamentos, chaves de API ou empresas de outra |
+| API pública | Exige chave, recusa chave inexistente ou revogada, devolve só clientes ativos e só os campos combinados |
+| Regras de negócio | Parcelamento, filtro por mês, paginação, resumo do painel, exclusão em cascata e trilha de auditoria |
+
+**Como rodar**
+
+Use um banco **só de testes** (o nome precisa ter `test`; os testes apagam os dados e se recusam a rodar em outro banco):
+
+```bash
+cd backend
+export DATABASE_URL="postgresql://usuario:senha@localhost:5432/businessflow_test"
+npx prisma db push
+npm test
+```
+
+---
+
 ## 🔭 Próximos passos
 
 Pontos que eu melhoraria, olhando o código hoje:
 
-- **Testes automatizados e CI** (o back-end ainda não tem testes), com verificação a cada alteração no GitHub.
+- **Ampliar os testes** para tarefas, chamados, documentos e importação OFX, e criar testes do front-end.
 - **Migrações versionadas do Prisma** no lugar do `db push`, para controlar as mudanças do banco com histórico.
 - **Origens permitidas do CORS por variável de ambiente**, em vez de listadas no código.
 - **Uma só biblioteca de hash de senha** (hoje há duas instaladas) e senhas de exemplo geradas, não fixas, no `seed`.
