@@ -60,7 +60,7 @@ export const createTask = async (req, res) => {
 
 export const getTasks = async (req, res) => {
   try {
-    const { role, userEmail, page = 1, limit = 50 } = req.query;
+    const { role, userEmail, page = 1, limit } = req.query;
     let where = { companyId: req.companyId };
 
     if (role === "CLIENT") {
@@ -71,8 +71,11 @@ export const getTasks = async (req, res) => {
       where.clientId = clientRecord.id;
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
+    // Sem "limit" devolve todas (até o teto): o quadro Kanban precisa de todas as tarefas.
+    const take = limit
+      ? Math.min(Math.max(parseInt(limit) || 50, 1), 5000)
+      : 5000;
+    const skip = (Math.max(parseInt(page) || 1, 1) - 1) * take;
 
     const [tasks, total] = await Promise.all([
       prisma.task.findMany({
