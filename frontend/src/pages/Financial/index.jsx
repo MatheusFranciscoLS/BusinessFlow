@@ -457,6 +457,20 @@ function toggleSelectAll() {
         } catch (error) { toast.error(error.response?.data?.error || "Falha ao lançar.", { id: tId }); }
     }
 
+    // Cria a cobrança do mês (vence dia 10) para cada cliente ativo com honorário combinado.
+    // Rodar de novo no mesmo mês não duplica. Também atualiza quem está inadimplente.
+    async function handleGenerateFees() {
+        const label = `${MONTHS_BR[currentMonth - 1]}/${currentYear}`;
+        if (!window.confirm(`Gerar os honorários de ${label} para os clientes ativos? Quem já tem a cobrança do mês não é duplicado.`)) return;
+
+        const tId = toast.loading("Gerando honorários...");
+        try {
+            const { data } = await api.post('/fees/generate', { month: currentMonth, year: currentYear });
+            toast.success(`${data.created} cobranças geradas, ${data.skipped} já existiam.`, { id: tId });
+            mutate();
+        } catch (error) { toast.error(error.response?.data?.error || "Falha ao gerar honorários.", { id: tId }); }
+    }
+
     async function handleUndoReconcile(transactionId) {
         if (!window.confirm("Desfazer a conciliação deste lançamento? Ele volta a ficar pendente.")) return;
         try {
@@ -601,6 +615,11 @@ const renderStatusBadge = (statusValue) => {
                         {!isClient && (
                           <button className="secondary" onClick={() => { setIsOfxModalOpen(true); setAutoMatches([]); setBankTransactions([]); }} style={{ background: '#ebf8ff', color: '#3182ce', borderColor: '#bee3f8' }}>
                             <LinkIcon size={18} /> Conciliar Extrato (OFX)
+                          </button>
+                        )}
+                        {!isClient && !showAllTime && (
+                          <button className="secondary" onClick={handleGenerateFees} style={{ background: '#f0fff4', color: '#276749', borderColor: '#c6f6d5' }}>
+                            <Repeat size={18} /> Gerar honorários do mês
                           </button>
                         )}
                         <button className="secondary" onClick={handleExportCSV} disabled={!transactions}>

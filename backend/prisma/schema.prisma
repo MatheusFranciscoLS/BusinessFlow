@@ -139,6 +139,9 @@ model Transaction {
   bankFitId     String?
   reconciledAt  DateTime?
 
+  // Honorário mensal gerado automaticamente: mês de referência ("2026-10"), para não gerar duas vezes.
+  feeReference  String?
+
   clientId      String?
   client        Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
   
@@ -149,6 +152,7 @@ model Transaction {
 
   @@index([companyId, date]) // ⚡ Turbo: Acelera filtros por data no dashboard
   @@index([companyId, bankFitId])
+  @@index([companyId, feeReference])
   @@index([clientId])
 }
 
