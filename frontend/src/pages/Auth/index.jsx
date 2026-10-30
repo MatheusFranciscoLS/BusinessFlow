@@ -11,7 +11,7 @@ import useSWR from 'swr';
 import api from '../../services/api';
 
 export default function Login() {
-  const { signIn } = useAuth();
+  const { signIn, signInDemo } = useAuth();
   // O link de cadastro só aparece quando o servidor está com o cadastro aberto.
   const { data: config } = useSWR('/auth/config', (url) => api.get(url).then((res) => res.data));
   
@@ -79,6 +79,31 @@ export default function Login() {
                <ShieldCheck size={16} color="#38a169" /> Ambiente Seguro e Criptografado
             </div>
           </Form>
+
+          {config?.demoEnabled && (
+            <div style={{ marginTop: 20, padding: 16, border: '1px dashed #90cdf4', background: '#ebf8ff', borderRadius: 12, textAlign: 'center' }}>
+              <strong style={{ color: '#2c5282' }}>Quer só conhecer o sistema?</strong>
+              <p style={{ margin: '4px 0 12px 0', color: '#4a5568', fontSize: 13 }}>
+                Entre na demonstração: dados fictícios, somente leitura, sem senha.
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {[['gestor', 'Como gestor do escritório'], ['cliente', 'Como cliente (portal)']].map(([profile, label]) => (
+                  <button
+                    key={profile}
+                    type="button"
+                    onClick={() => toast.promise(signInDemo(profile), {
+                      loading: 'Abrindo a demonstração...',
+                      success: 'Bem-vindo à demonstração!',
+                      error: (err) => err.response?.data?.error || 'Não foi possível abrir a demonstração.',
+                    })}
+                    style={{ background: 'white', color: '#2b6cb0', border: '1px solid #90cdf4', borderRadius: 8, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <FooterActions>
             <Link to="/forgot-password">Esqueceu-se da sua senha?</Link>

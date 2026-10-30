@@ -149,6 +149,11 @@ export default function Layout() {
       </SidebarContainer>
 
       <MainContent>
+        {user?.email?.toLowerCase().endsWith('@businessflow.demo') && (
+          <div style={{ background: '#ebf8ff', borderBottom: '1px solid #bee3f8', color: '#2c5282', padding: '10px 24px', fontSize: 14, fontWeight: 600, textAlign: 'center' }}>
+            Modo demonstração: dados fictícios e somente leitura. Nada do que você clicar é salvo.
+          </div>
+        )}
         <Suspense fallback={
           <div style={{ padding: 40, color: '#a0aec0', display: 'flex', justifyContent: 'center' }}>A carregar módulo...</div>
         }>

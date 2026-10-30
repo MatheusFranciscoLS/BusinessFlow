@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { sendPasswordResetEmail } from "./email.service.js";
+import { DEMO_PROFILES, isDemoEmail, isDemoEnabled } from "../utils/demo.js";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("ERRO CRÍTICO: JWT_SECRET não definido no .env");
@@ -41,6 +42,8 @@ function generateAccessToken(user) {
       role: user.role || "USER",
       clientId: user.clientId,
       companyAccessId: user.companyAccessId,
+      // Sessão da demonstração: o authMiddleware deixa só ler.
+      demo: isDemoEmail(user.email) || undefined,
     },
     process.env.JWT_SECRET,
     { expiresIn: "1d" },
@@ -100,6 +103,11 @@ export async function login(data) {
 
   if (!passwordMatch) throw new Error("E-mail ou senha inválidos.");
 
+  return startSession(user);
+}
+
+// Abre a sessão: token de acesso, refresh token guardado e os dados do usuário.
+async function startSession(user) {
   const accessToken = generateAccessToken(user);
   const refreshTokenData = generateRefreshToken(user.id);
 
@@ -120,6 +128,23 @@ export async function login(data) {
       companyAccessId: user.companyAccessId,
     },
   };
+}
+
+// Entrada na demonstração, sem senha. Só funciona com DEMO_MODE=true e só para os
+// usuários fictícios da demo (que têm senha aleatória, impossível de usar no login normal).
+export async function demoLogin(profile) {
+  if (!isDemoEnabled()) {
+    throw Object.assign(new Error("A demonstração não está ativada."), { status: 403 });
+  }
+  const email = DEMO_PROFILES[profile];
+  if (!email) {
+    throw Object.assign(new Error("Perfil de demonstração inválido."), { status: 400 });
+  }
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    throw Object.assign(new Error("A demonstração ainda não foi carregada."), { status: 404 });
+  }
+  return startSession(user);
 }
 
 export async function refreshToken(token) {

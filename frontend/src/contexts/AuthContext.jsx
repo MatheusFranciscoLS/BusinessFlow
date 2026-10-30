@@ -74,26 +74,34 @@ export function AuthProvider({ children }) {
     return () => api.interceptors.response.eject(interceptor);
   }, []);
 
+  // Guarda a sessão devolvida pelo servidor e entra no painel.
+  function startSession({ token, refreshToken, user }) {
+    localStorage.setItem('@BusinessFlow:token', token);
+    if (refreshToken) localStorage.setItem('@BusinessFlow:refreshToken', refreshToken);
+    localStorage.setItem('@BusinessFlow:user', JSON.stringify(user));
+    localStorage.removeItem('@BusinessFlow:companyId'); // não herdar a empresa de outra sessão
+
+    api.defaults.headers.Authorization = `Bearer ${token}`;
+    setUser(user);
+
+    // Redirecionamento suave
+    window.location.href = '/#/app';
+  }
+
   async function signIn({ email, password }) {
     try {
       const response = await api.post('/auth/login', { email, password });
-      
-      const { token, refreshToken, user } = response.data;
-
-      localStorage.setItem('@BusinessFlow:token', token);
-      if (refreshToken) localStorage.setItem('@BusinessFlow:refreshToken', refreshToken);
-      localStorage.setItem('@BusinessFlow:user', JSON.stringify(user));
-
-      api.defaults.headers.Authorization = `Bearer ${token}`;
-      setUser(user);
-
-      // Redirecionamento suave
-      window.location.href = '/#/app';
-      
+      startSession(response.data);
     } catch (error) {
       console.error("Erro no login:", error);
       throw error;
     }
+  }
+
+  // Entrada na demonstração (sem senha), quando o servidor a ativa.
+  async function signInDemo(profile) {
+    const response = await api.post('/auth/demo-login', { profile });
+    startSession(response.data);
   }
 
   function changeCompany(companyId) {
@@ -114,7 +122,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ 
-      signed: !!user, user, loading, signIn, signOut, 
+      signed: !!user, user, loading, signIn, signInDemo, signOut,
       companies, selectedCompany, changeCompany, updateUserData 
     }}>
       {children}

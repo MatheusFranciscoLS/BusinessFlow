@@ -7,6 +7,7 @@
     "dev": "node src/server.js",
     "start": "node src/server.js",
     "build": "prisma generate && prisma db push",
+    "seed:demo": "node prisma/seed-demo.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

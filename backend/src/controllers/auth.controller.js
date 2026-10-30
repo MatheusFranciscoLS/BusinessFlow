@@ -1,5 +1,6 @@
 import * as authService from "../services/auth.service.js";
 import { z } from "zod";
+import { isDemoEnabled } from "../utils/demo.js";
 
 const validationError = (res, error, title) =>
   res.status(400).json({
@@ -21,7 +22,19 @@ export async function register(req, res) {
 
 // O que a tela de login precisa saber para se montar.
 export function publicConfig(req, res) {
-  return res.json({ registrationOpen: authService.isRegistrationOpen() });
+  return res.json({
+    registrationOpen: authService.isRegistrationOpen(),
+    demoEnabled: isDemoEnabled(),
+  });
+}
+
+export async function demoLogin(req, res) {
+  try {
+    const result = await authService.demoLogin(req.body?.profile);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(error.status || 400).json({ error: error.message });
+  }
 }
 
 export async function login(req, res) {
