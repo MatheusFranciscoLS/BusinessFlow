@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import crypto from "crypto";
 
-const prisma = new PrismaClient();
 
 export async function createKey(req, res) {
     try {

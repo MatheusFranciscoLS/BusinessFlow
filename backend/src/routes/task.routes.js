@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { requireManager } from "../middlewares/roles.js";
@@ -8,7 +8,6 @@ import { requireManager } from "../middlewares/roles.js";
 import * as TaskController from "../controllers/task.controller.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.use(authMiddleware);
 router.use(companyMiddleware);

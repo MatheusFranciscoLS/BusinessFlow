@@ -2,10 +2,9 @@ import { Router } from "express";
 import * as dashboardController from "../controllers/dashboard.controller.js";
 import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // 1. Aplica a segurança em TODAS as rotas do painel
 router.use(authMiddleware);

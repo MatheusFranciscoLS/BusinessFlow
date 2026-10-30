@@ -1,10 +1,9 @@
 import * as documentService from "../services/document.service.js";
 import { saveUploadedFile, deleteStoredFile, sendStoredFile } from "../services/file.service.js";
 import { sendDocumentNotification } from "../services/email.service.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { registerLog } from "../services/audit.service.js"; // 🔥 1. Importamos a Caixa Preta
 
-const prisma = new PrismaClient();
 
 export async function create(req, res) {
   try {

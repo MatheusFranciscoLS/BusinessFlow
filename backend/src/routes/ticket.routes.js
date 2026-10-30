@@ -4,10 +4,9 @@ import { authMiddleware } from "../middlewares/auth.js";
 import { companyMiddleware } from "../middlewares/company.js";
 import { portalScope } from "../middlewares/portal.js";
 import { requireManager } from "../middlewares/roles.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 
 const router = Router();
-const prisma = new PrismaClient();
 
 router.use(authMiddleware);
 router.use(companyMiddleware);

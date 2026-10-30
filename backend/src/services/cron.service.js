@@ -1,7 +1,6 @@
 import cron from "node-cron";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 
-const prisma = new PrismaClient();
 
 export function startCronJobs() {
   // 🕒 Roda todos os dias às 00:01 (Meia-noite e um)
