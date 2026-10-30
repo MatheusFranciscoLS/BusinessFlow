@@ -332,6 +332,18 @@ const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currenc
                 </FormGroup>
               </FormRow>
 
+              <FormRow>
+                <FormGroup>
+                  <label>Regime Tributário</label>
+                  <select value={form.taxRegime} onChange={e => setForm({...form, taxRegime: e.target.value})}>
+                    <option value="MEI">MEI</option>
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                  </select>
+                </FormGroup>
+              </FormRow>
+
               {/* 🔥 MÁGICA 2: Honorários e Status empilhados no mobile */}
               <FormRow>
                 <FormGroup>
