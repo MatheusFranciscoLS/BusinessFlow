@@ -102,6 +102,28 @@ export default function Agenda() {
     } catch (err) { toast.error("Erro ao excluir.", { id: tId }); }
   }
 
+  // Cria as tarefas das obrigações que vencem no mês, conforme o regime de cada cliente.
+  // Os prazos vêm de fontes oficiais (descrição de cada tarefa traz a fonte).
+  async function handleGenerateObligations() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    if (!window.confirm(`Gerar as obrigações que vencem em ${String(month).padStart(2, '0')}/${year} para os clientes ativos? Quem já tem a tarefa não é duplicado.`)) return;
+
+    const tId = toast.loading("Gerando obrigações...");
+    try {
+      const { data } = await api.post('/obligations/generate', { month, year });
+      const semRegime = data.clientsWithoutRegime.length;
+      toast.success(
+        `${data.created} tarefas criadas, ${data.skipped} já existiam.` + (semRegime ? ` ${semRegime} cliente(s) sem regime tributário conhecido ficaram de fora.` : ''),
+        { id: tId, duration: 6000 },
+      );
+      mutateTasks();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Falha ao gerar obrigações.", { id: tId });
+    }
+  }
+
   async function handleAutoScan() {
     setIsScanning(true);
     const tId = toast.loading("A verificar Certificados Digitais...");
@@ -169,6 +191,11 @@ export default function Agenda() {
         <h1><Calendar color="#3182ce" size={32} /> Gestão de Tarefas e Prazos</h1>
         {!isClient && (
           <ActionGroup>
+            {activeTab === 'KANBAN' && (
+              <Button onClick={handleGenerateObligations} style={{ background: '#f0fff4', color: '#276749', border: '1px solid #c6f6d5' }}>
+                <Repeat size={18} /> Gerar obrigações do mês
+              </Button>
+            )}
             {activeTab === 'KANBAN' && (
               <Button onClick={handleAutoScan} disabled={isScanning} style={{ background: '#fffaf0', color: '#dd6b20', border: '1px solid #fbd38d' }}>
                 <Zap size={18} /> {isScanning ? 'A verificar...' : 'Varredura de Prazos'}

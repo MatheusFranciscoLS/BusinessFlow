@@ -17,6 +17,7 @@ import feesRoutes from "./fees.routes.js";
 import portalRoutes from "./portal.routes.js";
 import privacyRoutes from "./privacy.routes.js";
 import teamRoutes from "./team.routes.js";
+import obligationsRoutes from "./obligations.routes.js";
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use("/fees", feesRoutes);
 router.use("/portal", portalRoutes);
 router.use("/privacy", privacyRoutes);
 router.use("/team", teamRoutes);
+router.use("/obligations", obligationsRoutes);
 
 export default router;
