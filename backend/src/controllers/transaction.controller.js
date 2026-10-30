@@ -27,7 +27,7 @@ export async function create(req, res) {
     const fileUrl = req.file ? await saveUploadedFile(companyId, req.file) : null;
 
     // Objeto genérico para o log (se o seu middleware de Auth enviar o 'req.user', podemos substituir no futuro)
-    const currentUser = { name: "Usuário do Sistema", role: "ADMIN" };
+    const currentUser = req.actor;
 
     if (numInstallments === 1) {
       const transaction = await prisma.transaction.create({
@@ -199,7 +199,7 @@ export async function update(req, res) {
     // 🔥 3. ESPIÃO: Regista quem alterou e qual era o título antigo
     registerLog(
       companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "UPDATE",
       "FINANCEIRO",
       `Alterou os dados ou status da fatura: ${existingTx.title}`,
@@ -235,7 +235,7 @@ export async function remove(req, res) {
     // 🔥 4. ESPIÃO: A ação mais perigosa do sistema está agora totalmente blindada!
     registerLog(
       companyId,
-      { name: "Usuário do Sistema", role: "ADMIN" },
+      req.actor,
       "DELETE",
       "FINANCEIRO",
       `Apagou permanentemente o lançamento: ${existingTx.title} (R$ ${existingTx.amount})`,

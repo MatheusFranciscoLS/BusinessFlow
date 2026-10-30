@@ -10,13 +10,16 @@ export async function companyMiddleware(req, res, next) {
     // 🔥 OTIMIZAÇÃO DE PERFORMANCE MÁXIMA: Traz apenas o necessário (sem carregar senhas e dados pesados)
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, companyAccessId: true },
+      select: { name: true, role: true, companyAccessId: true },
     });
 
     if (!currentUser)
       return res
         .status(401)
         .json({ error: "Utilizador não encontrado no banco." });
+
+    // Quem está agindo, para o log de auditoria (vem do banco, não da requisição).
+    req.actor = { name: currentUser.name, role: currentUser.role };
 
     // 🔥 SEGURANÇA TOTAL PARA O CLIENTE
     if (currentUser.role === "CLIENT") {
