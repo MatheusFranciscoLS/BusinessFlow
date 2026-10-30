@@ -5,6 +5,9 @@ import { registerLog } from "../services/audit.service.js";
 
 const prisma = new PrismaClient();
 
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 5000;
+
 export async function create(req, res) {
   try {
     const {
@@ -99,7 +102,7 @@ export async function create(req, res) {
 export async function getAll(req, res) {
   try {
     // 🔥 1. Capturamos page e limit da URL (Por defeito: Traz os últimos 50)
-    const { month, year, page = 1, limit = 50 } = req.query;
+    const { month, year, page = 1, limit } = req.query;
     const companyId = req.companyId;
 
     let whereClause = { companyId: companyId };
@@ -120,10 +123,14 @@ export async function getAll(req, res) {
     }
 
     // 🔥 2. Matemática da Paginação
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
+    // Sem "limit" na URL devolve tudo (até o teto). As telas somam e concilam em cima desta
+    // lista, então cortar em 50 deixava os totais errados em meses com mais lançamentos.
+    const take = limit
+      ? Math.min(Math.max(parseInt(limit) || DEFAULT_PAGE_SIZE, 1), MAX_PAGE_SIZE)
+      : MAX_PAGE_SIZE;
+    const skip = (Math.max(parseInt(page) || 1, 1) - 1) * take;
 
-    // 🔥 3. Execução Paralela: Busca os 50 registos E conta o total ao mesmo tempo
+    // 🔥 3. Execução Paralela: Busca os registos E conta o total ao mesmo tempo
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where: whereClause,
