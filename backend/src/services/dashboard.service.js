@@ -126,10 +126,14 @@ export async function getSummary(companyId, period = "mes", clientId = null) {
     .filter((t) => t.type === "saida" || t.type === "outcome")
     .reduce((acc, t) => acc + (t.amount || t.price || 0), 0);
 
-  const growthEntradas =
-    prevEntradas === 0 ? 100 : ((entradas - prevEntradas) / prevEntradas) * 100;
-  const growthSaidas =
-    prevSaidas === 0 ? 100 : ((saidas - prevSaidas) / prevSaidas) * 100;
+  // Variação em relação ao período anterior. Sem período anterior para comparar,
+  // não há variação (null), em vez de inventar "100%".
+  const growth = (current, previous) =>
+    previous === 0
+      ? null
+      : parseFloat((((current - previous) / previous) * 100).toFixed(1));
+  const growthEntradas = growth(entradas, prevEntradas);
+  const growthSaidas = growth(saidas, prevSaidas);
 
   let inadimplentes = [];
   // 🔥 O Cliente não pode ver a lista de clientes com dívidas, só o escritório!
@@ -157,8 +161,8 @@ export async function getSummary(companyId, period = "mes", clientId = null) {
     entradas,
     saidas,
     saldo,
-    growthEntradas: parseFloat(growthEntradas.toFixed(1)),
-    growthSaidas: parseFloat(growthSaidas.toFixed(1)),
+    growthEntradas,
+    growthSaidas,
     inadimplentes,
     distribuicao,
   };

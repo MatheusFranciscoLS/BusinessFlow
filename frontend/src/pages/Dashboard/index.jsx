@@ -203,7 +203,12 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 8 }}>
             <div className="value" style={{ marginBottom: 0 }}>{formatCurrency(summary.entradas)}</div>
-            <span style={{ background: '#c6f6d5', color: '#22543d', padding: '4px 8px', borderRadius: 20, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', marginBottom: 6 }}>+12%</span>
+            {/* Variação real contra o período anterior; sem período anterior, não mostra nada. */}
+            {typeof summary.growthEntradas === 'number' && (
+              <span style={{ background: summary.growthEntradas >= 0 ? '#c6f6d5' : '#fed7d7', color: summary.growthEntradas >= 0 ? '#22543d' : '#742a2a', padding: '4px 8px', borderRadius: 20, fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                {summary.growthEntradas > 0 ? '+' : ''}{summary.growthEntradas.toLocaleString('pt-BR')}%
+              </span>
+            )}
           </div>
           <div className="subtitle" style={{ color: '#38a169' }}><ArrowUpRight size={16} /> Honorários Recebidos</div>
         </StatCard>
