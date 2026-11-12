@@ -100,7 +100,7 @@ export function AuthProvider({ children }) {
 
   // Entrada na demonstração (sem senha), quando o servidor a ativa.
   async function signInDemo(profile) {
-    const response = await api.post('/auth/demo-login', { profile });
+    const response = await api.post('/auth/demo-login', { profile }, { timeout: 25000 });
     startSession(response.data);
   }
 
