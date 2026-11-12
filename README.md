@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-  <strong>Plataforma SaaS Full Stack de Gestão Inteligente</strong>
+  <strong>SaaS multiempresa para escritórios de contabilidade</strong>
 </p>
 
 <p align="center">
@@ -35,15 +35,17 @@
 
 ## 💻 Sobre
 
-O **BusinessFlow** é uma plataforma Full Stack projetada para facilitar a gestão de micro e pequenas empresas, substituindo planilhas desorganizadas por um painel moderno e unificado.
+O **BusinessFlow** é um SaaS multiempresa para escritórios de contabilidade. O escritório acompanha clientes, financeiro (com conciliação de extrato OFX e DRE), documentos, prazos e chamados, e cada cliente acessa o próprio portal. Os dados de cada empresa ficam isolados no back-end.
 
 Ele centraliza:
-- **Gestão Financeira:** Controle de fluxo de caixa com relatórios e validações.
-- **CRM:** Gestão de clientes com histórico e categorização via tags.
-- **Agenda:** Organização visual e inteligente de compromissos.
-- **Serviços:** Catálogo de produtos/serviços com precificação.
+- **Clientes (CRM):** status, documentos e histórico por empresa.
+- **Financeiro:** lançamentos, faturas pendentes e atrasadas, DRE, importação de extrato OFX e relatórios em PDF e CSV.
+- **Tarefas e prazos** por cliente e por empresa.
+- **Chamados (helpdesk)** entre o escritório e o cliente, com troca de mensagens.
+- **Auditoria:** registro de quem fez o quê em cada módulo.
+- **Portal do cliente** e **API pública com chave** para integrações.
 
-Este projeto demonstra domínio na construção de **arquiteturas SaaS**, integração ponta a ponta, segurança com JWT e validação estrita de dados no backend.
+Este projeto demonstra isolamento de dados entre empresas, autenticação com JWT e refresh token, validação de entradas e testes de API contra um PostgreSQL de verdade. A demonstração pública usa dados fictícios e é somente leitura.
 
 ---
 
