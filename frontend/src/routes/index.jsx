@@ -24,8 +24,16 @@ const Audit = lazy(() => import('../pages/Audit'));
 const ApiKeys = lazy(() => import('../pages/ApiKeys'));
 const Privacy = lazy(() => import('../pages/Privacy'));
 const Team = lazy(() => import('../pages/Team'));
+const Home = lazy(() => import('../pages/Home'));
+const Competence = lazy(() => import('../pages/Competence'));
 
 // --- COMPONENTES DE PROTEÇÃO ---
+
+// Início: o gestor vê o novo início do escritório; o cliente, o portal dele.
+const StartPage = () => {
+  const { user } = useAuth();
+  return user?.role === 'CLIENT' ? <Dashboard /> : <Home />;
+};
 
 const PrivateRoute = ({ children }) => {
   const { signed, loading } = useAuth();
@@ -74,7 +82,8 @@ const AppRoutes = () => {
           <Route path="/app" element={
             <PrivateRoute><Layout /></PrivateRoute>
           }>
-            <Route index element={<Dashboard />} />
+            <Route index element={<StartPage />} />
+            <Route path="competencia" element={<Competence />} />
             <Route path="apikeys" element={<ApiKeys />} />
             <Route path="clientes" element={<Customers />} />
             <Route path="servicos" element={<Dre />} />

@@ -136,14 +136,17 @@ export async function seedDemo(now = new Date()) {
     for (const [i, c] of CLIENTS.entries()) {
       if (c.status === "SUSPENSO") continue;
       const lateClient = c.status === "INADIMPLENTE" && back <= 2;
+      // No mês atual quase todos já pagaram; dois ainda vão pagar nos próximos dias.
+      const dueSoon = isCurrent && (i === 0 || i === 2);
+      const open = lateClient || dueSoon || (isCurrent && now.getUTCDate() < 10);
       transactions.push({
         title: `Honorários ${pad(m)}/${y} - ${c.name}`,
         amount: c.fee,
         type: "entrada",
         category: "Honorários",
-        date: noon(y, m, 10),
-        status: isCurrent || lateClient ? "PENDENTE" : "PAGO",
-        paymentMethod: isCurrent || lateClient ? null : i % 3 === 0 ? "Boleto" : "PIX",
+        date: dueSoon ? new Date(now.getTime() + 5 * 86400000) : noon(y, m, 10),
+        status: open ? "PENDENTE" : "PAGO",
+        paymentMethod: open ? null : i % 3 === 0 ? "Boleto" : "PIX",
         feeReference: `${y}-${pad(m)}`,
         clientId: clients[i].id,
         companyId: company.id,
@@ -246,7 +249,14 @@ export async function seedDemo(now = new Date()) {
   }
 
   // ----- tarefas: obrigações do mês (calendário) + algumas manuais -----
+  // Obrigações que vencem neste mês (a maioria já entregue) e as do mês que vem (em aberto).
   const obligations = await generateObligations(company.id, month, year);
+  await prisma.task.updateMany({
+    where: { companyId: company.id, obligationKey: { endsWith: `:${year}-${pad(month)}` }, clientId: { notIn: [clients[2].id, clients[8].id] } },
+    data: { status: "CONCLUIDO" },
+  });
+  const next = month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
+  const nextObligations = await generateObligations(company.id, next.m, next.y);
   await prisma.task.createMany({
     data: [
       { title: "Conferir extrato bancário - Mercadinho Bom Preço", status: "A_FAZER", priority: "NORMAL", dueDate: noon(year, month, Math.min(now.getUTCDate() + 3, 28)), clientId: clients[3].id },
@@ -278,7 +288,7 @@ export async function seedDemo(now = new Date()) {
     transactions: transactions.length,
     documents: docs.length,
     tickets: tickets.length,
-    obligationTasks: obligations.created,
+    obligationTasks: obligations.created + nextObligations.created,
     logins: Object.values(DEMO_PROFILES),
   };
 }
