@@ -19,7 +19,7 @@
 `404` com `Content-Type: text/html` e a página padrão do Express (`Cannot GET /api/rota-que-nao-existe`).
 
 ## Por que importa
-Todos os outros erros da API (401, 403, 400) são JSON com o campo `error`. Quem consome a API (o próprio front-end ou uma integração com chave de API) tenta ler JSON e quebra ao receber HTML. A página padrão também revela que o servidor é Express.
+Os erros HTTP verificados nos casos de teste (400, 401 e 403) devolvem JSON com o campo `error`. Um consumidor que espera JSON pode falhar ao receber HTML (não foi observada uma integração real quebrando; o problema foi reproduzido na API). A página padrão também revela que o servidor é Express.
 
 ## Evidência
 - Coleção Postman: pasta "4. Erros e validação", requisição "Rota inexistente deve responder em JSON (BUG-001)". Falhou com `expected 'text/html; charset=utf-8' to include 'application/json'`.

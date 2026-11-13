@@ -33,7 +33,7 @@ Verificar que a demonstração do BusinessFlow funciona como prometido: entra se
 
 ## 6. Critérios
 **Entrada:** demonstração no ar e API respondendo em `/api/auth/config`.
-**Saída:** casos de prioridade Alta executados sem falha aberta; bugs conhecidos documentados com severidade; coleção Postman sem falhas inesperadas.
+**Saída:** casos de prioridade Alta automatizados passando e sem falha aberta; os casos manuais de prioridade Alta ainda pendentes (CT-02, CT-14 e CT-23) ficam listados como "A executar" e devem ser rodados antes de considerar a rodada concluída; bugs conhecidos documentados com severidade; coleção Postman sem falhas inesperadas.
 
 ## 7. Severidade e prioridade
 - **Severidade** = tamanho do estrago (Crítica: vaza dados ou grava na demo; Alta: função principal quebrada; Média: função secundária ou contorno fácil; Baixa: cosmético ou padrão).

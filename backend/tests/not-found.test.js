@@ -14,6 +14,7 @@ describe("rota inexistente", () => {
     const res = await api().post("/api/outra-rota-que-nao-existe").send({});
     expect(res.status).toBe(404);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
+    expect(res.body).toEqual({ error: "Rota não encontrada." });
   });
 
   it("não atrapalha rotas que existem (sem token continua 401)", async () => {

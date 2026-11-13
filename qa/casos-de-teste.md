@@ -11,7 +11,7 @@ Status: **Passou** (executado e conferido em 13/11/2026), **Falhou**, **A execut
 | CT-02 | Primeira entrada com o servidor dormindo | Abrir a demo após ~15 min sem uso; clicar em "Como gestor" | Mostra aviso de espera, tenta de novo e abre em até ~1 min, sem tela quebrada | A | - | A executar |
 | CT-03 | Entrar como gestor | Clicar "Como gestor do escritório" | Aviso "Modo demonstração…", usuário "Ana Souza (demo)", menu completo | A | E2E-01, PM | Passou |
 | CT-04 | Entrar como cliente | Clicar "Como cliente (portal)" | Portal do cliente, sem menus de gestão | A | E2E-03, PM | Passou |
-| CT-05 | Demonstração não grava | Como gestor, tentar criar/editar/excluir cliente, lançamento ou tarefa | Mensagem "somente leitura" e nada muda após recarregar (API devolve 403) | A | PM | Passou (API) |
+| CT-05 | Demonstração não grava | Como gestor, tentar criar/editar/excluir cliente, lançamento ou tarefa | Mensagem "somente leitura" e nada muda após recarregar (API devolve 403) | A | PM | Passou só na API (POST devolve 403 "somente leitura"); a parte pela interface fica **A executar** |
 
 ## Permissões e isolamento
 | ID | Caso | Passos | Esperado | Prior. | Automação | Status |
