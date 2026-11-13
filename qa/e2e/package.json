@@ -1,0 +1,13 @@
+{
+  "name": "businessflow-qa-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Testes E2E (Playwright) da demonstração pública do BusinessFlow",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

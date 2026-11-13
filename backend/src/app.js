@@ -78,6 +78,12 @@ app.use("/api", routes);
 app.use("/api/apikeys", apiKeyRoutes);
 app.use("/api/v1", publicRoutes);
 
+// Rota que não existe: responde em JSON, no mesmo formato dos demais erros da API
+// (sem isso o Express devolve a página HTML "Cannot GET ...").
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "Rota não encontrada." });
+});
+
 // ==========================================
 // 🪂 4. O PARAQUEDAS (Global Error Handler)
 // ==========================================
